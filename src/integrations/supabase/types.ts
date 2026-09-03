@@ -247,67 +247,94 @@ export type Database = {
       };
       invoices: {
         Row: {
-          buyer_tax_id: string | null;
-          clearance_reference: string | null;
-          clearance_status: string | null;
-          created_at: string;
-          currency: Database["public"]["Enums"]["currency_code"];
           id: string;
-          invoice_number: string | null;
-          line_items: Json;
           org_id: string;
           purchase_order_id: string | null;
-          seller_tax_id: string | null;
+          supplier_id: string | null;
+          invoice_number: string;
+          issue_date: string;
+          due_date: string;
+          currency: Database["public"]["Enums"]["currency_code"];
           subtotal: number;
-          total_amount: number;
           vat_amount: number;
-          wht_amount: number | null;
+          total_amount: number;
+          seller_legal_name: string;
+          seller_tin: string | null;
+          buyer_legal_name: string;
+          buyer_tin: string | null;
+          irn: string | null;
+          irn_clearance_status: "pending" | "cleared" | "flagged";
+          irn_cleared_at: string | null;
+          three_way_match_status: "pending" | "matched" | "discrepancy_flagged";
+          match_discrepancies: Json;
+          status: "draft" | "pending_approval" | "approved_for_payment" | "paid" | "rejected";
+          notes: string | null;
           wht_applicable: boolean;
+          wht_rate: number;
+          wht_amount: number | null;
           wht_credit_note_received: boolean;
           wht_credit_note_reference: string | null;
-          wht_rate: number;
+          created_at: string;
         };
         Insert: {
-          buyer_tax_id?: string | null;
-          clearance_reference?: string | null;
-          clearance_status?: string | null;
-          created_at?: string;
-          currency?: Database["public"]["Enums"]["currency_code"];
           id?: string;
-          invoice_number?: string | null;
-          line_items?: Json;
           org_id: string;
           purchase_order_id?: string | null;
-          seller_tax_id?: string | null;
+          supplier_id?: string | null;
+          invoice_number: string;
+          issue_date?: string;
+          due_date: string;
+          currency?: Database["public"]["Enums"]["currency_code"];
           subtotal?: number;
-          total_amount?: number;
           vat_amount?: number;
-          wht_amount?: number | null;
+          total_amount?: number;
+          seller_legal_name?: string;
+          seller_tin?: string | null;
+          buyer_legal_name?: string;
+          buyer_tin?: string | null;
+          irn?: string | null;
+          irn_clearance_status?: "pending" | "cleared" | "flagged";
+          irn_cleared_at?: string | null;
+          three_way_match_status?: "pending" | "matched" | "discrepancy_flagged";
+          match_discrepancies?: Json;
+          status?: "draft" | "pending_approval" | "approved_for_payment" | "paid" | "rejected";
+          notes?: string | null;
           wht_applicable?: boolean;
+          wht_rate?: number;
+          wht_amount?: number | null;
           wht_credit_note_received?: boolean;
           wht_credit_note_reference?: string | null;
-          wht_rate?: number;
+          created_at?: string;
         };
         Update: {
-          buyer_tax_id?: string | null;
-          clearance_reference?: string | null;
-          clearance_status?: string | null;
-          created_at?: string;
-          currency?: Database["public"]["Enums"]["currency_code"];
           id?: string;
-          invoice_number?: string | null;
-          line_items?: Json;
           org_id?: string;
           purchase_order_id?: string | null;
-          seller_tax_id?: string | null;
+          supplier_id?: string | null;
+          invoice_number?: string;
+          issue_date?: string;
+          due_date?: string;
+          currency?: Database["public"]["Enums"]["currency_code"];
           subtotal?: number;
-          total_amount?: number;
           vat_amount?: number;
-          wht_amount?: number | null;
+          total_amount?: number;
+          seller_legal_name?: string;
+          seller_tin?: string | null;
+          buyer_legal_name?: string;
+          buyer_tin?: string | null;
+          irn?: string | null;
+          irn_clearance_status?: "pending" | "cleared" | "flagged";
+          irn_cleared_at?: string | null;
+          three_way_match_status?: "pending" | "matched" | "discrepancy_flagged";
+          match_discrepancies?: Json;
+          status?: "draft" | "pending_approval" | "approved_for_payment" | "paid" | "rejected";
+          notes?: string | null;
           wht_applicable?: boolean;
+          wht_rate?: number;
+          wht_amount?: number | null;
           wht_credit_note_received?: boolean;
           wht_credit_note_reference?: string | null;
-          wht_rate?: number;
+          created_at?: string;
         };
         Relationships: [
           {
@@ -1167,6 +1194,411 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      delivery_receipts: {
+        Row: {
+          id: string;
+          org_id: string;
+          purchase_order_id: string;
+          project_id: string | null;
+          receiving_officer_id: string | null;
+          receiving_officer_name: string;
+          delivery_note_ref: string | null;
+          delivered_at: string;
+          status: "accepted" | "partial" | "rejected";
+          quality_observations: string | null;
+          photos: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          purchase_order_id: string;
+          project_id?: string | null;
+          receiving_officer_id?: string | null;
+          receiving_officer_name: string;
+          delivery_note_ref?: string | null;
+          delivered_at?: string;
+          status?: "accepted" | "partial" | "rejected";
+          quality_observations?: string | null;
+          photos?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          purchase_order_id?: string;
+          project_id?: string | null;
+          receiving_officer_id?: string | null;
+          receiving_officer_name?: string;
+          delivery_note_ref?: string | null;
+          delivered_at?: string;
+          status?: "accepted" | "partial" | "rejected";
+          quality_observations?: string | null;
+          photos?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      delivery_receipt_items: {
+        Row: {
+          id: string;
+          delivery_receipt_id: string;
+          po_item_id: string | null;
+          description: string;
+          quantity_delivered: number;
+          quantity_accepted: number;
+          quantity_rejected: number;
+          rejection_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          delivery_receipt_id: string;
+          po_item_id?: string | null;
+          description: string;
+          quantity_delivered?: number;
+          quantity_accepted?: number;
+          quantity_rejected?: number;
+          rejection_reason?: string | null;
+        };
+        Update: {
+          id?: string;
+          delivery_receipt_id?: string;
+          po_item_id?: string | null;
+          description?: string;
+          quantity_delivered?: number;
+          quantity_accepted?: number;
+          quantity_rejected?: number;
+          rejection_reason?: string | null;
+        };
+        Relationships: [];
+      };
+      invoice_items: {
+        Row: {
+          id: string;
+          invoice_id: string;
+          po_item_id: string | null;
+          description: string;
+          quantity: number;
+          unit_price: number;
+          vat_rate: number;
+          total_amount: number;
+        };
+        Insert: {
+          id?: string;
+          invoice_id: string;
+          po_item_id?: string | null;
+          description: string;
+          quantity?: number;
+          unit_price?: number;
+          vat_rate?: number;
+          total_amount?: number;
+        };
+        Update: {
+          id?: string;
+          invoice_id?: string;
+          po_item_id?: string | null;
+          description?: string;
+          quantity?: number;
+          unit_price?: number;
+          vat_rate?: number;
+          total_amount?: number;
+        };
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          org_id: string;
+          invoice_id: string | null;
+          purchase_order_id: string | null;
+          amount: number;
+          currency: Database["public"]["Enums"]["currency_code"];
+          payment_method: "bank_transfer" | "virtual_account" | "invoice_billing" | "card";
+          payment_reference: string | null;
+          paid_at: string;
+          status: "pending" | "completed" | "failed";
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          invoice_id?: string | null;
+          purchase_order_id?: string | null;
+          amount: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          payment_method?: "bank_transfer" | "virtual_account" | "invoice_billing" | "card";
+          payment_reference?: string | null;
+          paid_at?: string;
+          status?: "pending" | "completed" | "failed";
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          invoice_id?: string | null;
+          purchase_order_id?: string | null;
+          amount?: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          payment_method?: "bank_transfer" | "virtual_account" | "invoice_billing" | "card";
+          payment_reference?: string | null;
+          paid_at?: string;
+          status?: "pending" | "completed" | "failed";
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      ndpa_consent_logs: {
+        Row: {
+          id: string;
+          org_id: string;
+          user_id: string | null;
+          consent_type: string;
+          granted: boolean;
+          ip_address: string | null;
+          details: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          user_id?: string | null;
+          consent_type: string;
+          granted?: boolean;
+          ip_address?: string | null;
+          details?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          user_id?: string | null;
+          consent_type?: string;
+          granted?: boolean;
+          ip_address?: string | null;
+          details?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      units_of_measure: {
+        Row: {
+          id: string;
+          org_id: string;
+          code: string;
+          name: string;
+          symbol: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          code: string;
+          name: string;
+          symbol?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          code?: string;
+          name?: string;
+          symbol?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      item_categories: {
+        Row: {
+          id: string;
+          org_id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          code?: string;
+          name?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      items: {
+        Row: {
+          id: string;
+          org_id: string;
+          category_id: string | null;
+          uom_id: string | null;
+          sku: string | null;
+          name: string;
+          description: string | null;
+          estimated_unit_price: number;
+          currency: Database["public"]["Enums"]["currency_code"];
+          preferred_supplier_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          category_id?: string | null;
+          uom_id?: string | null;
+          sku?: string | null;
+          name: string;
+          description?: string | null;
+          estimated_unit_price?: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          preferred_supplier_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          category_id?: string | null;
+          uom_id?: string | null;
+          sku?: string | null;
+          name?: string;
+          description?: string | null;
+          estimated_unit_price?: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          preferred_supplier_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      sites: {
+        Row: {
+          id: string;
+          org_id: string;
+          project_id: string;
+          name: string;
+          location: string | null;
+          contact_person: string | null;
+          contact_phone: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          project_id: string;
+          name: string;
+          location?: string | null;
+          contact_person?: string | null;
+          contact_phone?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          project_id?: string;
+          name?: string;
+          location?: string | null;
+          contact_person?: string | null;
+          contact_phone?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      cost_codes: {
+        Row: {
+          id: string;
+          org_id: string;
+          project_id: string | null;
+          code: string;
+          description: string;
+          allocated_amount: number;
+          committed_amount: number;
+          incurred_amount: number;
+          currency: Database["public"]["Enums"]["currency_code"];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          project_id?: string | null;
+          code: string;
+          description: string;
+          allocated_amount?: number;
+          committed_amount?: number;
+          incurred_amount?: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          project_id?: string | null;
+          code?: string;
+          description?: string;
+          allocated_amount?: number;
+          committed_amount?: number;
+          incurred_amount?: number;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      secure_action_tokens: {
+        Row: {
+          id: string;
+          org_id: string;
+          token_hash: string;
+          action_type: string;
+          entity_type: string;
+          entity_id: string;
+          actor_id: string | null;
+          recipient_identifier: string;
+          expires_at: string;
+          used_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          token_hash: string;
+          action_type: string;
+          entity_type: string;
+          entity_id: string;
+          actor_id?: string | null;
+          recipient_identifier: string;
+          expires_at: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          org_id?: string;
+          token_hash?: string;
+          action_type?: string;
+          entity_type?: string;
+          entity_id?: string;
+          actor_id?: string | null;
+          recipient_identifier?: string;
+          expires_at?: string;
+          used_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {

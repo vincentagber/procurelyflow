@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +91,24 @@ const NAV = [
 function AppLayout() {
   const me = useMe();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem("sidebar_collapsed", String(next));
+    } catch {
+      // ignore
+    }
+  }
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const access = useQuery({ queryKey: ["org-access"], queryFn: () => myOrgAccessFn() });
@@ -138,79 +158,167 @@ function AppLayout() {
   const watchesSuppliers = can(me.data?.roles, ["procurement_officer", "admin"]);
 
   return (
-    <div className="min-h-screen bg-surface md:flex">
-      <header className="flex items-center justify-between border-b border-sidebar-border bg-sidebar px-4 py-3 md:hidden">
-        <span className="font-display text-xl uppercase tracking-wider text-sidebar-foreground">
-          Procurely
-        </span>
-        <div className="flex items-center gap-1">
+    <div className="min-h-screen bg-[#F8F9FB] text-foreground antialiased md:flex">
+      {/* Mobile Top Header */}
+      <header className="flex items-center justify-between border-b border-[#162070] bg-[#0B1457] px-4 py-3 md:hidden">
+        <div className="flex items-center">
+          <img
+            src="/logo-dark.png"
+            alt="Logo"
+            className="h-7 w-auto object-contain rounded-md bg-white p-1"
+          />
+        </div>
+        <div className="flex items-center gap-2">
           {watchesSuppliers ? <NotificationBell /> : null}
           <button
             aria-label="Open menu"
             onClick={() => setOpen((v) => !v)}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-sidebar-foreground"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/15"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </header>
 
+      {/* Sleek Dark Left Sidebar Navigation (Brand: #0B1457 base, #0001FF active) with Collapse Support */}
       <aside
         className={cn(
-          "border-b border-sidebar-border bg-sidebar px-3 py-3 md:sticky md:top-0 md:h-screen md:w-60 md:shrink-0 md:border-b-0 md:border-r md:py-5",
-          open ? "block" : "hidden md:block",
+          "z-30 border-r border-[#162070] bg-[#0B1457] py-5 transition-all duration-300 md:sticky md:top-0 md:h-screen md:shrink-0 md:flex md:flex-col md:justify-between",
+          collapsed ? "px-2.5 md:w-20" : "px-3.5 md:w-64",
+          open ? "block" : "hidden md:flex",
         )}
       >
-        <div className="hidden px-2 pb-5 md:block">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-display text-2xl uppercase tracking-wider text-sidebar-foreground">
-              Procurely Flow
-            </p>
-            {watchesSuppliers ? <NotificationBell /> : null}
+        <div>
+          {/* Brand Header */}
+          <div className="px-1 pb-5">
+            <div className="flex items-center justify-between">
+              <Link to="/dashboard" className="flex items-center">
+                <img
+                  src="/logo-dark.png"
+                  alt="Logo"
+                  className={cn(
+                    "w-auto object-contain rounded-lg bg-white p-1.5 shadow-sm transition-all",
+                    collapsed ? "h-7" : "h-8",
+                  )}
+                />
+              </Link>
+              <div className="hidden md:flex items-center gap-1.5">
+                {!collapsed && watchesSuppliers ? <NotificationBell /> : null}
+                <button
+                  type="button"
+                  onClick={toggleCollapsed}
+                  title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  {collapsed ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronLeft className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="mt-0.5 truncate text-xs text-sidebar-foreground/70">{me.data.orgName}</p>
+
+          {/* Navigation Links */}
+          <nav className="space-y-1">
+            {NAV.filter((item) => !item.roles || can(me.data?.roles, [...item.roles])).map(
+              (item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  title={collapsed ? item.label : undefined}
+                  activeProps={{
+                    className:
+                      "bg-[#0001FF] text-white font-semibold shadow-inner",
+                  }}
+                  inactiveProps={{
+                    className: "text-white/70 hover:bg-white/10 hover:text-white font-normal",
+                  }}
+                  className={cn(
+                    "group flex items-center rounded-lg py-2.5 text-sm transition-all",
+                    collapsed ? "justify-center px-2" : "justify-between px-3",
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon
+                      className="h-4 w-4 shrink-0 transition-colors group-hover:text-white"
+                      aria-hidden
+                    />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </div>
+                </Link>
+              ),
+            )}
+          </nav>
+
+          {platform.data?.isPlatformAdmin ? (
+            <div className="mt-4 border-t border-[#22252A] pt-3">
+              <Link
+                to="/platform-admin"
+                onClick={() => setOpen(false)}
+                title={collapsed ? "Platform Admin" : undefined}
+                className={cn(
+                  "flex items-center rounded-lg border border-amber-500/30 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors",
+                  collapsed ? "justify-center px-2" : "gap-2.5 px-3",
+                )}
+              >
+                <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
+                {!collapsed && <span>Platform Admin</span>}
+              </Link>
+            </div>
+          ) : null}
         </div>
 
-        <nav className="space-y-1">
-          {NAV.filter((item) => !item.roles || can(me.data?.roles, [...item.roles])).map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={() => setOpen(false)}
-              activeProps={{
-                className:
-                  "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-l-signal",
-              }}
-              className="tap-row flex items-center gap-2.5 rounded-md px-3 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        {platform.data?.isPlatformAdmin ? (
-          <div className="mt-4 border-t border-sidebar-border pt-3">
-            <Link
-              to="/platform-admin"
-              onClick={() => setOpen(false)}
-              className="tap-row flex items-center gap-2.5 rounded-md border border-signal/40 px-3 text-sm font-medium text-signal hover:bg-signal/10"
-            >
-              <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden /> Platform admin
-            </Link>
-          </div>
-        ) : null}
-        <div className="mt-5 border-t border-sidebar-border pt-3">
-          <p className="truncate px-3 text-xs text-sidebar-foreground/70">{me.data.email}</p>
-          <button
-            onClick={signOut}
-            className="tap-row mt-1 flex w-full items-center gap-2.5 rounded-md px-3 text-sm text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <LogOut className="h-4 w-4" aria-hidden /> Sign out
-          </button>
+        {/* User Profile & Sign Out Footer */}
+        <div className="mt-6 border-t border-[#162070] pt-4">
+          {collapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <div
+                title={`${me.data.profile?.full_name || "User"} (${me.data.email})`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm cursor-default"
+              >
+                {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
+              </div>
+              <button
+                onClick={signOut}
+                title="Sign out"
+                aria-label="Sign out"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm">
+                  {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-white">
+                    {me.data.profile?.full_name || "User"}
+                  </p>
+                  <p className="truncate text-[10px] text-white/50">{me.data.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={signOut}
+                title="Sign out"
+                aria-label="Sign out"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 bg-background px-4 py-5 md:px-8 md:py-7">
+      {/* Main Content Area (Clean White & High Contrast) */}
+      <main className="min-w-0 flex-1 bg-[#F8F9FB] px-4 py-6 md:px-8 md:py-7 overflow-x-hidden">
         <Outlet />
       </main>
     </div>

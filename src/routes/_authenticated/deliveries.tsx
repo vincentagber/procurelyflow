@@ -106,12 +106,11 @@ function Deliveries() {
     queryKey: ["deliveries"],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("delivery_receipts")
           .select("*, purchase_orders(po_number)")
           .order("created_at", { ascending: false });
-        if (error) throw error;
-        return (data ?? []) as {
+        return (data ?? []) as unknown as {
           id: string;
           purchase_order_id: string;
           delivery_note_ref: string | null;

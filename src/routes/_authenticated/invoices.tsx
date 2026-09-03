@@ -105,7 +105,7 @@ function Invoices() {
     queryKey: ["invoices"],
     queryFn: async () => {
       try {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("invoices")
           .select("*, purchase_orders(po_number, total_amount, settlement_currency)")
           .order("created_at", { ascending: false });

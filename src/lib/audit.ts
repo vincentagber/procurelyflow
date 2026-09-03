@@ -35,12 +35,17 @@ function canonicalizeJson(obj: unknown): string {
     return "[" + obj.map(canonicalizeJson).join(",") + "]";
   }
   const sortedKeys = Object.keys(obj as Record<string, unknown>).sort();
-  const pairs = sortedKeys.map((k) => `${JSON.stringify(k)}:${canonicalizeJson((obj as Record<string, unknown>)[k])}`);
+  const pairs = sortedKeys.map(
+    (k) => `${JSON.stringify(k)}:${canonicalizeJson((obj as Record<string, unknown>)[k])}`,
+  );
   return "{" + pairs.join(",") + "}";
 }
 
 /** Computes SHA-256 hash for an audit record linked to the previous block hash */
-export function computeAuditHash(payload: AuditEventPayload, previousHash: string = GENESIS_HASH): string {
+export function computeAuditHash(
+  payload: AuditEventPayload,
+  previousHash: string = GENESIS_HASH,
+): string {
   const message = [
     previousHash,
     payload.orgId,
@@ -68,6 +73,7 @@ export function verifyAuditChain(
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
+    if (!entry) continue;
     if (entry.previousHash !== expectedPrevHash) {
       return {
         isValid: false,

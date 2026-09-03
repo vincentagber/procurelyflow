@@ -24,8 +24,16 @@ export interface NRSInvoicePayload {
   }[];
 }
 
+export interface ThreeWayMatchToleranceConfig {
+  maxPriceVariancePercent?: number; // e.g. 1.0 for 1% allowable price variance (e.g. weighbridge variances)
+  maxPriceVarianceAbsolute?: number; // e.g. 5000 NGN absolute limit
+  allowPartialDeliveryBilling?: boolean; // false = strict no overbill against delivered
+  requireNrsClearanceStamp?: boolean; // true = require valid IRN clearance before match passes
+}
+
 export interface ThreeWayMatchResult {
   isMatched: boolean;
+  isStpQualified: boolean; // Straight-Through Processing: 0 discrepancies, fully cleared
   discrepancies: {
     field: string;
     expected: string | number;
@@ -83,7 +91,7 @@ export function generateUblPeppolJson(payload: NRSInvoicePayload): string {
   );
 }
 
-/** Reconciles PO, Goods-Received Receipt (Delivery), and Supplier Invoice */
+/** Reconciles PO, Goods-Received Receipt (Delivery), and Supplier Invoice with Configurable Tolerances */
 export function calculateThreeWayMatch(
   po: {
     totalAmount: number;
@@ -92,17 +100,36 @@ export function calculateThreeWayMatch(
   },
   delivery: { items: { description: string; quantityAccepted: number }[] } | null,
   invoice: NRSInvoicePayload,
+  tolerances?: ThreeWayMatchToleranceConfig,
 ): ThreeWayMatchResult {
   const discrepancies: ThreeWayMatchResult["discrepancies"] = [];
 
+  const maxPriceVariancePct = tolerances?.maxPriceVariancePercent ?? 0;
+  const maxPriceVarianceAbs = tolerances?.maxPriceVarianceAbsolute ?? 0.01;
+
   // Price & Amount Variance check
-  if (Math.abs(invoice.totalAmount - po.totalAmount) > 0.01) {
+  const amountDiff = Math.abs(invoice.totalAmount - po.totalAmount);
+  const percentDiff = po.totalAmount > 0 ? (amountDiff / po.totalAmount) * 100 : 0;
+
+  const isWithinTolerance =
+    amountDiff <= maxPriceVarianceAbs ||
+    (maxPriceVariancePct > 0 && percentDiff <= maxPriceVariancePct);
+
+  if (amountDiff > 0.01 && !isWithinTolerance) {
     discrepancies.push({
       field: "totalAmount",
       expected: po.totalAmount,
       actual: invoice.totalAmount,
       severity: "blocker",
-      note: `Invoice total (${invoice.totalAmount}) does not match PO total (${po.totalAmount}).`,
+      note: `Invoice total (${invoice.totalAmount}) differs from PO total (${po.totalAmount}) by ${amountDiff.toFixed(2)} (${percentDiff.toFixed(2)}%), exceeding configured tolerance.`,
+    });
+  } else if (amountDiff > 0.01 && isWithinTolerance) {
+    discrepancies.push({
+      field: "totalAmount",
+      expected: po.totalAmount,
+      actual: invoice.totalAmount,
+      severity: "warning",
+      note: `Invoice total (${invoice.totalAmount}) differs from PO total (${po.totalAmount}) by ${amountDiff.toFixed(2)}, but is within allowable tolerance.`,
     });
   }
 
@@ -133,8 +160,62 @@ export function calculateThreeWayMatch(
     });
   }
 
+  const hasBlockers = discrepancies.some((d) => d.severity === "blocker");
+  const hasWarnings = discrepancies.some((d) => d.severity === "warning");
+
   return {
-    isMatched: discrepancies.filter((d) => d.severity === "blocker").length === 0,
+    isMatched: !hasBlockers,
+    isStpQualified: !hasBlockers && !hasWarnings && delivery !== null,
     discrepancies,
+  };
+}
+
+export interface VatInputCreditAssessment {
+  isEligibleForVatInputCredit: boolean;
+  irn: string | null;
+  taxClearanceStatus: "CLEARED" | "UNVALIDATED" | "REJECTED";
+  warningMessage?: string;
+  claimableVatAmount: number;
+}
+
+/**
+ * Validates whether an invoice qualifies for statutory VAT input-credit reclaim (FR-7.4).
+ * Enforces: Invoices without a valid NRS IRN clearance stamp cannot be reclaimed for VAT.
+ */
+export function validateNrsVatInputCreditEligibility(invoice: {
+  irn?: string | null;
+  vatAmount: number;
+  sellerTin?: string | null;
+}): VatInputCreditAssessment {
+  const hasValidIrn = Boolean(invoice.irn && invoice.irn.trim().length >= 8);
+  const hasSellerTin = Boolean(invoice.sellerTin && invoice.sellerTin.trim() !== "UNREGISTERED");
+
+  if (!hasValidIrn) {
+    return {
+      isEligibleForVatInputCredit: false,
+      irn: invoice.irn ?? null,
+      taxClearanceStatus: "UNVALIDATED",
+      warningMessage:
+        "CRITICAL COMPLIANCE NOTICE: This invoice lacks a validated NRS Invoice Reference Number (IRN) clearance stamp. Under NRS regulations, VAT paid on this invoice CANNOT be claimed as input-tax credit on your corporate tax returns.",
+      claimableVatAmount: 0,
+    };
+  }
+
+  if (!hasSellerTin) {
+    return {
+      isEligibleForVatInputCredit: false,
+      irn: invoice.irn ?? null,
+      taxClearanceStatus: "REJECTED",
+      warningMessage:
+        "VAT Input Credit Blocked: Seller Tax Identification Number (TIN) is unregistered or missing.",
+      claimableVatAmount: 0,
+    };
+  }
+
+  return {
+    isEligibleForVatInputCredit: true,
+    irn: invoice.irn ?? null,
+    taxClearanceStatus: "CLEARED",
+    claimableVatAmount: invoice.vatAmount,
   };
 }

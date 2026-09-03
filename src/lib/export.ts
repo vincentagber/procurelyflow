@@ -90,7 +90,9 @@ export function generateAccountingCsv(
   ]);
 
   const totalNetPayable = records.reduce((sum, r) => sum + r.netPayable, 0);
-  const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\r\n");
+  const csvContent = [headers.map(escapeCsv).join(","), ...rows.map((row) => row.join(","))].join(
+    "\r\n",
+  );
   const checksum = createHash("sha256").update(csvContent, "utf8").digest("hex");
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const filename = `Payment_Export_${orgName.replace(/[^a-zA-Z0-9]/g, "_")}_${currency}_${timestamp}.csv`;
@@ -105,3 +107,13 @@ export function generateAccountingCsv(
     generatedAt: new Date().toISOString(),
   };
 }
+
+export {
+  generateSapS4HanaJournalPayload,
+  generateDynamics365PurchaseJournal,
+  createEnterpriseWebhookEnvelope,
+  verifyEnterpriseWebhookSignature,
+  type SapJournalEntryPayload,
+  type Dynamics365PurchaseJournalPayload,
+  type EnterpriseWebhookEnvelope,
+} from "./erpConnectors.ts";

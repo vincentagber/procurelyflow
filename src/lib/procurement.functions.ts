@@ -342,8 +342,7 @@ export const createDeliveryReceiptFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { createDeliveryReceipt } = await import("@/lib/procurement.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return createDeliveryReceipt(context.userId, data as any);
+    return createDeliveryReceipt(context.userId, data);
   });
 
 export const createInvoiceFn = createServerFn({ method: "POST" })
@@ -380,8 +379,7 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { createInvoice } = await import("@/lib/procurement.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return createInvoice(context.userId, data as any);
+    return createInvoice(context.userId, data);
   });
 
 export const recordPaymentFn = createServerFn({ method: "POST" })
@@ -401,8 +399,7 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { recordPayment } = await import("@/lib/procurement.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return recordPayment(context.userId, data as any);
+    return recordPayment(context.userId, data);
   });
 
 export const logNdpaConsentFn = createServerFn({ method: "POST" })
@@ -418,6 +415,5 @@ export const logNdpaConsentFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { logNdpaConsent } = await import("@/lib/procurement.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return logNdpaConsent(context.userId, data as any);
+    return logNdpaConsent(context.userId, data);
   });

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -10,6 +10,11 @@ import {
   ChevronRight,
   FileText,
   ShoppingBag,
+  Building2,
+  Plus,
+  ArrowUpRight,
+  TrendingUp,
+  ShieldCheck,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +61,7 @@ function Projects() {
   const [location, setLocation] = useState("");
   const [budget, setBudget] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [modalTab, setModalTab] = useState<"requisitions" | "purchase_orders">("requisitions");
 
   const { data, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -293,118 +299,300 @@ function Projects() {
         open={!!selectedProjectId}
         onOpenChange={(open) => !open && setSelectedProjectId(null)}
       >
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl uppercase tracking-wide">
-              {selectedProject?.name} — Spend Breakdown
-            </DialogTitle>
-            <DialogDescription>
-              Location: {selectedProject?.location || "N/A"} · Budget:{" "}
-              {selectedProject?.budget_amount
-                ? money(selectedProject.budget_amount)
-                : "No Budget set"}
-            </DialogDescription>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+          {/* Header Section */}
+          <DialogHeader className="space-y-3">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EFF3FF] text-[#0001FF] shadow-2xs">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <DialogTitle className="text-lg font-bold tracking-tight text-[#0B1457]">
+                  {selectedProject?.name}
+                </DialogTitle>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[#4B556D]">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-[#F1F4FA] px-2 py-0.5 font-medium">
+                    <MapPin className="h-3 w-3 text-[#0001FF]" />
+                    {selectedProject?.location || "No location specified"}
+                  </span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-[#F1F4FA] px-2 py-0.5 font-semibold text-[#0B1457]">
+                    Budget: {selectedProject?.budget_amount ? money(selectedProject.budget_amount) : "No Limit Set"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Budget Utilization Progress Bar */}
+            {selectedProject?.budget_amount && selectedProject.budget_amount > 0 ? (
+              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 space-y-1.5">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="text-[#4B556D]">
+                    Utilization:{" "}
+                    <span className="text-[#0B1457]">
+                      {Math.min(
+                        Math.round(
+                          ((selectedProject?.status?.committed ?? 0) /
+                            selectedProject.budget_amount) *
+                            100,
+                        ),
+                        100,
+                      )}
+                      %
+                    </span>
+                  </span>
+                  <span
+                    className={
+                      (selectedProject?.status?.remaining ?? 0) < 0
+                        ? "text-rose-600 font-bold"
+                        : "text-emerald-700 font-bold"
+                    }
+                  >
+                    {(selectedProject?.status?.remaining ?? 0) < 0
+                      ? "Over Budget"
+                      : `${money(selectedProject?.status?.remaining ?? 0)} Available`}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[#E2E8F0]">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-300",
+                      (selectedProject?.status?.remaining ?? 0) < 0
+                        ? "bg-rose-500"
+                        : ((selectedProject?.status?.committed ?? 0) /
+                            selectedProject.budget_amount) *
+                            100 >
+                          80
+                        ? "bg-amber-500"
+                        : "bg-emerald-500",
+                    )}
+                    style={{
+                      width: `${Math.min(
+                        Math.round(
+                          ((selectedProject?.status?.committed ?? 0) /
+                            selectedProject.budget_amount) *
+                            100,
+                        ),
+                        100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* Stat row */}
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-surface p-2.5">
-                <span className="text-muted-foreground">Committed Spend</span>
-                <p className="font-mono text-sm font-bold text-foreground mt-0.5">
-                  {money(selectedProject?.status?.committed ?? 0)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-surface p-2.5">
-                <span className="text-muted-foreground">Issued POs</span>
-                <p className="font-mono text-sm font-bold text-foreground mt-0.5">
-                  {money(selectedProject?.status?.issued ?? 0)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-surface p-2.5">
-                <span className="text-muted-foreground">Remaining Budget</span>
-                <p
-                  className={cn(
-                    "font-mono text-sm font-bold mt-0.5",
-                    (selectedProject?.status?.remaining ?? 0) < 0
-                      ? "text-destructive"
-                      : "text-emerald-600 dark:text-emerald-400",
-                  )}
-                >
-                  {money(selectedProject?.status?.remaining ?? 0)}
-                </p>
-              </div>
+          {/* 3 Executive Financial Metric Cards */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-2">
+            {/* Card 1: Committed Spend */}
+            <div className="rounded-xl border border-[#E2E8F0] border-t-2 border-t-[#0001FF] bg-[#FFFFFF] p-3.5 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#4B556D]">
+                Committed Spend
+              </span>
+              <p className="mt-1 text-base font-bold tabular-nums text-[#0B1457]">
+                {money(selectedProject?.status?.committed ?? 0)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Approved requisitions</p>
             </div>
 
-            {/* Requisitions for this project */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" /> Requisitions (
-                {projectDetails?.requisitions.length ?? 0})
-              </h3>
-              {isLoadingDetails ? (
-                <p className="text-xs text-muted-foreground">Loading requisitions…</p>
-              ) : !projectDetails?.requisitions.length ? (
-                <p className="text-xs text-muted-foreground italic">
-                  No requisitions for this project yet.
-                </p>
-              ) : (
-                <div className="divide-y divide-border rounded-lg border border-border bg-card">
-                  {projectDetails.requisitions.map((req) => (
-                    <div key={req.id} className="flex items-center justify-between p-3 text-xs">
-                      <div>
-                        <span className="font-mono font-medium text-accent">{req.reference}</span>
-                        <p className="font-medium text-foreground">{req.title}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold tabular-nums">
-                          {money(req.total_amount, req.currency as "NGN" | "USD")}
-                        </p>
-                        <span className="text-[10px] capitalize text-muted-foreground">
-                          {req.status.replace("_", " ")}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* Card 2: Issued Purchase Orders */}
+            <div className="rounded-xl border border-[#E2E8F0] border-t-2 border-t-[#0B1457] bg-[#FFFFFF] p-3.5 shadow-2xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#4B556D]">
+                Issued POs
+              </span>
+              <p className="mt-1 text-base font-bold tabular-nums text-[#0B1457]">
+                {money(selectedProject?.status?.issued ?? 0)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Contracted supplier POs</p>
             </div>
 
-            {/* Issued POs for this project */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ShoppingBag className="h-3.5 w-3.5" /> Issued POs (
-                {projectDetails?.purchaseOrders.length ?? 0})
-              </h3>
-              {isLoadingDetails ? (
-                <p className="text-xs text-muted-foreground">Loading purchase orders…</p>
-              ) : !projectDetails?.purchaseOrders.length ? (
-                <p className="text-xs text-muted-foreground italic">
-                  No purchase orders issued for this project yet.
-                </p>
-              ) : (
-                <div className="divide-y divide-border rounded-lg border border-border bg-card">
-                  {projectDetails.purchaseOrders.map((po) => (
-                    <div key={po.id} className="flex items-center justify-between p-3 text-xs">
-                      <div>
-                        <span className="font-mono font-medium text-accent">{po.po_number}</span>
-                        <p className="text-[10px] text-muted-foreground">
-                          Issued {shortDate(po.issued_at)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold tabular-nums">
-                          {money(po.total_amount, po.settlement_currency as "NGN" | "USD")}
-                        </p>
-                        <span className="text-[10px] capitalize text-muted-foreground">
-                          {po.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Card 3: Remaining Budget */}
+            <div
+              className={cn(
+                "rounded-xl border p-3.5 shadow-2xs border-t-2",
+                (selectedProject?.status?.remaining ?? 0) < 0
+                  ? "border-rose-200 border-t-rose-500 bg-rose-50/50"
+                  : "border-emerald-200 border-t-emerald-600 bg-emerald-50/40",
               )}
+            >
+              <span
+                className={cn(
+                  "text-[11px] font-bold uppercase tracking-wider",
+                  (selectedProject?.status?.remaining ?? 0) < 0
+                    ? "text-rose-700"
+                    : "text-emerald-800",
+                )}
+              >
+                Remaining Budget
+              </span>
+              <p
+                className={cn(
+                  "mt-1 text-base font-bold tabular-nums",
+                  (selectedProject?.status?.remaining ?? 0) < 0
+                    ? "text-rose-700"
+                    : "text-emerald-700",
+                )}
+              >
+                {money(selectedProject?.status?.remaining ?? 0)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Available spend headroom</p>
             </div>
+          </div>
+
+          {/* Activity Section with Tabs */}
+          <div className="mt-4 space-y-3">
+            {/* Tab Pill Switcher */}
+            <div className="flex rounded-lg border border-[#E2E8F0] bg-[#F1F4FA] p-1">
+              <button
+                type="button"
+                onClick={() => setModalTab("requisitions")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-bold transition-all",
+                  modalTab === "requisitions"
+                    ? "bg-white text-[#0B1457] shadow-xs"
+                    : "text-[#4B556D] hover:text-[#0B1457]",
+                )}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Requisitions ({projectDetails?.requisitions.length ?? 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab("purchase_orders")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-bold transition-all",
+                  modalTab === "purchase_orders"
+                    ? "bg-white text-[#0B1457] shadow-xs"
+                    : "text-[#4B556D] hover:text-[#0B1457]",
+                )}
+              >
+                <ShoppingBag className="h-3.5 w-3.5" />
+                Purchase Orders ({projectDetails?.purchaseOrders.length ?? 0})
+              </button>
+            </div>
+
+            {/* Tab 1: Requisitions List / Empty State */}
+            {modalTab === "requisitions" && (
+              <div>
+                {isLoadingDetails ? (
+                  <div className="py-8 text-center text-xs text-[#4B556D]">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0001FF] border-t-transparent inline-block mr-2" />
+                    Loading requisitions…
+                  </div>
+                ) : !projectDetails?.requisitions.length ? (
+                  <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF3FF] text-[#0001FF]">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <h4 className="mt-2.5 text-xs font-bold text-[#0B1457]">
+                      No requisitions for this project yet
+                    </h4>
+                    <p className="mt-1 text-[11px] text-[#4B556D] max-w-sm mx-auto">
+                      Field and department material requests tagged to this project will appear here with live threshold sign-off status.
+                    </p>
+                    <Button
+                      asChild
+                      size="sm"
+                      className="mt-3.5 h-8 bg-[#0001FF] text-xs font-semibold text-white hover:bg-[#0B1457] transition-all"
+                    >
+                      <Link to="/requisitions/new">
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Raise Requisition
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+                    {projectDetails.requisitions.map((req) => (
+                      <Link
+                        key={req.id}
+                        to="/requisitions/$id"
+                        params={{ id: req.id }}
+                        className="flex items-center justify-between p-3 text-xs hover:bg-[#F8FAFC] transition-colors group"
+                      >
+                        <div className="min-w-0 pr-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#0001FF]">
+                              {req.reference}
+                            </span>
+                            <span className="rounded-full bg-[#F1F4FA] px-2 py-0.5 text-[10px] font-semibold text-[#0B1457] capitalize">
+                              {req.status.replace("_", " ")}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate font-medium text-[#0F172A] group-hover:text-[#0001FF]">
+                            {req.title}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold tabular-nums text-[#0B1457]">
+                            {money(req.total_amount, req.currency as "NGN" | "USD")}
+                          </p>
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-[#4B556D] group-hover:text-[#0001FF]">
+                            View <ArrowUpRight className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Purchase Orders List / Empty State */}
+            {modalTab === "purchase_orders" && (
+              <div>
+                {isLoadingDetails ? (
+                  <div className="py-8 text-center text-xs text-[#4B556D]">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0001FF] border-t-transparent inline-block mr-2" />
+                    Loading purchase orders…
+                  </div>
+                ) : !projectDetails?.purchaseOrders.length ? (
+                  <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#EFF3FF] text-[#0001FF]">
+                      <ShoppingBag className="h-5 w-5" />
+                    </div>
+                    <h4 className="mt-2.5 text-xs font-bold text-[#0B1457]">
+                      No purchase orders issued yet
+                    </h4>
+                    <p className="mt-1 text-[11px] text-[#4B556D] max-w-sm mx-auto">
+                      Binding purchase orders issued to suppliers for this project will be recorded here with delivery milestones.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#E2E8F0] rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+                    {projectDetails.purchaseOrders.map((po) => (
+                      <Link
+                        key={po.id}
+                        to="/purchase-orders/$id"
+                        params={{ id: po.id }}
+                        className="flex items-center justify-between p-3 text-xs hover:bg-[#F8FAFC] transition-colors group"
+                      >
+                        <div className="min-w-0 pr-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-[#0001FF]">
+                              {po.po_number}
+                            </span>
+                            <span className="rounded-full bg-[#F1F4FA] px-2 py-0.5 text-[10px] font-semibold text-[#0B1457] capitalize">
+                              {po.status}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-[#4B556D]">
+                            Issued {shortDate(po.issued_at)}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold tabular-nums text-[#0B1457]">
+                            {money(po.total_amount, po.settlement_currency as "NGN" | "USD")}
+                          </p>
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-[#4B556D] group-hover:text-[#0001FF]">
+                            View PO <ArrowUpRight className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

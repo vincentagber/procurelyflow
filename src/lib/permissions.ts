@@ -5,7 +5,8 @@
  * Prevents horizontal and vertical privilege escalation.
  */
 
-export type AppRole = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
+export type AppRole =
+  "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
 
 export type Permission =
   // Requisitions (FR-1)
@@ -49,6 +50,10 @@ export type Permission =
   // Reports & Audits (FR-8)
   | "reports.view"
   | "audit.view"
+  | "governance.view_anomalies"
+  // Enterprise Sourcing & Tolerances
+  | "rfq.open_sealed"
+  | "tolerance.configure"
   // Tenant & System Administration
   | "organization.manage"
   | "members.manage"
@@ -72,6 +77,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "rfq.create",
     "rfq.manage",
     "rfq.view",
+    "rfq.open_sealed",
     "quote.submit",
     "quote.enter_proxy",
     "quote.compare",
@@ -91,6 +97,8 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "accounting.export",
     "reports.view",
     "audit.view",
+    "governance.view_anomalies",
+    "tolerance.configure",
     "organization.manage",
     "members.manage",
     "projects.manage",
@@ -106,6 +114,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "invoice.view",
     "reports.view",
     "audit.view",
+    "governance.view_anomalies",
   ],
   finance: [
     "requisition.view_all",
@@ -122,6 +131,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "accounting.export",
     "reports.view",
     "audit.view",
+    "tolerance.configure",
   ],
   procurement_officer: [
     "requisition.view_all",
@@ -167,6 +177,39 @@ export function hasPermission(roles: AppRole[], permission: Permission): boolean
 /** Asserts that a user has a required permission, throwing a descriptive 403 error otherwise */
 export function requirePermission(roles: AppRole[], permission: Permission): void {
   if (!hasPermission(roles, permission)) {
-    throw new Error(`Forbidden: You do not have the required permission [${permission}] to perform this action.`);
+    throw new Error(
+      `Forbidden: You do not have the required permission [${permission}] to perform this action.`,
+    );
+  }
+}
+
+/**
+ * Enterprise Segregation of Duties (SoD) Enforcer
+ * Prevents conflicts of interest and fraudulent self-approval/self-reconciliation loops.
+ */
+export function assertSegregationOfDuties(params: {
+  action: "APPROVE_REQUISITION" | "MATCH_INVOICE" | "RELEASE_PAYMENT";
+  actorId: string;
+  creatorId?: string;
+  approverId?: string;
+}): void {
+  if (
+    params.action === "APPROVE_REQUISITION" &&
+    params.creatorId &&
+    params.actorId === params.creatorId
+  ) {
+    throw new Error(
+      "SoD Violation: Requisition creator cannot self-approve their own requisition. A distinct authorized approver is required.",
+    );
+  }
+
+  if (
+    params.action === "MATCH_INVOICE" &&
+    params.approverId &&
+    params.actorId === params.approverId
+  ) {
+    throw new Error(
+      "SoD Violation: The officer who approved the purchase order cannot independently perform 3-way invoice reconciliation for that same order.",
+    );
   }
 }

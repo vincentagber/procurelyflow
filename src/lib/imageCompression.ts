@@ -26,7 +26,7 @@ export async function compressImageForUpload(
 ): Promise<CompressedImageResult> {
   const maxWidth = options?.maxWidth ?? 1600;
   const maxHeight = options?.maxHeight ?? 1600;
-  let quality = options?.quality ?? 0.8;
+  const quality = options?.quality ?? 0.8;
 
   // If not in a browser environment (SSR), return original file
   if (typeof window === "undefined" || !window.document) {

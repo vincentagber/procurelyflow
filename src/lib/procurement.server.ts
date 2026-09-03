@@ -1,5 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { money } from "@/lib/format";
+import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
+import { assertSingleCurrencyPo } from "@/lib/money";
+import { generateAccountingCsv } from "@/lib/export";
+import { randomBytes, createHash } from "crypto";
 
 type Role = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
 
@@ -50,8 +54,37 @@ async function logAudit(entry: {
   action: string;
   detail?: string | null;
   amount?: number | null;
+  entityType?: string | null;
+  entityId?: string | null;
 }) {
-  await supabaseAdmin.from("approval_audit_log").insert({
+  const timestamp = new Date().toISOString();
+
+  // Fetch latest hash for org to maintain unbroken chain
+  const { data: lastLog } = await (supabaseAdmin.from("approval_audit_log") as any)
+    .select("payload_hash")
+    .eq("org_id", entry.orgId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const previousHash = lastLog?.payload_hash || GENESIS_HASH;
+  const currentHash = computeAuditHash(
+    {
+      orgId: entry.orgId,
+      actorId: entry.actor?.userId ?? null,
+      actorName: entry.actor?.fullName ?? "Supplier (external)",
+      actorRole: entry.actorRole ?? null,
+      eventType: entry.action.toUpperCase(),
+      entityType: entry.entityType ?? "requisition",
+      entityId: entry.entityId ?? entry.requisitionId ?? "N/A",
+      timestamp,
+      detail: entry.detail ?? null,
+      amount: entry.amount ?? null,
+    },
+    previousHash,
+  );
+
+  await (supabaseAdmin.from("approval_audit_log") as any).insert({
     org_id: entry.orgId,
     requisition_id: entry.requisitionId ?? null,
     actor_id: entry.actor?.userId ?? null,
@@ -60,7 +93,71 @@ async function logAudit(entry: {
     action: entry.action,
     detail: entry.detail ?? null,
     amount: entry.amount ?? null,
+    event_type: entry.action.toUpperCase(),
+    entity_type: entry.entityType ?? "requisition",
+    entity_id: entry.entityId ?? entry.requisitionId ?? null,
+    payload_hash: currentHash,
+    previous_hash: previousHash,
   });
+}
+
+/** Creates a single-use, time-limited secure action token (for WhatsApp & Email 1-click approvals) */
+export async function createSecureActionToken(input: {
+  orgId: string;
+  actionType: "approve_requisition" | "reject_requisition" | "submit_quote" | "acknowledge_po";
+  entityType: "requisition" | "approval_step" | "rfq" | "purchase_order";
+  entityId: string;
+  actorId?: string | null;
+  recipientIdentifier: string;
+  ttlMinutes?: number;
+}): Promise<{ rawToken: string; expiresAt: string }> {
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const ttl = input.ttlMinutes ?? 60 * 24; // default 24 hours
+  const expiresAt = new Date(Date.now() + ttl * 60 * 1000).toISOString();
+
+  await supabaseAdmin.from("secure_action_tokens").insert({
+    org_id: input.orgId,
+    token_hash: tokenHash,
+    action_type: input.actionType,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    actor_id: input.actorId ?? null,
+    recipient_identifier: input.recipientIdentifier,
+    expires_at: expiresAt,
+  });
+
+  return { rawToken, expiresAt };
+}
+
+/** Verifies and atomically consumes a secure action token */
+export async function verifyAndConsumeActionToken(
+  rawToken: string,
+  expectedAction: "approve_requisition" | "reject_requisition" | "submit_quote" | "acknowledge_po",
+) {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const { data: record } = await supabaseAdmin
+    .from("secure_action_tokens")
+    .select("*")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  if (!record) throw new Error("Invalid or expired action link.");
+  if (record.used_at) throw new Error("This action link has already been used.");
+  if (new Date(record.expires_at).getTime() < Date.now()) {
+    throw new Error("This action link has expired. Please request a new link.");
+  }
+  if (record.action_type !== expectedAction) {
+    throw new Error(`Action mismatch: token was issued for [${record.action_type}].`);
+  }
+
+  // Atomically mark token as used
+  await supabaseAdmin
+    .from("secure_action_tokens")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", record.id);
+
+  return record;
 }
 
 export async function projectBudgetStatus(projectId: string) {
@@ -604,6 +701,14 @@ export async function awardQuote(
     .maybeSingle();
   if (!quote || quote.rfq_id !== input.rfqId) throw new Error("Quote not found.");
 
+  // Enforce quote validity expiration policy
+  const validUntil = (quote as any).valid_until;
+  if (validUntil && new Date(validUntil).getTime() < Date.now()) {
+    throw new Error(
+      `Quotation expired on ${validUntil}. Please obtain an updated quote from the supplier before awarding.`,
+    );
+  }
+
   const recommended = await recommendation(input.rfqId);
   const isOverride = !!recommended && recommended.id !== input.quoteId;
   if (isOverride && !input.overrideReason?.trim()) {
@@ -618,10 +723,23 @@ export async function awardQuote(
     .eq("quote_id", input.quoteId)
     .order("sort_order", { ascending: true });
 
+  // Enforce Single Currency Policy: All line items must match the PO settlement currency
+  assertSingleCurrencyPo(quoteItems ?? [], input.settlementCurrency);
+
+  // Generate Concurrency-Safe Tenant Sequential PO Number: PO-YYYY-XXXXXX
+  const currentYear = new Date().getFullYear();
+  const { count: poCount } = await supabaseAdmin
+    .from("purchase_orders")
+    .select("*", { count: "exact", head: true })
+    .eq("org_id", actor.orgId);
+  const poSeq = String((poCount ?? 0) + 1).padStart(6, "0");
+  const sequentialPoNumber = `PO-${currentYear}-${poSeq}`;
+
   const { data: po, error } = await supabaseAdmin
     .from("purchase_orders")
     .insert({
       org_id: actor.orgId,
+      po_number: sequentialPoNumber,
       requisition_id: rfq.requisition_id,
       rfq_id: input.rfqId,
       quote_id: input.quoteId,
@@ -1570,19 +1688,19 @@ export async function createDeliveryReceipt(
   userId: string,
   input: {
     purchaseOrderId: string;
-    projectId?: string;
-    deliveryNoteRef?: string;
-    deliveredAt?: string;
+    projectId?: string | undefined;
+    deliveryNoteRef?: string | undefined;
+    deliveredAt?: string | undefined;
     status: "accepted" | "partial" | "rejected";
-    qualityObservations?: string;
-    photos?: { path: string; name: string }[];
+    qualityObservations?: string | undefined;
+    photos?: { path: string; name: string }[] | undefined;
     items: {
-      poItemId?: string;
+      poItemId?: string | undefined;
       description: string;
       quantityDelivered: number;
       quantityAccepted: number;
       quantityRejected: number;
-      rejectionReason?: string;
+      rejectionReason?: string | undefined;
     }[];
   },
 ) {
@@ -1602,7 +1720,7 @@ export async function createDeliveryReceipt(
     : (rawReq as { project_id: string | null } | null);
   const derivedProjectId = input.projectId || reqObj?.project_id || null;
 
-  const { data: receipt, error } = await (supabaseAdmin as any)
+  const { data: receipt, error } = await supabaseAdmin
     .from("delivery_receipts")
     .insert({
       org_id: actor.orgId,
@@ -1622,7 +1740,7 @@ export async function createDeliveryReceipt(
   if (error || !receipt) throw new Error(error?.message ?? "Failed creating delivery receipt.");
 
   if (input.items.length) {
-    await (supabaseAdmin as any).from("delivery_receipt_items").insert(
+    await supabaseAdmin.from("delivery_receipt_items").insert(
       input.items.map((item) => ({
         delivery_receipt_id: receipt.id,
         po_item_id: item.poItemId || null,
@@ -1649,40 +1767,40 @@ export async function createDeliveryReceipt(
 export async function createInvoice(
   userId: string,
   input: {
-    purchaseOrderId?: string;
-    supplierId?: string;
+    purchaseOrderId?: string | undefined;
+    supplierId?: string | undefined;
     invoiceNumber: string;
-    issueDate?: string;
+    issueDate?: string | undefined;
     dueDate: string;
     currency: "NGN" | "USD";
     subtotal: number;
     vatAmount: number;
     totalAmount: number;
     sellerLegalName: string;
-    sellerTin?: string;
+    sellerTin?: string | undefined;
     buyerLegalName: string;
-    buyerTin?: string;
-    notes?: string;
+    buyerTin?: string | undefined;
+    notes?: string | undefined;
     items: {
-      poItemId?: string;
+      poItemId?: string | undefined;
       description: string;
       quantity: number;
       unitPrice: number;
-      vatRate?: number;
+      vatRate?: number | undefined;
       totalAmount: number;
     }[];
   },
 ) {
   const actor = await loadActor(userId);
 
-  const { data: inv, error } = await (supabaseAdmin as any)
+  const { data: inv, error } = await supabaseAdmin
     .from("invoices")
     .insert({
       org_id: actor.orgId,
       purchase_order_id: input.purchaseOrderId || null,
       supplier_id: input.supplierId || null,
       invoice_number: input.invoiceNumber,
-      issue_date: input.issueDate || new Date().toISOString().split("T")[0],
+      issue_date: input.issueDate ?? new Date().toISOString().slice(0, 10),
       due_date: input.dueDate,
       currency: input.currency,
       subtotal: input.subtotal,
@@ -1703,7 +1821,7 @@ export async function createInvoice(
   if (error || !inv) throw new Error(error?.message ?? "Failed creating supplier invoice.");
 
   if (input.items.length) {
-    await (supabaseAdmin as any).from("invoice_items").insert(
+    await supabaseAdmin.from("invoice_items").insert(
       input.items.map((item) => ({
         invoice_id: inv.id,
         po_item_id: item.poItemId || null,
@@ -1729,18 +1847,18 @@ export async function createInvoice(
 export async function recordPayment(
   userId: string,
   input: {
-    invoiceId?: string;
-    purchaseOrderId?: string;
+    invoiceId?: string | undefined;
+    purchaseOrderId?: string | undefined;
     amount: number;
     currency: "NGN" | "USD";
     paymentMethod: "bank_transfer" | "virtual_account" | "invoice_billing" | "card";
-    paymentReference?: string;
-    notes?: string;
+    paymentReference?: string | undefined;
+    notes?: string | undefined;
   },
 ) {
   const actor = await loadActor(userId);
 
-  const { data: pay, error } = await (supabaseAdmin as any)
+  const { data: pay, error } = await supabaseAdmin
     .from("payments")
     .insert({
       org_id: actor.orgId,
@@ -1759,7 +1877,7 @@ export async function recordPayment(
   if (error || !pay) throw new Error(error?.message ?? "Failed recording payment.");
 
   if (input.invoiceId) {
-    await (supabaseAdmin as any).from("invoices").update({ status: "paid" }).eq("id", input.invoiceId);
+    await supabaseAdmin.from("invoices").update({ status: "paid" }).eq("id", input.invoiceId);
   }
 
   await logAudit({
@@ -1774,10 +1892,10 @@ export async function recordPayment(
 
 export async function logNdpaConsent(
   userId: string,
-  input: { consentType: string; granted: boolean; details?: string },
+  input: { consentType: string; granted: boolean; details?: string | undefined },
 ) {
   const actor = await loadActor(userId);
-  await (supabaseAdmin as any).from("ndpa_consent_logs").insert({
+  await supabaseAdmin.from("ndpa_consent_logs").insert({
     org_id: actor.orgId,
     user_id: actor.userId,
     consent_type: input.consentType,
