@@ -20,6 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/approvals")({
   head: () => ({
@@ -97,11 +98,18 @@ function Approvals() {
   const decided = steps.filter((s) => s.status !== "pending").slice(0, 12);
 
   return (
-    <div className="space-y-6 pb-12">
-      <PageHeader
-        title="Approvals"
-        subtitle="Requests routed to your role by your organization's threshold rules."
-      />
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 pb-12"
+    >
+      <motion.div variants={itemFadeIn}>
+        <PageHeader
+          title="Approvals"
+          subtitle="Requests routed to your role by your organization's threshold rules."
+        />
+      </motion.div>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -114,7 +122,7 @@ function Approvals() {
           body="Nothing is waiting on your decision right now. New requests will land here the moment they're routed to you."
         />
       ) : (
-        <div className="space-y-4">
+        <motion.div variants={staggerContainer} className="space-y-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <span className="flex h-2 w-2 rounded-full bg-signal animate-pulse" />
             Waiting on your decision ({mine.length})
@@ -144,10 +152,13 @@ function Approvals() {
             );
 
             return (
-              <article
+              <motion.article
                 key={step.id}
+                variants={itemFadeIn}
+                whileHover={{ y: -2 }}
+                transition={{ duration: 0.18 }}
                 id={`approval-${step.id}`}
-                className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-xs hover:border-border/80 transition-all space-y-4"
+                className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-xs hover:border-border/80 transition-shadow space-y-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1 min-w-0 flex-1">
@@ -255,19 +266,19 @@ function Approvals() {
                     </Button>
                   </div>
                 </div>
-              </article>
+              </motion.article>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {upcoming.length ? (
-        <section>
+        <motion.section variants={itemFadeIn}>
           <h2 className="font-display text-xl uppercase tracking-wide">Coming to you</h2>
           <p className="text-xs text-muted-foreground">
             Routed to your role but still queued behind an earlier approval.
           </p>
-          <ul className="mt-3 space-y-2">
+          <motion.ul variants={staggerContainer} className="mt-3 space-y-2">
             {upcoming.map((step) => {
               const req = step.requisitions as {
                 id: string;
@@ -277,8 +288,10 @@ function Approvals() {
                 currency: "NGN" | "USD";
               };
               return (
-                <li
+                <motion.li
                   key={step.id}
+                  variants={itemFadeIn}
+                  whileHover={{ y: -1 }}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2.5"
                 >
                   <span className="text-sm">
@@ -291,15 +304,15 @@ function Approvals() {
                     {money(req.total_amount, req.currency)} · step {step.step_order} as{" "}
                     {ROLE_LABELS[step.required_role] ?? step.required_role}
                   </span>
-                </li>
+                </motion.li>
               );
             })}
-          </ul>
-        </section>
+          </motion.ul>
+        </motion.section>
       ) : null}
 
       {decided.length ? (
-        <section>
+        <motion.section variants={itemFadeIn}>
           <h2 className="font-display text-xl uppercase tracking-wide">Recently decided</h2>
           <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full min-w-[520px] text-sm">
@@ -311,7 +324,7 @@ function Approvals() {
                   <th className="px-3 py-2.5 data-label">Outcome</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {decided.map((step) => {
                   const req = step.requisitions as {
                     id: string;
@@ -321,12 +334,12 @@ function Approvals() {
                     currency: "NGN" | "USD";
                   };
                   return (
-                    <tr key={step.id} className="border-t border-border">
+                    <motion.tr key={step.id} variants={itemFadeIn} className="hover:bg-surface/50 transition-colors">
                       <td className="px-3 py-3">
                         <Link
                           to="/requisitions/$id"
                           params={{ id: req.id }}
-                          className="text-accent"
+                          className="text-accent hover:underline font-semibold"
                         >
                           {req.reference}
                         </Link>{" "}
@@ -335,19 +348,19 @@ function Approvals() {
                       <td className="px-3 py-3">
                         {ROLE_LABELS[step.required_role] ?? step.required_role}
                       </td>
-                      <td className="px-3 py-3 tabular-nums">
+                      <td className="px-3 py-3 tabular-nums font-medium">
                         {money(req.total_amount, req.currency)}
                       </td>
                       <td className="px-3 py-3">
                         <StatusPill status={step.status} />
                       </td>
-                    </tr>
+                    </motion.tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </section>
+        </motion.section>
       ) : null}
 
       {/* Rejection Reason Modal */}
@@ -398,6 +411,6 @@ function Approvals() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { motion, itemFadeIn, staggerContainer } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/suppliers")({
   head: () => ({
@@ -85,92 +86,139 @@ function Suppliers() {
   });
 
   return (
-    <div className="space-y-5 pb-10">
-      <PageHeader
-        title="Suppliers"
-        subtitle="Only compliant suppliers can be recommended as the lowest bid."
-      />
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 pb-12"
+    >
+      <motion.div variants={itemFadeIn}>
+        <PageHeader
+          title="Suppliers"
+          subtitle="Only compliant suppliers can be recommended as the lowest bid."
+        />
+      </motion.div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <motion.div variants={itemFadeIn} className="overflow-x-auto rounded-lg border border-border bg-card shadow-xs">
           {isLoading ? (
             <p className="p-5 text-sm text-muted-foreground">Loading suppliers…</p>
           ) : !data?.length ? (
             <EmptyState
               title="No suppliers yet"
-              body="Add the vendors you already buy from. You'll invite them to quote with a private link — they never need an account."
+              body="Add your approved suppliers so your team can invite them to RFQs."
             />
           ) : (
-            <table className="w-full min-w-[600px] text-sm">
+            <table className="w-full text-sm">
               <thead className="bg-surface">
-                <tr className="text-left">
-                  <th className="px-3 py-2.5 data-label">Supplier</th>
-                  <th className="px-3 py-2.5 data-label">Contact</th>
-                  <th className="px-3 py-2.5 data-label">Tax ID</th>
-                  <th className="px-3 py-2.5 data-label">Compliant</th>
+                <tr className="text-left font-semibold text-muted-foreground">
+                  <th className="px-3 py-2.5">Supplier</th>
+                  <th className="px-3 py-2.5">Contact</th>
+                  <th className="px-3 py-2.5">Tax / RC ID</th>
+                  <th className="px-3 py-2.5 text-right">Compliant</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {data.map((s) => (
-                  <tr key={s.id} className="border-t border-border">
-                    <td className="px-3 py-3 font-medium">{s.name}</td>
+                  <motion.tr key={s.id} variants={itemFadeIn} className="hover:bg-surface/60 transition-colors">
+                    <td className="px-3 py-3 font-semibold text-foreground">{s.name}</td>
                     <td className="px-3 py-3 text-muted-foreground">
-                      {s.contact_name ?? "—"}
-                      {s.email ? <span className="block text-xs">{s.email}</span> : null}
-                      {s.phone ? <span className="block text-xs">{s.phone}</span> : null}
+                      {s.contact_name || s.email ? (
+                        <div>
+                          <p className="font-medium text-foreground">{s.contact_name}</p>
+                          <p className="text-xs text-muted-foreground">{s.email || s.phone}</p>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </td>
-                    <td className="px-3 py-3 text-muted-foreground">{s.tax_id ?? "—"}</td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
+                      {s.tax_id || "—"}
+                    </td>
+                    <td className="px-3 py-3 text-right">
                       <Switch
                         checked={s.is_compliant}
-                        disabled={!editable}
-                        onCheckedChange={(value) => toggleCompliance.mutate({ id: s.id, value })}
+                        disabled={!editable || toggleCompliance.isPending}
+                        onCheckedChange={(val) =>
+                          toggleCompliance.mutate({ id: s.id, value: val })
+                        }
                       />
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
+        </motion.div>
 
         {editable ? (
-          <aside className="rounded-lg border border-border bg-card p-4">
-            <h2 className="font-display text-xl uppercase tracking-wide">Add supplier</h2>
-            <form
-              className="mt-3 space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                add.mutate();
-              }}
-            >
-              {(
-                [
-                  ["name", "Company name", true],
-                  ["contact_name", "Contact person", false],
-                  ["email", "Email", false],
-                  ["phone", "Phone", false],
-                  ["tax_id", "Tax ID (TIN)", false],
-                ] as const
-              ).map(([key, label, required]) => (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={key}>{label}</Label>
-                  <Input
-                    id={key}
-                    required={required}
-                    className="h-12"
-                    value={form[key]}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                  />
-                </div>
-              ))}
-              <Button type="submit" className="h-12 w-full" disabled={add.isPending}>
-                {add.isPending ? "Saving…" : "Add supplier"}
-              </Button>
-            </form>
-          </aside>
+          <motion.form
+            variants={itemFadeIn}
+            onSubmit={(e) => {
+              e.preventDefault();
+              add.mutate();
+            }}
+            className="h-fit rounded-lg border border-border bg-card p-4 shadow-xs space-y-3"
+          >
+            <p className="data-label">Add a supplier</p>
+            <div className="space-y-1">
+              <Label htmlFor="s-name">Company name</Label>
+              <Input
+                id="s-name"
+                required
+                className="h-10"
+                placeholder="e.g. Dangote Cement Plc"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="s-contact">Contact person (optional)</Label>
+              <Input
+                id="s-contact"
+                className="h-10"
+                placeholder="e.g. Tunde Adeyemi"
+                value={form.contact_name}
+                onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="s-email">Email (optional)</Label>
+              <Input
+                id="s-email"
+                type="email"
+                className="h-10"
+                placeholder="sales@supplier.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="s-phone">Phone (optional)</Label>
+              <Input
+                id="s-phone"
+                className="h-10"
+                placeholder="+234 803 000 0000"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="s-tax">Tax ID / RC number (optional)</Label>
+              <Input
+                id="s-tax"
+                className="h-10"
+                placeholder="e.g. RC-1234567"
+                value={form.tax_id}
+                onChange={(e) => setForm({ ...form, tax_id: e.target.value })}
+              />
+            </div>
+            <Button className="h-10 w-full font-semibold shadow-xs" disabled={add.isPending}>
+              {add.isPending ? "Adding…" : "Add supplier"}
+            </Button>
+          </motion.form>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/projects")({
   head: () => ({
@@ -144,19 +145,27 @@ function Projects() {
   const selectedProject = data?.find((p) => p.id === selectedProjectId);
 
   return (
-    <div className="space-y-5 pb-10">
-      <PageHeader
-        title="Projects / Cost Centers"
-        subtitle="Every requisition belongs to a project or cost center, so spend always rolls up to something you can report on."
-      />
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 pb-12"
+    >
+      <motion.div variants={itemFadeIn}>
+        <PageHeader
+          title="Projects / Cost Centers"
+          subtitle="Every requisition belongs to a project or cost center, so spend always rolls up to something you can report on."
+        />
+      </motion.div>
 
       {canCreate ? (
-        <form
+        <motion.form
+          variants={itemFadeIn}
           onSubmit={(e) => {
             e.preventDefault();
             create.mutate();
           }}
-          className="rounded-lg border border-border bg-card p-4"
+          className="rounded-lg border border-border bg-card p-4 shadow-xs"
         >
           <p className="data-label">Create a project / cost center</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
@@ -201,7 +210,7 @@ function Projects() {
               {create.isPending ? "Creating…" : "Create project"}
             </Button>
           </div>
-        </form>
+        </motion.form>
       ) : null}
 
       {isLoading ? (
@@ -216,7 +225,7 @@ function Projects() {
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <motion.div variants={staggerContainer} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.map((project) => {
             const totalBudget = project.budget_amount ?? 0;
             const committed = project.status?.committed ?? 0;
@@ -226,10 +235,13 @@ function Projects() {
             const isOverBudget = remaining < 0;
 
             return (
-              <article
+              <motion.article
                 key={project.id}
+                variants={itemFadeIn}
+                whileHover={{ y: -3 }}
+                transition={{ duration: 0.18 }}
                 onClick={() => setSelectedProjectId(project.id)}
-                className="group cursor-pointer rounded-xl border border-border bg-card p-4 transition-all hover:border-accent hover:shadow-md space-y-3"
+                className="group cursor-pointer rounded-xl border border-border bg-card p-4 transition-shadow hover:border-accent hover:shadow-md space-y-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -259,17 +271,19 @@ function Projects() {
                       <span>Committed: {money(committed)}</span>
                       <span>Budget: {money(totalBudget)}</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface">
-                      <div
+                    <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percentUsed}%` }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
                         className={cn(
-                          "h-full transition-all duration-300",
+                          "h-2 rounded-full",
                           isOverBudget
                             ? "bg-destructive"
                             : percentUsed > 80
                               ? "bg-amber-500"
-                              : "bg-emerald-500",
+                              : "bg-signal",
                         )}
-                        style={{ width: `${percentUsed}%` }}
                       />
                     </div>
                   </div>
@@ -288,10 +302,10 @@ function Projects() {
                     {money(remaining)}
                   </span>
                 </div>
-              </article>
+              </motion.article>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* Project Spend Breakdown Modal */}
@@ -596,6 +610,6 @@ function Projects() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

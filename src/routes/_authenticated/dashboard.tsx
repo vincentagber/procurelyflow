@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { detectSplitRequisitionAnomalies } from "@/lib/governanceAnomalies";
+import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn, cardHover } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -148,7 +149,6 @@ function Dashboard() {
     .filter((r: any) => r.status === "pending_approval")
     .reduce((sum: number, r: any) => sum + Number(r.total_amount || 0), 0);
 
-  // Dynamic real-time metrics
   const allPOs = data?.purchaseOrders ?? [];
   const allReqs = data?.requisitions ?? [];
   const allItems = data?.requisitionItems ?? [];
@@ -244,9 +244,17 @@ function Dashboard() {
   );
 
   return (
-    <div className="space-y-6 pb-12 font-sans">
+    <motion.div
+      variants={staggerContainer}
+      initial="initial"
+      animate="animate"
+      className="space-y-6 pb-12 font-sans"
+    >
       {/* Top Header Bar (Matching Reference Header Layout) */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <motion.header
+        variants={itemFadeIn}
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div>
           <h1 className="text-xl font-bold tracking-tight text-[#111315] uppercase sm:text-2xl">
             Dashboard
@@ -265,25 +273,32 @@ function Dashboard() {
               placeholder="Search logs, POs, items..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white pl-9 text-xs placeholder:text-[#9CA3AF] focus-visible:ring-1 focus-visible:ring-black"
+              className="h-10 rounded-lg border-[#E5E7EB] bg-white pl-9 text-xs placeholder:text-[#9CA3AF] focus-visible:ring-1 focus-visible:ring-black shadow-xs"
             />
           </div>
 
-          <Button
-            asChild
-            className="h-10 rounded-lg bg-[#111315] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#202428]"
-          >
-            <Link to="/requisitions/new">
-              <Plus className="mr-1.5 h-3.5 w-3.5" /> New Requisition
-            </Link>
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              asChild
+              className="h-10 rounded-lg bg-[#111315] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#202428] transition-colors"
+            >
+              <Link to="/requisitions/new">
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> New Requisition
+              </Link>
+            </Button>
+          </motion.div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Row 1: Top Hero Grid (Matching the 3 Cards in the Reference Image) */}
-      <div className="grid gap-4 lg:grid-cols-12">
+      <motion.div variants={staggerContainer} className="grid gap-4 lg:grid-cols-12">
         {/* Card 1: Total Volume & Sparkline Curve (Span 6) */}
-        <section className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-6">
+        <motion.section
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-6 cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Total Requisitions & Velocity
@@ -308,27 +323,47 @@ function Dashboard() {
                 </linearGradient>
               </defs>
               {/* Shaded Area */}
-              <path
+              <motion.path
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6 }}
                 d="M 0,55 Q 30,30 60,45 T 120,25 T 180,40 T 240,15 T 300,35 T 360,20 T 400,45 L 400,80 L 0,80 Z"
                 fill="url(#curveGradient)"
               />
-              {/* Smooth Stroke Line */}
-              <path
+              {/* Smooth Stroke Line with drawing animation */}
+              <motion.path
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
                 d="M 0,55 Q 30,30 60,45 T 120,25 T 180,40 T 240,15 T 300,35 T 360,20 T 400,45"
                 fill="none"
                 stroke="#10B981"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               />
-              {/* Highlight Pin / Tooltip Node */}
-              <circle cx="240" cy="15" r="4" fill="#111315" stroke="#FFFFFF" strokeWidth="2" />
+              {/* Highlight Pin / Tooltip Node with subtle pulsing animation */}
+              <motion.circle
+                cx="240"
+                cy="15"
+                r="4"
+                fill="#111315"
+                stroke="#FFFFFF"
+                strokeWidth="2"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              />
             </svg>
             {/* Tooltip Label Badge */}
-            <div className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#111315] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#111315] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md"
+            >
               <span>
                 {totalReqsCount > 0 ? `${totalReqsCount} Logged` : "0 Requests"}
               </span>
-            </div>
+            </motion.div>
           </div>
 
           <div className="flex items-baseline justify-between pt-2 border-t border-[#F3F4F6]">
@@ -344,10 +379,15 @@ function Dashboard() {
               <ArrowUpRight className="h-3 w-3" /> Live
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Card 2: Transactions & Approval Ratio Donut Chart (Span 3) */}
-        <section className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3">
+        <motion.section
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Pipeline Ratio
@@ -366,11 +406,13 @@ function Dashboard() {
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
-                <path
+                <motion.path
                   className="text-[#111315]"
                   stroke="currentColor"
                   strokeWidth="3.8"
-                  strokeDasharray={`${pipelineRatio}, 100`}
+                  initial={{ strokeDasharray: "0, 100" }}
+                  animate={{ strokeDasharray: `${pipelineRatio}, 100` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
                   strokeLinecap="round"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -392,10 +434,15 @@ function Dashboard() {
               <span className="h-2 w-2 rounded-full bg-[#E5E7EB]" /> In Review ({inReviewReqsCount})
             </span>
           </div>
-        </section>
+        </motion.section>
 
         {/* Card 3: Top Spend Breakdown by Category & Project (Span 3) */}
-        <section className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3">
+        <motion.section
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
+        >
           <div className="flex items-center justify-between">
             {/* View Mode Toggle Pill */}
             <div className="flex items-center gap-1 rounded-lg bg-[#F1F5F9] p-0.5 border border-[#E2E8F0]">
@@ -448,10 +495,12 @@ function Dashboard() {
                         <span className="text-[#9CA3AF]">({Math.round(cat.share * 100)}%)</span>
                       </div>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6]">
-                      <div
-                        className={cn("h-1.5 rounded-full transition-all duration-500", cat.color)}
-                        style={{ width: `${Math.round(cat.share * 100)}%` }}
+                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.round(cat.share * 100)}%` }}
+                        transition={{ duration: 0.8, delay: idx * 0.1, ease: "easeOut" }}
+                        className={cn("h-1.5 rounded-full", cat.color)}
                       />
                     </div>
                   </div>
@@ -466,7 +515,7 @@ function Dashboard() {
                   </Link>
                 </div>
               ) : (
-                projectBreakdown.slice(0, 4).map((proj: any) => (
+                projectBreakdown.slice(0, 4).map((proj: any, idx: number) => (
                   <div
                     key={proj.id}
                     onClick={() => setSelectedDrilldownProject(proj)}
@@ -486,17 +535,19 @@ function Dashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6]">
-                      <div
+                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(4, proj.utilization)}%` }}
+                        transition={{ duration: 0.8, delay: idx * 0.1, ease: "easeOut" }}
                         className={cn(
-                          "h-1.5 rounded-full transition-all duration-500",
+                          "h-1.5 rounded-full",
                           proj.utilization > 75
                             ? "bg-[#EF4444]"
                             : proj.utilization > 50
                               ? "bg-[#F59E0B]"
                               : "bg-[#0001FF]",
                         )}
-                        style={{ width: `${Math.max(4, proj.utilization)}%` }}
                       />
                     </div>
                   </div>
@@ -518,13 +569,18 @@ function Dashboard() {
               </button>
             )}
           </div>
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
 
-      {/* Row 2: Key Financial Metric Cards (Matching TOTAL WITHDRAWALS / TOTAL WALLET BALANCE in Image) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Row 2: Key Financial Metric Cards */}
+      <motion.div variants={staggerContainer} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card A: Committed Spend */}
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.div
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Total Committed Spend
@@ -542,10 +598,15 @@ function Dashboard() {
               Live
             </span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card B: Total In Approval Pipeline */}
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.div
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Total In Approval
@@ -563,10 +624,15 @@ function Dashboard() {
               {awaiting > 0 ? "Pending" : "Clear"}
             </span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card C: Waiting On You */}
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.div
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Waiting On You
@@ -579,17 +645,22 @@ function Dashboard() {
           <div className="mt-2 flex items-center justify-between">
             <span className="text-xs text-[#9CA3AF]">Assigned to your role</span>
             {myPending > 0 ? (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 animate-pulse">
                 Action Required
               </span>
             ) : (
               <span className="text-[10px] font-medium text-emerald-600">Clear</span>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Card D: Purchase Orders Issued */}
-        <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.div
+          variants={itemFadeIn}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.18 }}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Purchase Orders
@@ -607,12 +678,15 @@ function Dashboard() {
               Active
             </span>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      {/* Row 3: Executive Governance Risk Alerts (if anomalies detected) */}
+      {/* Row 3: Executive Governance Risk Alerts */}
       {canViewGovernance && splitAnomalies.length > 0 ? (
-        <section className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs">
+        <motion.section
+          variants={itemFadeIn}
+          className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs"
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-ping" />
@@ -626,9 +700,10 @@ function Dashboard() {
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {splitAnomalies.map((anomaly) => (
-              <div
+              <motion.div
                 key={anomaly.id}
-                className="rounded-lg border border-amber-200/70 bg-white p-3.5 shadow-xs"
+                whileHover={{ y: -2 }}
+                className="rounded-lg border border-amber-200/70 bg-white p-3.5 shadow-xs transition-shadow hover:shadow-md"
               >
                 <p className="text-xs font-bold text-[#111315]">{anomaly.title}</p>
                 <p className="mt-1 text-xs text-[#6B7280]">{anomaly.description}</p>
@@ -643,15 +718,18 @@ function Dashboard() {
                     Inspect trail →
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
       ) : null}
 
       {/* Row 4: Waiting on You Action Cards */}
       {canApprove && myPending > 0 ? (
-        <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.section
+          variants={itemFadeIn}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+        >
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
@@ -668,7 +746,7 @@ function Dashboard() {
             </Button>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div variants={staggerContainer} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {myPendingSteps.slice(0, 6).map((s: any) => {
               const req = (s.requisitions as {
                 id: string;
@@ -684,40 +762,49 @@ function Dashboard() {
                 currency: "NGN" as const,
               };
               return (
-                <Link
+                <motion.div
                   key={s.id}
-                  to="/approvals"
-                  className="group rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3.5 transition-all hover:border-[#111315] hover:bg-white hover:shadow-sm"
+                  variants={itemFadeIn}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <div className="flex items-start justify-between">
-                    <p className="truncate text-xs font-bold text-[#111315] group-hover:text-black">
-                      {req.title}
+                  <Link
+                    to="/approvals"
+                    className="group block rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3.5 transition-all hover:border-[#111315] hover:bg-white hover:shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <p className="truncate text-xs font-bold text-[#111315] group-hover:text-black">
+                        {req.title}
+                      </p>
+                      <span className="text-[10px] font-semibold uppercase text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        {ROLE_LABELS[s.required_role] ?? s.required_role}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-mono text-[11px] text-[#6B7280]">
+                      {req.reference} ·{" "}
+                      <span className="font-bold text-[#111315]">
+                        {money(req.total_amount, req.currency)}
+                      </span>
                     </p>
-                    <span className="text-[10px] font-semibold uppercase text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                      {ROLE_LABELS[s.required_role] ?? s.required_role}
-                    </span>
-                  </div>
-                  <p className="mt-2 font-mono text-[11px] text-[#6B7280]">
-                    {req.reference} ·{" "}
-                    <span className="font-bold text-[#111315]">
-                      {money(req.total_amount, req.currency)}
-                    </span>
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-[#9CA3AF]">
-                    <span>1-Click Authorization</span>
-                    <span className="font-medium text-[#111315] group-hover:underline">
-                      Review →
-                    </span>
-                  </div>
-                </Link>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-[#9CA3AF]">
+                      <span>1-Click Authorization</span>
+                      <span className="font-medium text-[#111315] group-hover:underline">
+                        Review →
+                      </span>
+                    </div>
+                  </Link>
+                </motion.div>
               );
             })}
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
       ) : null}
 
-      {/* Row 5: Admin Logs / Main Procurement Activity Table (Matching Reference Table Design) */}
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+      {/* Row 5: Admin Logs / Main Procurement Activity Table */}
+      <motion.section
+        variants={itemFadeIn}
+        className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
@@ -727,7 +814,7 @@ function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#F9FAFB]">
+            <button className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#F9FAFB] transition-colors">
               <Filter className="h-3.5 w-3.5 text-[#9CA3AF]" /> Filter
             </button>
             <Button
@@ -750,7 +837,7 @@ function Dashboard() {
               action={
                 <Button
                   asChild
-                  className="h-9 rounded-lg bg-[#111315] text-xs font-semibold text-white"
+                  className="h-9 rounded-lg bg-[#111315] text-xs font-semibold text-white hover:bg-[#202428] transition-colors"
                 >
                   <Link to="/requisitions/new">Raise First Request</Link>
                 </Button>
@@ -777,8 +864,12 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F3F4F6]">
-                {filteredRequisitions.map((r: any) => (
-                  <tr key={r.id} className="hover:bg-[#F9FAFB]/70 transition-colors">
+                {filteredRequisitions.map((r: any, idx: number) => (
+                  <motion.tr
+                    key={r.id}
+                    variants={itemFadeIn}
+                    className="hover:bg-[#F9FAFB]/90 transition-colors"
+                  >
                     <td className="px-3 py-3.5 text-center">
                       <input
                         type="checkbox"
@@ -819,17 +910,20 @@ function Dashboard() {
                         Open <ExternalLink className="h-3 w-3" />
                       </Link>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </section>
+      </motion.section>
 
-      {/* Row 6: Workspace Setup Tasks (Matching Reference Task Checklist) */}
+      {/* Row 6: Workspace Setup Tasks */}
       {me.data?.roles.includes("admin") ? (
-        <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
+        <motion.section
+          variants={itemFadeIn}
+          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+        >
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
@@ -846,7 +940,7 @@ function Dashboard() {
             </span>
           </div>
 
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <motion.ul variants={staggerContainer} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <ChecklistItem
               done={(data?.projectCount ?? 0) > 0}
               label="Add Project / Cost Center"
@@ -871,8 +965,8 @@ function Dashboard() {
               hint="Test the full field-to-PO flow."
               to="/requisitions/new"
             />
-          </ul>
-        </section>
+          </motion.ul>
+        </motion.section>
       ) : null}
 
       {/* Row 7: Project Spend & Cost Drilldown Modal */}
@@ -897,7 +991,12 @@ function Dashboard() {
           </DialogHeader>
 
           {selectedDrilldownProject && (
-            <div className="space-y-5 pt-2">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-5 pt-2"
+            >
               {/* Top Financial Stat Cards */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 space-y-1">
@@ -937,9 +1036,11 @@ function Dashboard() {
                     <span className="font-mono tabular-nums">{selectedDrilldownProject.utilization}% Utilized</span>
                   </div>
                   <div className="h-2.5 w-full rounded-full bg-[#F1F5F9] overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#0001FF] to-[#0B1457] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, selectedDrilldownProject.utilization)}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, selectedDrilldownProject.utilization)}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="h-full bg-gradient-to-r from-[#0001FF] to-[#0B1457] rounded-full"
                     />
                   </div>
                 </div>
@@ -1025,11 +1126,11 @@ function Dashboard() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1045,7 +1146,10 @@ function ChecklistItem({
   to: string;
 }) {
   return (
-    <li
+    <motion.li
+      variants={itemFadeIn}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.18 }}
       className={cn(
         "rounded-lg border p-3.5 transition-all",
         done ? "border-[#E5E7EB] bg-[#F9FAFB]" : "border-[#E5E7EB] bg-white",
@@ -1068,6 +1172,6 @@ function ChecklistItem({
           <p className="mt-0.5 text-[11px] text-[#6B7280]">{hint}</p>
         </div>
       </div>
-    </li>
+    </motion.li>
   );
 }

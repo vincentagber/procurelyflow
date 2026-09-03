@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { cn } from "@/lib/utils";
+import { AnimatedPageWrapper } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -319,7 +320,9 @@ function AppLayout() {
 
       {/* Main Content Area (Clean White & High Contrast) */}
       <main className="min-w-0 flex-1 bg-[#F8F9FB] px-4 py-6 md:px-8 md:py-7 overflow-x-hidden">
-        <Outlet />
+        <AnimatedPageWrapper>
+          <Outlet />
+        </AnimatedPageWrapper>
       </main>
     </div>
   );
