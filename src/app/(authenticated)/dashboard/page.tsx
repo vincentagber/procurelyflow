@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Filter,
@@ -40,6 +40,7 @@ import { detectSplitRequisitionAnomalies } from "@/lib/governanceAnomalies";
 
 export default function DashboardPage() {
   const me = useMe();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [timeframe] = useState<"This Month" | "Last 30 Days" | "All Time">("This Month");
   const [spendViewMode, setSpendViewMode] = useState<"category" | "project">("category");
@@ -56,6 +57,29 @@ export default function DashboardPage() {
     requisitions: any[];
   } | null>(null);
 
+  // Real-time listener: automatically invalidate and refetch on any DB insert/update/delete
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard_realtime_updates_next")
+      .on("postgres_changes", { event: "*", schema: "public", table: "requisitions" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "approval_steps" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "purchase_orders" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
@@ -64,7 +88,7 @@ export default function DashboardPage() {
           .from("requisitions")
           .select("id, reference, title, status, total_amount, currency, created_at, needed_by, project_id, projects(id, name, location, budget_amount)")
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(50),
         supabase
           .from("approval_steps")
           .select(
@@ -106,10 +130,26 @@ export default function DashboardPage() {
     .filter((r: any) => r.status === "pending_approval")
     .reduce((sum: number, r: any) => sum + Number(r.total_amount || 0), 0);
 
-  // Dynamic category spend calculated from actual items/POs in the database
+  // Dynamic real-time metrics
   const allPOs = data?.purchaseOrders ?? [];
   const allReqs = data?.requisitions ?? [];
   const allItems = data?.requisitionItems ?? [];
+
+  const totalReqsCount = allReqs.length;
+  const approvedReqsCount = allReqs.filter(
+    (r: any) =>
+      r.status === "approved" ||
+      r.status === "po_created" ||
+      r.status === "partially_received" ||
+      r.status === "received" ||
+      r.status === "matched",
+  ).length;
+  const inReviewReqsCount = allReqs.filter(
+    (r: any) => r.status === "pending_approval" || r.status === "draft",
+  ).length;
+  const pipelineRatio =
+    totalReqsCount > 0 ? Math.round((approvedReqsCount / totalReqsCount) * 100) : 0;
+  const totalLineItems = allItems.length > 0 ? allItems.length : totalReqsCount;
 
   // Group real spend dynamically
   const categoryMap = new Map<string, number>();
@@ -264,9 +304,7 @@ export default function DashboardPage() {
             </svg>
             <div className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#111315] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md">
               <span>
-                {data?.requisitions.length
-                  ? `${data.requisitions.length * 10}k Activity`
-                  : "50,000"}
+                {totalReqsCount > 0 ? `${totalReqsCount} Logged` : "0 Requests"}
               </span>
             </div>
           </div>
@@ -274,14 +312,14 @@ export default function DashboardPage() {
           <div className="flex items-baseline justify-between pt-2 border-t border-[#F3F4F6]">
             <div>
               <p className="font-sans text-2xl font-extrabold tracking-tight text-[#111315]">
-                {data
-                  ? `${(data.requisitions.length * 1250 + 500044).toLocaleString()}`
-                  : "500,044"}
+                {totalReqsCount.toLocaleString()}
               </p>
-              <span className="text-[11px] text-[#9CA3AF]">Processed line items</span>
+              <span className="text-[11px] text-[#9CA3AF]">
+                {totalLineItems > 0 ? `${totalLineItems} Processed line item(s)` : "Total Requisitions"}
+              </span>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
-              <ArrowUpRight className="h-3 w-3" /> +6.1%
+              <ArrowUpRight className="h-3 w-3" /> Live
             </div>
           </div>
         </section>
@@ -292,7 +330,7 @@ export default function DashboardPage() {
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
               Pipeline Ratio
             </span>
-            <span className="text-xs text-[#9CA3AF]">Live</span>
+            <span className="text-xs text-emerald-600 font-bold">Live</span>
           </div>
 
           <div className="my-2 flex items-center justify-center">
@@ -309,14 +347,14 @@ export default function DashboardPage() {
                   className="text-[#111315]"
                   stroke="currentColor"
                   strokeWidth="3.8"
-                  strokeDasharray="80, 100"
+                  strokeDasharray={`${pipelineRatio}, 100`}
                   strokeLinecap="round"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="font-sans text-xl font-extrabold text-[#111315]">80%</span>
+                <span className="font-sans text-xl font-extrabold text-[#111315]">{pipelineRatio}%</span>
                 <span className="text-[9px] uppercase tracking-wider text-[#9CA3AF]">Cleared</span>
               </div>
             </div>
@@ -324,10 +362,10 @@ export default function DashboardPage() {
 
           <div className="flex justify-center gap-4 text-[10px] text-[#6B7280]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#111315]" /> Approved
+              <span className="h-2 w-2 rounded-full bg-[#111315]" /> Approved ({approvedReqsCount})
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#E5E7EB]" /> In Review
+              <span className="h-2 w-2 rounded-full bg-[#E5E7EB]" /> In Review ({inReviewReqsCount})
             </span>
           </div>
         </section>
@@ -471,12 +509,12 @@ export default function DashboardPage() {
             </div>
           </div>
           <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">
-            {committed > 0 ? money(committed, "NGN") : "₦ 46,330,000.00"}
+            {money(committed, "NGN")}
           </p>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#9CA3AF]">Across issued purchase orders</span>
+            <span className="text-xs text-[#9CA3AF]">Across {allPOs.length} issued PO(s)</span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-              +2.1%
+              Live
             </span>
           </div>
         </div>
@@ -491,12 +529,12 @@ export default function DashboardPage() {
             </div>
           </div>
           <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">
-            {inApprovalAmount > 0 ? money(inApprovalAmount, "NGN") : "₦ 500,550.59"}
+            {money(inApprovalAmount, "NGN")}
           </p>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-xs text-[#9CA3AF]">{awaiting} requisitions pending</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-              +1.1%
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+              {awaiting > 0 ? "Pending" : "Clear"}
             </span>
           </div>
         </div>
