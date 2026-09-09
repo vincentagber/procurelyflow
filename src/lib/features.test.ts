@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createHmac } from "crypto";
 import {
   createPoChangeOrderRecord,
   detectSplitRequisitionAnomalies,
@@ -14,6 +15,7 @@ import {
 import {
   generateSubscriptionBill,
   assertPciDssCardDataAbsence,
+  verifyPaymentGatewayWebhookSignature,
 } from "./paymentBillingChannels.ts";
 
 describe("FR-2.6: Approval Authority Delegation Engine", () => {
@@ -331,4 +333,23 @@ describe("NFR-LOC.2 & NFR-SEC.4: Localized B2B Subscription Billing & PCI-DSS En
       /PCI-DSS Security Violation/,
     );
   });
+
+  it("verifies payment gateway webhook signature HMAC-SHA512", () => {
+    const secret = "test_secret_key_991823";
+    const body = JSON.stringify({
+      event: "charge.success",
+      data: { reference: "BILL-42599910", amount: 200000 },
+    });
+    const validSignature = createHmac("sha512", secret).update(body).digest("hex");
+
+    assert.equal(
+      verifyPaymentGatewayWebhookSignature(body, validSignature, secret, "sha512"),
+      true,
+    );
+    assert.equal(
+      verifyPaymentGatewayWebhookSignature(body, "invalid_signature", secret, "sha512"),
+      false,
+    );
+  });
 });
+

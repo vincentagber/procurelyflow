@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, AlertCircle, ChevronRight } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, ChevronRight, MessageSquare, Send, Copy, Smartphone, Sparkles } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
-import { decideApprovalFn } from "@/lib/procurement.functions";
+import { decideApprovalFn, generateStepApprovalLinksFn, simulateWhatsAppApprovalFn } from "@/lib/procurement.functions";
 import { money, shortDate, ROLE_LABELS } from "@/lib/format";
 import { PageHeader, EmptyState, StatusPill } from "@/components/procurely/bits";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,55 @@ export default function ApprovalsPage() {
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [rejectModalStepId, setRejectModalStepId] = useState<string | null>(null);
+  const [whatsappModalStep, setWhatsappModalStep] = useState<any | null>(null);
+  const [generatedLinks, setGeneratedLinks] = useState<{
+    stepId: string;
+    requisitionReference: string;
+    webReviewUrl: string;
+    webApproveUrl: string;
+    webRejectUrl: string;
+    whatsappMessage: string;
+    whatsappDirectUrl: string;
+    approverPhone: string | null;
+  } | null>(null);
+  const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
+
+  const generateLinks = useMutation({
+    mutationFn: async (stepId: string) => {
+      setIsGeneratingLinks(true);
+      return generateStepApprovalLinksFn({
+        data: { stepId, originUrl: window.location.origin },
+      });
+    },
+    onSuccess: (data) => {
+      setGeneratedLinks(data);
+      setIsGeneratingLinks(false);
+    },
+    onError: (e) => {
+      setIsGeneratingLinks(false);
+      toast.error(e instanceof Error ? e.message : "Couldn't generate WhatsApp approval link.");
+    },
+  });
+
+  const simulateWhatsApp = useMutation({
+    mutationFn: (stepId: string) =>
+      simulateWhatsAppApprovalFn({
+        data: {
+          stepId,
+          fromPhone: generatedLinks?.approverPhone || "+2348031234567",
+          decision: "approved",
+          comment: "Approved via WhatsApp Mobile Action Token",
+        },
+      }),
+    onSuccess: async () => {
+      toast.success("WhatsApp approval simulated and settled in real-time!");
+      setWhatsappModalStep(null);
+      setGeneratedLinks(null);
+      await queryClient.invalidateQueries();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "WhatsApp simulated approval failed."),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["approval-queue"],
@@ -219,6 +268,18 @@ export default function ApprovalsPage() {
 
                   <div className="flex items-center justify-end gap-2.5">
                     <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 px-3.5 rounded-lg border-emerald-300 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      onClick={() => {
+                        setWhatsappModalStep(step);
+                        generateLinks.mutate(step.id);
+                      }}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 text-emerald-600 fill-emerald-100" />
+                      <span>WhatsApp 1-Click</span>
+                    </Button>
+                    <Button
                       variant="outline"
                       className="h-9 px-4 rounded-lg border-slate-200 text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 font-medium text-xs transition-colors cursor-pointer"
                       disabled={decide.isPending}
@@ -392,6 +453,103 @@ export default function ApprovalsPage() {
               Confirm Rejection
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp 1-Click Clearance Dispatch Dialog */}
+      <Dialog
+        open={!!whatsappModalStep}
+        onOpenChange={(open) => {
+          if (!open) {
+            setWhatsappModalStep(null);
+            setGeneratedLinks(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-900 font-bold text-base">
+              <MessageSquare className="h-5 w-5 text-emerald-600" />
+              WhatsApp &amp; Mobile Clearance Channel
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized, single-use approval prompt that lets them clear requests with one tap without password friction.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isGeneratingLinks ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-2">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+              <p className="text-xs text-slate-500 font-medium">Generating single-use cryptographic tokens…</p>
+            </div>
+          ) : generatedLinks ? (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-lg">
+                <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                  <Smartphone className="h-4 w-4 text-emerald-700" />
+                  Target Approver Phone:
+                </span>
+                <span className="font-mono font-bold text-emerald-800">
+                  {generatedLinks.approverPhone || "+234 (Registered Approver)"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Formatted WhatsApp Message Template
+                </label>
+                <div className="p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto border border-slate-800 selection:bg-emerald-600">
+                  {generatedLinks.whatsappMessage}
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  onClick={() => {
+                    window.open(generatedLinks.whatsappDirectUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  Launch WhatsApp
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(generatedLinks.whatsappMessage);
+                      toast.success("WhatsApp approval message copied to clipboard!");
+                    } catch {
+                      window.prompt("Copy WhatsApp message", generatedLinks.whatsappMessage);
+                    }
+                  }}
+                >
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  Copy Message
+                </Button>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400">
+                  Live simulation of WhatsApp carrier webhook:
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-semibold text-[#0B1457] hover:bg-blue-50 cursor-pointer"
+                  disabled={simulateWhatsApp.isPending}
+                  onClick={() => simulateWhatsApp.mutate(generatedLinks.stepId)}
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
+                  {simulateWhatsApp.isPending ? "Simulating…" : "Simulate WhatsApp Approval"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

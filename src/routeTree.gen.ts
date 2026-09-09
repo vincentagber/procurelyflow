@@ -22,6 +22,7 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
+import { Route as ApproveTokenRouteImport } from './routes/approve.$token'
 import { Route as PlatformAdminIndexRouteImport } from './routes/platform-admin/index'
 import { Route as PlatformAdminOrgIdRouteImport } from './routes/platform-admin/$orgId'
 import { Route as QuoteTokenRouteImport } from './routes/quote/$token'
@@ -97,6 +98,11 @@ const AuthenticatedSuppliersRoute = AuthenticatedSuppliersRouteImport.update({
   path: '/suppliers',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApproveTokenRoute = ApproveTokenRouteImport.update({
+  id: '/approve/$token',
+  path: '/approve/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlatformAdminIndexRoute = PlatformAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
+  '/approve/$token': typeof ApproveTokenRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin/': typeof PlatformAdminIndexRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
+  '/approve/$token': typeof ApproveTokenRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin': typeof PlatformAdminIndexRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
+  '/approve/$token': typeof ApproveTokenRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin/': typeof PlatformAdminIndexRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/suppliers'
+    | '/approve/$token'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin/'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/suppliers'
+    | '/approve/$token'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects'
     | '/_authenticated/settings'
     | '/_authenticated/suppliers'
+    | '/approve/$token'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin/'
@@ -308,6 +320,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApproveTokenRoute: typeof ApproveTokenRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
 }
 
@@ -403,6 +416,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/suppliers'
       preLoaderRoute: typeof AuthenticatedSuppliersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/approve/$token': {
+      id: '/approve/$token'
+      path: '/approve/$token'
+      fullPath: '/approve/$token'
+      preLoaderRoute: typeof ApproveTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/platform-admin/': {
       id: '/platform-admin/'
@@ -534,6 +554,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApproveTokenRoute: ApproveTokenRoute,
   QuoteTokenRoute: QuoteTokenRoute,
 }
 export const routeTree = rootRouteImport

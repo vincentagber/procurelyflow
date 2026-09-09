@@ -3,7 +3,7 @@ import { money } from "@/lib/format";
 import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
 import { assertSingleCurrencyPo } from "@/lib/money";
 import { generateAccountingCsv } from "@/lib/export";
-import { generateSubscriptionBill, provisionVirtualAccount } from "@/lib/paymentBillingChannels";
+import { generateSubscriptionBill } from "@/lib/paymentBillingChannels";
 import { randomBytes, createHash } from "crypto";
 
 type Role = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
@@ -169,6 +169,296 @@ export async function verifyAndConsumeActionToken(
   return record;
 }
 
+/**
+ * Retrieves the requisition details and pending step for a given secure action token.
+ * Used by the public /approve/[token] page for 1-click Email & WhatsApp approvals.
+ */
+export async function getApprovalTokenDetails(rawToken: string) {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const { data: record } = await supabaseAdmin
+    .from("secure_action_tokens")
+    .select("*")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  if (!record) {
+    return { status: "INVALID" as const, error: "This approval link is invalid or has expired." };
+  }
+  if (record.used_at) {
+    return {
+      status: "ALREADY_USED" as const,
+      usedAt: record.used_at,
+      error: "This approval request has already been acted upon.",
+    };
+  }
+  if (new Date(record.expires_at).getTime() < Date.now()) {
+    return { status: "EXPIRED" as const, error: "This approval link expired. Please request a fresh link." };
+  }
+
+  // The entity is either an approval_step or requisition
+  let stepId: string = record.entity_id;
+  let reqId: string | null = null;
+
+  if (record.entity_type === "approval_step") {
+    const { data: step } = await supabaseAdmin
+      .from("approval_steps")
+      .select("id, requisition_id, required_role, step_order, reason, status")
+      .eq("id", record.entity_id)
+      .maybeSingle();
+
+    if (!step) return { status: "INVALID" as const, error: "Approval step not found." };
+    if (step.status !== "pending") {
+      return { status: "ALREADY_USED" as const, error: `This step has already been marked as ${step.status}.` };
+    }
+    reqId = step.requisition_id;
+  } else if (record.entity_type === "requisition") {
+    reqId = record.entity_id;
+    const { data: pendingStep } = await supabaseAdmin
+      .from("approval_steps")
+      .select("id, requisition_id, required_role, step_order, reason, status")
+      .eq("requisition_id", reqId)
+      .eq("status", "pending")
+      .order("step_order", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (pendingStep) stepId = pendingStep.id;
+  }
+
+  if (!reqId) return { status: "INVALID" as const, error: "Requisition not found." };
+
+  const { data: req } = await supabaseAdmin
+    .from("requisitions")
+    .select("id, reference, title, total_amount, currency, status, is_unbudgeted, needed_by, created_at, project_id, requester_id, projects(id, name, location, budget_amount), profiles:requester_id(id, full_name, email, department)")
+    .eq("id", reqId)
+    .maybeSingle();
+
+  if (!req) return { status: "INVALID" as const, error: "Requisition details not found." };
+
+  const { data: items } = await supabaseAdmin
+    .from("requisition_items")
+    .select("id, description, quantity, unit, estimated_unit_price")
+    .eq("requisition_id", reqId);
+
+  const { data: step } = await supabaseAdmin
+    .from("approval_steps")
+    .select("id, required_role, step_order, reason, status")
+    .eq("id", stepId)
+    .maybeSingle();
+
+  const requester = (req as any).profiles as { full_name?: string; email?: string; department?: string } | null;
+  const project = (req as any).projects as { name?: string; location?: string; budget_amount?: number } | null;
+
+  return {
+    status: "VALID" as const,
+    tokenRecordId: record.id,
+    actionType: record.action_type,
+    stepId,
+    requisition: {
+      id: req.id,
+      reference: req.reference,
+      title: req.title,
+      totalAmount: Number(req.total_amount),
+      currency: req.currency,
+      status: req.status,
+      isUnbudgeted: !!req.is_unbudgeted,
+      neededBy: req.needed_by,
+      createdAt: req.created_at,
+      requesterName: requester?.full_name || "Procurement Initiator",
+      requesterDepartment: requester?.department || "Engineering & Projects",
+      projectName: project?.name || "General Capex Site",
+      projectLocation: project?.location || "Site Unassigned",
+      items: (items ?? []).map((i) => ({
+        id: i.id,
+        description: i.description,
+        quantity: Number(i.quantity),
+        unit: i.unit || "units",
+        estimatedUnitPrice: Number(i.estimated_unit_price),
+        totalPrice: Number(i.quantity) * Number(i.estimated_unit_price),
+      })),
+    },
+    step: step ? {
+      id: step.id,
+      requiredRole: step.required_role,
+      stepOrder: step.step_order,
+      reason: step.reason,
+      status: step.status,
+    } : null,
+  };
+}
+
+/**
+ * Executes an approval or rejection via secure action token (from Email or WhatsApp).
+ */
+export async function decideApprovalByToken(
+  rawToken: string,
+  decision: "approved" | "rejected",
+  comment?: string,
+) {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const { data: record } = await supabaseAdmin
+    .from("secure_action_tokens")
+    .select("*")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  if (!record) throw new Error("Invalid or expired action link.");
+  if (record.used_at) throw new Error("This action link has already been used.");
+  if (new Date(record.expires_at).getTime() < Date.now()) {
+    throw new Error("This action link has expired. Please request a new link.");
+  }
+
+  let stepId: string = record.entity_id;
+  if (record.entity_type === "requisition") {
+    const { data: pendingStep } = await supabaseAdmin
+      .from("approval_steps")
+      .select("id")
+      .eq("requisition_id", record.entity_id)
+      .eq("status", "pending")
+      .order("step_order", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!pendingStep) throw new Error("No pending approval step found for this requisition.");
+    stepId = pendingStep.id;
+  }
+
+  const { data: step } = await supabaseAdmin
+    .from("approval_steps")
+    .select("id, org_id, requisition_id, required_role")
+    .eq("id", stepId)
+    .maybeSingle();
+  if (!step) throw new Error("Approval step not found.");
+
+  // Determine authorized actor ID: use token.actor_id or lookup a profile with required role
+  let actorUserId = record.actor_id;
+  if (!actorUserId) {
+    const { data: usersWithRole } = await supabaseAdmin.rpc("org_users_with_roles", {
+      _org_id: step.org_id,
+      _roles: [step.required_role as any],
+    });
+    if (usersWithRole && usersWithRole.length > 0) {
+      actorUserId = usersWithRole[0].user_id;
+    } else {
+      actorUserId = "whatsapp_email_system";
+    }
+  }
+
+  // Mark token as consumed
+  await supabaseAdmin
+    .from("secure_action_tokens")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", record.id);
+
+  // Execute approval
+  const channelTag = record.recipient_identifier?.includes("@")
+    ? `(via 1-Click Email: ${record.recipient_identifier})`
+    : `(via 1-Click WhatsApp: ${record.recipient_identifier || "mobile token"})`;
+
+  const finalComment = comment ? `${comment} ${channelTag}` : channelTag;
+
+  return decideApproval(actorUserId, {
+    stepId,
+    decision,
+    comment: finalComment,
+  });
+}
+
+/**
+ * Generates ready-to-dispatch 1-click Email & WhatsApp links for a pending approval step.
+ */
+export async function generateStepApprovalLinks(stepId: string, originUrl?: string) {
+  const { data: step } = await supabaseAdmin
+    .from("approval_steps")
+    .select("id, org_id, requisition_id, required_role, step_order, reason, status")
+    .eq("id", stepId)
+    .maybeSingle();
+
+  if (!step) throw new Error("Approval step not found.");
+
+  const { data: req } = await supabaseAdmin
+    .from("requisitions")
+    .select("id, reference, title, total_amount, currency, is_unbudgeted, project_id, projects(name), profiles:requester_id(full_name)")
+    .eq("id", step.requisition_id)
+    .maybeSingle();
+
+  if (!req) throw new Error("Requisition not found.");
+
+  // Get recipient phone / email from users with the required role
+  const { data: users } = await supabaseAdmin.rpc("org_users_with_roles", {
+    _org_id: step.org_id,
+    _roles: [step.required_role as any],
+  });
+
+  const approverUserId = users && users.length > 0 ? users[0].user_id : null;
+  let approverPhone: string | null = null;
+  let approverEmail: string | null = null;
+
+  if (approverUserId) {
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("phone, email")
+      .eq("id", approverUserId)
+      .maybeSingle();
+    approverPhone = prof?.phone || null;
+    approverEmail = prof?.email || null;
+  }
+
+  const { rawToken: approveToken } = await createSecureActionToken({
+    orgId: step.org_id,
+    actionType: "approve_requisition",
+    entityType: "approval_step",
+    entityId: step.id,
+    actorId: approverUserId,
+    recipientIdentifier: approverPhone || approverEmail || "whatsapp_approver",
+    ttlMinutes: 60 * 48, // 48 hours
+  });
+
+  const base = originUrl ? originUrl.replace(/\/$/, "") : "http://localhost:3002";
+  const webReviewUrl = `${base}/approve/${approveToken}`;
+  const webApproveUrl = `${base}/approve/${approveToken}?decision=approved`;
+  const webRejectUrl = `${base}/approve/${approveToken}?decision=rejected`;
+
+  const reqObj = req as any;
+  const projectName = reqObj.projects?.name || "General Project Site";
+  const requesterName = reqObj.profiles?.full_name || "Project Engineer";
+  const amountFormatted = `₦${Number(req.total_amount).toLocaleString("en-NG")}`;
+
+  const whatsappMessage = [
+    `📋 *PROCURELY FLOW — REQUISITION APPROVAL REQUIRED*`,
+    ``,
+    `*Requisition:* ${req.reference}`,
+    `*Title:* ${req.title}`,
+    `*Project Site:* ${projectName}`,
+    `*Amount:* ${amountFormatted} (${req.currency})`,
+    `*Requester:* ${requesterName}`,
+    `*Budget Status:* ${req.is_unbudgeted ? "⚠️ Unbudgeted Capex (Requires Management Clearance)" : "✅ Budgeted Milestone"}`,
+    `*Clearance Stage:* ${step.reason || `${step.required_role} approval`}`,
+    ``,
+    `👉 *Tap to Review & 1-Click Approve:*`,
+    webReviewUrl,
+    ``,
+    `👉 *Instant Approve:* ${webApproveUrl}`,
+    `❌ *Instant Reject:* ${webRejectUrl}`,
+  ].join("\n");
+
+  const cleanPhone = approverPhone ? approverPhone.replace(/\D/g, "") : "";
+  const whatsappDirectUrl = cleanPhone
+    ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(whatsappMessage)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMessage)}`;
+
+  return {
+    stepId: step.id,
+    requisitionReference: req.reference,
+    approveToken,
+    webReviewUrl,
+    webApproveUrl,
+    webRejectUrl,
+    whatsappMessage,
+    whatsappDirectUrl,
+    approverPhone,
+    approverEmail,
+  };
+}
+
 export async function projectBudgetStatus(projectId: string) {
   const { data, error } = await supabaseAdmin
     .rpc("project_budget_status", { _project_id: projectId })
@@ -219,7 +509,7 @@ export async function attachmentUploadUrl(
 
 const DEFAULT_RULES = [
   {
-    label: "Small spend",
+    label: "Below ₦500,000 — Department Head",
     min_amount: 0,
     max_amount: 500000,
     required_roles: ["approver"],
@@ -227,19 +517,19 @@ const DEFAULT_RULES = [
     sort_order: 1,
   },
   {
-    label: "Mid spend",
+    label: "₦500,000–₦5,000,000 — Department Head & Finance",
     min_amount: 500000,
     max_amount: 5000000,
     required_roles: ["approver", "finance"],
-    extra_role_if_unbudgeted: "admin",
+    extra_role_if_unbudgeted: "executive",
     sort_order: 2,
   },
   {
-    label: "High value spend",
+    label: "Above ₦5,000,000 — Finance & CEO",
     min_amount: 5000000,
     max_amount: null,
-    required_roles: ["finance", "admin"],
-    extra_role_if_unbudgeted: "executive",
+    required_roles: ["finance", "executive"],
+    extra_role_if_unbudgeted: "admin",
     sort_order: 3,
   },
 ];
@@ -384,14 +674,18 @@ export async function computeApprovalChain(orgId: string, amount: number, isUnbu
         : `${rule.label} threshold — step ${index + 1} of ${roles.length}`,
   }));
 
-  if (isUnbudgeted && rule.extra_role_if_unbudgeted) {
+  if (isUnbudgeted) {
+    const extraRole = (rule.extra_role_if_unbudgeted as Role) || "executive";
     // The unbudgeted gate always lands last, after the band's own approvals.
     const lastOrder = steps.reduce((max, s) => Math.max(max, s.order), 0);
-    steps.push({
-      role: rule.extra_role_if_unbudgeted as Role,
-      order: lastOrder + 1,
-      reason: "Extra approval required: flagged unbudgeted",
-    });
+    const finalStep = steps[steps.length - 1];
+    if (!finalStep || finalStep.role !== extraRole) {
+      steps.push({
+        role: extraRole,
+        order: lastOrder + 1,
+        reason: "Unbudgeted request: Additional management approval required",
+      });
+    }
   }
 
   return { ruleLabel: rule.label, mode, steps };
@@ -2205,16 +2499,16 @@ export async function generateSubscriptionBillServer(
   const actor = await loadActor(userId);
   requireRole(actor, ["admin"]);
 
-  // Pricing matrix — aligned with §NFR-LOC.2 revised strategy (Page 11)
+  // Pricing matrix per revised strategy document (Page 11)
   const monthlyRates: Record<string, number> = {
-    STARTER: 75_000,
-    GROWTH: 200_000,
-    BUSINESS: 500_000,
-    ENTERPRISE: 1_200_000,
+    STARTER: 75000,
+    GROWTH: 200000,
+    BUSINESS: 500000,
+    ENTERPRISE: 1200000,
   };
 
-  const baseMonthly = monthlyRates[input.planTier] ?? 200_000;
-  // 15% annual pre-payment discount
+  const baseMonthly = monthlyRates[input.planTier] || 200000;
+  // 15% annual prepayment discount
   const amountNgn =
     input.billingCycle === "annual" ? Math.round(baseMonthly * 12 * 0.85) : baseMonthly;
 
@@ -2224,48 +2518,38 @@ export async function generateSubscriptionBillServer(
     .eq("id", actor.orgId)
     .single();
 
-  const orgName = org?.name ?? "Procurely Customer";
+  const orgName = org?.name || "Procurely Customer";
 
-  // Deterministic invoice reference (timestamp-based, unique per org)
-  const invoiceRef = `BILL-${actor.orgId.slice(0, 4).toUpperCase()}-${Date.now().toString().slice(-8)}`;
-
-  const chosenMethod = input.paymentMethod ?? "VIRTUAL_ACCOUNT";
-
-  // Provision a real gateway virtual account (Monnify → Paystack → Simulation)
-  let gatewayAccount: Awaited<ReturnType<typeof provisionVirtualAccount>> | undefined;
-  if (chosenMethod === "VIRTUAL_ACCOUNT") {
-    gatewayAccount = await provisionVirtualAccount({
-      orgId: actor.orgId,
-      orgName,
-      invoiceRef,
-      amountNgn,
-    });
-  }
+  const bill = generateSubscriptionBill({
+    orgId: actor.orgId,
+    orgName,
+    planTier: input.planTier,
+    amountNgn,
+    preferredMethod: input.paymentMethod || "VIRTUAL_ACCOUNT",
+  });
 
   const now = new Date();
   const periodStart = now.toISOString().split("T")[0]!;
-  const nextDate = new Date(now);
+  const nextMonth = new Date(now);
   if (input.billingCycle === "annual") {
-    nextDate.setFullYear(nextDate.getFullYear() + 1);
+    nextMonth.setFullYear(nextMonth.getFullYear() + 1);
   } else {
-    nextDate.setMonth(nextDate.getMonth() + 1);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
   }
-  const periodEnd = nextDate.toISOString().split("T")[0]!;
+  const periodEnd = nextMonth.toISOString().split("T")[0]!;
 
   const { data: sub, error } = await supabaseAdmin
     .from("tenant_subscriptions")
     .insert({
       org_id: actor.orgId,
-      invoice_reference: invoiceRef,
+      invoice_reference: bill.invoiceId,
       plan_tier: input.planTier,
       billing_cycle: input.billingCycle,
       amount_ngn: amountNgn,
-      payment_method: chosenMethod,
-      virtual_account_bank: gatewayAccount?.bankName ?? null,
-      virtual_account_number: gatewayAccount?.accountNumber ?? null,
-      virtual_account_name: gatewayAccount?.accountName ?? null,
-      payment_gateway: gatewayAccount?.provider ?? "SIMULATED",
-      payment_gateway_reference: gatewayAccount?.gatewayReference ?? null,
+      payment_method: bill.paymentMethod,
+      virtual_account_bank: bill.virtualAccountDetails?.bankName || "Providus Bank / Wema Bank",
+      virtual_account_number: bill.virtualAccountDetails?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
+      virtual_account_name: bill.virtualAccountDetails?.accountName || `Procurely Flow - ${orgName.slice(0, 20)}`,
       status: "PENDING",
       period_start: periodStart,
       period_end: periodEnd,
@@ -2281,7 +2565,7 @@ export async function generateSubscriptionBillServer(
     orgId: actor.orgId,
     actor,
     action: "subscription_bill_generated" as never,
-    detail: `Subscription invoice ${invoiceRef} generated for tier ${input.planTier} (${money(amountNgn, "NGN")} ${input.billingCycle}) via ${gatewayAccount?.provider ?? "SIMULATED"} gateway`,
+    detail: `Subscription invoice ${bill.invoiceId} generated for tier ${input.planTier} (${money(amountNgn, "NGN")} ${input.billingCycle})`,
   });
 
   return sub;
@@ -2297,4 +2581,67 @@ export async function getSubscriptionStatements(userId: string) {
 
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+export async function settleSubscriptionBillServer(
+  userId: string,
+  invoiceReference: string,
+  transactionRef?: string,
+) {
+  const actor = await loadActor(userId);
+  requireRole(actor, ["admin", "finance"]);
+
+  const { data: sub, error: findErr } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .select("*")
+    .eq("org_id", actor.orgId)
+    .eq("invoice_reference", invoiceReference)
+    .single();
+
+  if (findErr || !sub) {
+    throw new Error("Subscription statement not found.");
+  }
+
+  if (sub.status === "SETTLED") {
+    return sub;
+  }
+
+  const now = new Date().toISOString();
+  const settlementRef =
+    transactionRef ||
+    `NIP-SETTLED-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const { data: updatedSub, error: updateErr } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .update({
+      status: "SETTLED",
+      cleared_at: now,
+      settled_at: now,
+      payment_gateway: "PROVIDUS_WEMA_NIP",
+      payment_gateway_reference: settlementRef,
+    })
+    .eq("id", sub.id)
+    .select("*")
+    .single();
+
+  if (updateErr || !updatedSub) {
+    throw new Error(updateErr?.message || "Failed updating subscription settlement.");
+  }
+
+  // Update organization active plan tier in DB
+  await supabaseAdmin
+    .from("organizations")
+    .update({
+      plan: sub.plan_tier,
+    })
+    .eq("id", actor.orgId);
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "subscription_payment_settled" as never,
+    detail: `Subscription payment settled via NIBSS bank transfer for invoice ${sub.invoice_reference} (${sub.plan_tier} ${sub.billing_cycle}, ${money(sub.amount_ngn, "NGN")}). Ref: ${settlementRef}`,
+  });
+
+  return updatedSub;
 }

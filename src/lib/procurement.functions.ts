@@ -516,3 +516,76 @@ export const getSubscriptionStatementsFn = createServerFn({ method: "GET" })
     const { getSubscriptionStatements } = await import("@/lib/procurement.server");
     return getSubscriptionStatements(context.userId);
   });
+
+export const settleSubscriptionBillFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        invoiceReference: z.string().min(1),
+        transactionRef: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { settleSubscriptionBillServer } = await import("@/lib/procurement.server");
+    return settleSubscriptionBillServer(context.userId, data.invoiceReference, data.transactionRef);
+  });
+
+/* ---------- Multi-Channel Approval (Web, Email, WhatsApp) Functions ---------- */
+
+export const getApprovalTokenDetailsFn = createServerFn({ method: "GET" })
+  .inputValidator((raw: unknown) => z.object({ token: z.string().min(10) }).parse(raw))
+  .handler(async ({ data }) => {
+    const { getApprovalTokenDetails } = await import("@/lib/procurement.server");
+    return getApprovalTokenDetails(data.token);
+  });
+
+export const decideApprovalByTokenFn = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        token: z.string().min(10),
+        decision: z.enum(["approved", "rejected"]),
+        comment: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { decideApprovalByToken } = await import("@/lib/procurement.server");
+    return decideApprovalByToken(data.token, data.decision, data.comment);
+  });
+
+export const generateStepApprovalLinksFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        stepId: z.string().uuid(),
+        originUrl: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { generateStepApprovalLinks } = await import("@/lib/procurement.server");
+    return generateStepApprovalLinks(data.stepId, data.originUrl);
+  });
+
+export const simulateWhatsAppApprovalFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        fromPhone: z.string().min(5),
+        stepId: z.string().uuid(),
+        decision: z.enum(["approved", "rejected"]),
+        comment: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { whatsappApprovalWebhook } = await import("@/lib/procurement.server");
+    return whatsappApprovalWebhook(data);
+  });
+
+

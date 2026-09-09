@@ -5,7 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Copy, Image, Printer, Send, Plus } from "lucide-react";
+import {
+  Copy,
+  Printer,
+  Send,
+  Plus,
+  MessageSquare,
+  CheckCircle2,
+  XCircle,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, can } from "@/lib/useMe";
@@ -13,6 +23,9 @@ import {
   createRfqFn,
   submitRequisitionFn,
   duplicateRequisitionFn,
+  decideApprovalFn,
+  generateStepApprovalLinksFn,
+  simulateWhatsAppApprovalFn,
 } from "@/lib/procurement.functions";
 import { money, shortDate, dateTime, ROLE_LABELS, STATUS_LABELS } from "@/lib/format";
 import { PageHeader, StatusPill } from "@/components/procurely/bits";
@@ -21,7 +34,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AttachmentThumbs } from "@/components/procurely/AttachmentThumbs";
+import { cn } from "@/lib/utils";
 
 export default function RequisitionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -30,6 +52,57 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
   const router = useRouter();
   const queryClient = useQueryClient();
   const [rfqOpen, setRfqOpen] = useState(false);
+
+  // Multi-channel approval clearance states
+  const [whatsappModalStep, setWhatsappModalStep] = useState<string | null>(null);
+  const [generatedLinks, setGeneratedLinks] = useState<{
+    stepId: string;
+    requisitionRef: string;
+    approverPhone?: string | null;
+    whatsappMessage: string;
+    whatsappDirectUrl: string;
+    webApprovalUrl: string;
+  } | null>(null);
+  const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
+  const [rejectModalStepId, setRejectModalStepId] = useState<string | null>(null);
+  const [rejectComment, setRejectComment] = useState("");
+
+  const decide = useMutation({
+    mutationFn: (vars: { stepId: string; decision: "approved" | "rejected"; comment?: string }) =>
+      decideApprovalFn({ data: vars }),
+    onSuccess: async (_, vars) => {
+      toast.success(vars.decision === "approved" ? "Requisition cleared successfully." : "Requisition rejected.");
+      setRejectModalStepId(null);
+      setRejectComment("");
+      await queryClient.invalidateQueries();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to record approval decision."),
+  });
+
+  const handleOpenWhatsAppModal = async (stepId: string) => {
+    setWhatsappModalStep(stepId);
+    setIsGeneratingLinks(true);
+    try {
+      const res = await generateStepApprovalLinksFn({ data: { stepId } });
+      setGeneratedLinks(res);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to generate clearance tokens.");
+      setWhatsappModalStep(null);
+    } finally {
+      setIsGeneratingLinks(false);
+    }
+  };
+
+  const simulateWhatsApp = useMutation({
+    mutationFn: (stepId: string) => simulateWhatsAppApprovalFn({ data: { stepId } }),
+    onSuccess: async () => {
+      toast.success("Inbound WhatsApp approval verified and cleared!");
+      setWhatsappModalStep(null);
+      setGeneratedLinks(null);
+      await queryClient.invalidateQueries();
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "WhatsApp simulation failed."),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["requisition", id],
@@ -215,33 +288,241 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* Right Sidebar: Approval & Audit Trail */}
+        {/* Right Sidebar: Approval Chain & Real-time Clearance */}
         <div className="space-y-4">
-          <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-xs">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
-              Approval Chain
-            </h3>
-            <ul className="mt-3 space-y-2.5">
-              {data?.steps.map((s) => (
-                <li
-                  key={s.id}
-                  className="flex items-start gap-2.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-2.5 text-xs"
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#111315] text-[10px] font-bold text-white">
-                    {s.step_order}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[#111315]">
-                      {ROLE_LABELS[s.required_role] ?? s.required_role}
-                    </p>
-                    <p className="text-[10px] text-[#6B7280]">Status: {s.status}</p>
-                  </div>
-                </li>
-              ))}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                Approval Chain
+              </h3>
+              {req.status === "submitted" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Active Routing
+                </span>
+              )}
+            </div>
+
+            <ul className="mt-3.5 space-y-3">
+              {data?.steps.map((s) => {
+                const isPending = s.status === "pending";
+                const canDecide = isPending && can(me.data?.roles, [s.required_role, "admin"]);
+
+                return (
+                  <li
+                    key={s.id}
+                    className={cn(
+                      "rounded-xl border p-3.5 space-y-2 transition-all",
+                      isPending
+                        ? "border-amber-200 bg-amber-50/20"
+                        : s.status === "approved"
+                        ? "border-emerald-200 bg-emerald-50/20"
+                        : s.status === "rejected"
+                        ? "border-rose-200 bg-rose-50/20"
+                        : "border-slate-200 bg-slate-50/50"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-900">
+                        {s.step_order}. {ROLE_LABELS[s.required_role] ?? s.required_role}
+                      </span>
+                      <StatusPill status={s.status} />
+                    </div>
+                    <p className="text-[11px] text-slate-500">{s.reason}</p>
+                    {s.decided_at ? (
+                      <p className="text-[11px] text-slate-500">
+                        {dateTime(s.decided_at)}
+                        {s.comment ? ` — "${s.comment}"` : ""}
+                      </p>
+                    ) : null}
+
+                    {/* Real-time Multi-channel Clearance Actions */}
+                    {isPending && (
+                      <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-1.5">
+                        {canDecide && (
+                          <>
+                            <Button
+                              size="sm"
+                              className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold gap-1 cursor-pointer"
+                              disabled={decide.isPending}
+                              onClick={() => decide.mutate({ stepId: s.id, decision: "approved" })}
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Approve</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2.5 border-rose-200 text-rose-700 hover:bg-rose-50 text-[11px] font-semibold gap-1 cursor-pointer"
+                              disabled={decide.isPending}
+                              onClick={() => setRejectModalStepId(s.id)}
+                            >
+                              <XCircle className="h-3 w-3" />
+                              <span>Reject</span>
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-semibold gap-1 cursor-pointer"
+                          onClick={() => handleOpenWhatsAppModal(s.id)}
+                        >
+                          <MessageSquare className="h-3 w-3 text-emerald-600" />
+                          <span>WhatsApp 1-Click</span>
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
       </div>
+
+      {/* Rejection Reason Modal */}
+      <Dialog
+        open={!!rejectModalStepId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectModalStepId(null);
+            setRejectComment("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">Rejection Justification</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Please enter an explicit reason for declining this spend request. This reason is permanently recorded in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Textarea
+              rows={3}
+              placeholder="e.g. Price exceeds current budget quota or material specification requires update."
+              value={rejectComment}
+              onChange={(e) => setRejectComment(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setRejectModalStepId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!rejectModalStepId || !rejectComment.trim() || decide.isPending}
+              onClick={() => {
+                if (rejectModalStepId) {
+                  decide.mutate({ stepId: rejectModalStepId, decision: "rejected", comment: rejectComment });
+                }
+              }}
+            >
+              Confirm Rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp 1-Click Clearance Dispatch Dialog */}
+      <Dialog
+        open={!!whatsappModalStep}
+        onOpenChange={(open) => {
+          if (!open) {
+            setWhatsappModalStep(null);
+            setGeneratedLinks(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-900 font-bold text-base">
+              <MessageSquare className="h-5 w-5 text-emerald-600" />
+              WhatsApp &amp; Mobile Clearance Channel
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized, single-use approval prompt that lets them clear requests with one tap without password friction.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isGeneratingLinks ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-2">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+              <p className="text-xs text-slate-500 font-medium">Generating single-use cryptographic tokens…</p>
+            </div>
+          ) : generatedLinks ? (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-lg">
+                <span className="font-semibold text-emerald-950 flex items-center gap-1.5">
+                  <Smartphone className="h-4 w-4 text-emerald-700" />
+                  Target Approver Phone:
+                </span>
+                <span className="font-mono font-bold text-emerald-800">
+                  {generatedLinks.approverPhone || "+234 (Registered Approver)"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Formatted WhatsApp Message Template
+                </label>
+                <div className="p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-[11px] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto border border-slate-800 selection:bg-emerald-600">
+                  {generatedLinks.whatsappMessage}
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  onClick={() => {
+                    window.open(generatedLinks.whatsappDirectUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  Launch WhatsApp
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(generatedLinks.whatsappMessage);
+                      toast.success("WhatsApp approval message copied to clipboard!");
+                    } catch {
+                      window.prompt("Copy WhatsApp message", generatedLinks.whatsappMessage);
+                    }
+                  }}
+                >
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  Copy Message
+                </Button>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400">
+                  Live simulation of WhatsApp carrier webhook:
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-semibold text-[#0B1457] hover:bg-blue-50 cursor-pointer"
+                  disabled={simulateWhatsApp.isPending}
+                  onClick={() => simulateWhatsApp.mutate(generatedLinks.stepId)}
+                >
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5 text-amber-500" />
+                  {simulateWhatsApp.isPending ? "Simulating…" : "Simulate WhatsApp Approval"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -37,12 +37,35 @@ export interface AwardAnomalyInput {
 export interface GovernanceAnomalyFlag {
   id: string;
   category: "SPLIT_REQUISITION" | "BUYER_SUPPLIER_AFFINITY" | "SOLE_SOURCE_PREMIUM";
-  severity: "CRITICAL" | "HIGH" | "MEDIUM";
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   title: string;
   description: string;
   affectedEntities: { type: string; id: string; name: string }[];
   detectedAt: string;
   metrics: Record<string, unknown>;
+  auditTrailLinks?: {
+    entityType: "requisition" | "purchase_order" | "approval";
+    id: string;
+    label: string;
+    url: string;
+    amount?: number;
+    currency?: string;
+    timestamp?: string;
+  }[];
+  approvalChainDetails?: {
+    stage: string;
+    requiredRole: string;
+    status: string;
+    actorName?: string;
+    timestamp?: string;
+  }[];
+  entitiesSummary?: {
+    suppliers?: string[];
+    approvers?: string[];
+    projects?: string[];
+    purchaseAmounts?: number[];
+    totalAmount?: number;
+  };
 }
 
 /**
@@ -119,10 +142,49 @@ export function detectSplitRequisitionAnomalies(
           detectedAt: new Date().toISOString(),
           metrics: {
             requesterId: first.requesterId,
+            requesterName: requester,
+            projectName: project,
             totalSplitAmount: totalAmount,
             requisitionCount: windowItems.length,
             thresholdBypassed: threshold,
           },
+          entitiesSummary: {
+            approvers: [requester],
+            projects: [project],
+            purchaseAmounts: windowItems.map((w) => w.amount),
+            totalAmount,
+          },
+          auditTrailLinks: windowItems.map((w) => ({
+            entityType: "requisition" as const,
+            id: w.id,
+            label: `${w.reference} · ₦${w.amount.toLocaleString()}`,
+            url: `/_authenticated/requisitions/${w.id}`,
+            amount: w.amount,
+            currency: w.currency || "NGN",
+            timestamp: w.createdAt,
+          })),
+          approvalChainDetails: [
+            {
+              stage: "Requisition Initiation",
+              requiredRole: "requester",
+              status: "submitted",
+              actorName: requester,
+              timestamp: first.createdAt,
+            },
+            {
+              stage: "Financial Threshold Routing",
+              requiredRole: "finance",
+              status: "bypassed_split_structuring",
+              actorName: "Automated Routing Rule",
+              timestamp: first.createdAt,
+            },
+            {
+              stage: "Executive Governance Audit Review",
+              requiredRole: "executive",
+              status: "audit_hold_recommended",
+              actorName: "Forensic Anomaly Scanner",
+            },
+          ],
         });
 
         // Skip processed items in window to prevent duplicates
@@ -211,6 +273,37 @@ export function detectBuyerSupplierAffinityAnomalies(
             totalSpend: data.totalSpend,
             nonLowestAwards: data.nonLowestCount,
           },
+          entitiesSummary: {
+            suppliers: [data.name],
+            approvers: [buyerName],
+            purchaseAmounts: buyerAwards.filter((a) => a.supplierId === supplierId).map((a) => a.amount),
+            totalAmount: data.totalSpend,
+          },
+          auditTrailLinks: buyerAwards
+            .filter((a) => a.supplierId === supplierId)
+            .map((a) => ({
+              entityType: "purchase_order" as const,
+              id: a.poId,
+              label: `${a.poNumber} · ₦${a.amount.toLocaleString()}${!a.isLowestQuote ? " [Non-Lowest Quote]" : ""}`,
+              url: `/_authenticated/purchase-orders/${a.poId}`,
+              amount: a.amount,
+              currency: "NGN",
+              timestamp: a.awardedAt,
+            })),
+          approvalChainDetails: [
+            {
+              stage: "Quote Evaluation & Award",
+              requiredRole: "procurement_officer",
+              status: "awarded",
+              actorName: buyerName,
+            },
+            {
+              stage: "Competitive Bidding Compliance",
+              requiredRole: "finance",
+              status: data.nonLowestCount > 0 ? "non_lowest_override" : "concentration_warning",
+              actorName: "Automated Governance Scanner",
+            },
+          ],
         });
       }
     }
