@@ -1775,27 +1775,39 @@ function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
    ========================================================================= */
 
 function BillingSection({ isAdmin }: { isAdmin: boolean }) {
-  const me = useMe();
   const queryClient = useQueryClient();
   const [cycle, setCycle] = useState<"monthly" | "annual">("monthly");
   const [selectedTier, setSelectedTier] = useState<"STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE">("GROWTH");
   const [generatedBill, setGeneratedBill] = useState<any>(null);
 
+  // ── React Query for initial load ──────────────────────────────────────────
   const { data: statements, isLoading } = useQuery({
     queryKey: ["tenant-subscriptions"],
     queryFn: () => getSubscriptionStatementsFn(),
+    staleTime: 30_000,
   });
 
-  const generateBillMutation = useMutation({
-    mutationFn: async () => {
-      return generateSubscriptionBillFn({
-        data: {
-          planTier: selectedTier,
-          billingCycle: cycle,
-          paymentMethod: "VIRTUAL_ACCOUNT",
+  // ── Supabase Realtime: live settlement status ─────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("billing-realtime-nextjs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tenant_subscriptions" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["tenant-subscriptions"] });
         },
-      });
-    },
+      )
+      .subscribe();
+
+    return () => { void supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const generateBillMutation = useMutation({
+    mutationFn: async () =>
+      generateSubscriptionBillFn({
+        data: { planTier: selectedTier, billingCycle: cycle, paymentMethod: "VIRTUAL_ACCOUNT" },
+      }),
     onSuccess: async (bill) => {
       setGeneratedBill(bill);
       toast.success("B2B invoice & dedicated virtual account generated.");
@@ -1808,134 +1820,94 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
     {
       id: "STARTER" as const,
       name: "Starter",
-      monthly: 75000,
-      annual: 765000,
+      monthly: 75_000,
+      annual: Math.round(75_000 * 12 * 0.85),
       description: "Small organisation, one branch or project site",
-      features: [
-        "Requisitions & Multi-item lines",
-        "Threshold approval routing",
-        "Digital RFQ links & quote entry",
-        "Automated side-by-side comparison",
-      ],
+      features: ["Requisitions & Multi-item lines", "Threshold approval routing", "Digital RFQ links & quote entry", "Automated side-by-side comparison"],
     },
     {
       id: "GROWTH" as const,
       name: "Growth",
-      monthly: 200000,
-      annual: 2040000,
+      monthly: 200_000,
+      annual: Math.round(200_000 * 12 * 0.85),
       popular: true,
       description: "Growing enterprise with multiple approvers and active sites",
-      features: [
-        "Everything in Starter",
-        "WhatsApp 1-click token approvals",
-        "Site Delivery & Inspection capture",
-        "3-Way Invoice Matching & NRS e-invoicing",
-        "Offline inspection local sync queue",
-      ],
+      features: ["Everything in Starter", "WhatsApp 1-click token approvals", "Site Delivery & Inspection capture", "3-Way Invoice Matching & NRS e-invoicing", "Offline inspection local sync queue"],
     },
     {
       id: "BUSINESS" as const,
       name: "Business",
-      monthly: 500000,
-      annual: 5100000,
+      monthly: 500_000,
+      annual: Math.round(500_000 * 12 * 0.85),
       description: "Multiple concurrent projects, entities or heavy capex",
-      features: [
-        "Everything in Growth",
-        "PO Change Orders & baseline preservation",
-        "Approval delegation & SLA escalation",
-        "Executive governance anomaly suite",
-        "Multi-project budget drilldown",
-      ],
+      features: ["Everything in Growth", "PO Change Orders & baseline preservation", "Approval delegation & SLA escalation", "Executive governance anomaly suite", "Multi-project budget drilldown"],
     },
     {
       id: "ENTERPRISE" as const,
       name: "Enterprise",
-      monthly: 1200000,
-      annual: 12240000,
+      monthly: 1_200_000,
+      annual: Math.round(1_200_000 * 12 * 0.85),
       description: "Large organisations requiring custom integrations & dedicated SLA",
-      features: [
-        "Everything in Business",
-        "SAP & Dynamics 365 OData connectors",
-        "Custom ERP general ledger export",
-        "Dedicated account manager & 99.5% SLA",
-        "Statutory NDPA compliance auditing support",
-      ],
+      features: ["Everything in Business", "SAP & Dynamics 365 OData connectors", "Custom ERP general ledger export", "Dedicated account manager & 99.5% SLA", "Statutory NDPA compliance auditing support"],
     },
   ];
 
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-slate-900 tracking-tight">
               Subscription &amp; Nigerian B2B Invoicing (§NFR-LOC.2)
             </h2>
-            <p className="mt-1 text-xs text-slate-500 font-normal">
+            <p className="mt-1 text-xs text-slate-500 font-normal max-w-lg">
               Predictable, transparent software subscription billing tailored for African enterprise finance teams via bank transfer and dedicated NUBAN virtual accounts.
             </p>
           </div>
-
-          {/* Monthly vs Annual Toggle */}
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-1 text-xs font-semibold shrink-0">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50/80 p-1 text-xs font-semibold shrink-0">
             <button
               type="button"
-              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                cycle === "monthly" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
-              }`}
+              id="billing-cycle-monthly-nextjs"
+              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${cycle === "monthly" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"}`}
               onClick={() => setCycle("monthly")}
             >
               Monthly Billing
             </button>
             <button
               type="button"
-              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer flex items-center gap-1.5 ${
-                cycle === "annual" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
-              }`}
+              id="billing-cycle-annual-nextjs"
+              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer flex items-center gap-1.5 ${cycle === "annual" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"}`}
               onClick={() => setCycle("annual")}
             >
               <span>Annual Billing</span>
-              <span className="rounded bg-emerald-400/20 text-emerald-700 px-1 py-0.2 text-[9px] font-bold">
-                Save 15%
-              </span>
+              <span className="rounded bg-emerald-400/20 text-emerald-700 px-1 text-[9px] font-bold">Save 15%</span>
             </button>
           </div>
         </div>
 
-        {/* Pricing Tiers Grid */}
+        {/* Pricing Tiers */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {tiers.map((t) => {
             const isSelected = selectedTier === t.id;
             const price = cycle === "annual" ? t.annual : t.monthly;
-
             return (
               <div
                 key={t.id}
-                className={`relative flex flex-col justify-between rounded-xl border p-4 transition-all ${
-                  isSelected
-                    ? "border-[#0B1457] bg-slate-50/40 shadow-xs ring-1 ring-[#0B1457]"
-                    : "border-slate-200 bg-white hover:border-slate-300"
-                }`}
+                className={`relative flex flex-col justify-between rounded-xl border p-4 transition-all ${isSelected ? "border-[#0B1457] bg-slate-50/40 shadow-xs ring-1 ring-[#0B1457]" : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs"}`}
               >
-                {t.popular ? (
-                  <span className="absolute -top-2.5 right-4 rounded-full bg-[#0B1457] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-2xs">
-                    Most Popular
-                  </span>
+                {(t as any).popular ? (
+                  <span className="absolute -top-2.5 right-4 rounded-full bg-[#0B1457] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-2xs">Most Popular</span>
                 ) : null}
-
                 <div className="space-y-3">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">{t.name}</h3>
                     <p className="mt-1 text-[11px] text-slate-500 line-clamp-2">{t.description}</p>
                   </div>
-
                   <div>
-                    <span className="text-xl font-bold font-sans text-slate-900 tabular-nums">
-                      {money(price, "NGN")}
-                    </span>
+                    <span className="text-xl font-bold font-sans text-slate-900 tabular-nums">{money(price, "NGN")}</span>
                     <span className="text-[11px] text-slate-500 font-normal"> / {cycle === "annual" ? "year" : "month"}</span>
                   </div>
-
                   <ul className="space-y-1.5 border-t border-slate-100 pt-3 text-[11px] text-slate-600">
                     {t.features.map((f, i) => (
                       <li key={i} className="flex items-start gap-1.5">
@@ -1945,14 +1917,12 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                     ))}
                   </ul>
                 </div>
-
                 <div className="pt-4 mt-auto">
                   <Button
+                    id={`tier-select-${t.id.toLowerCase()}-nextjs`}
                     type="button"
                     variant={isSelected ? "default" : "outline"}
-                    className={`h-8 w-full rounded-lg text-xs font-semibold cursor-pointer ${
-                      isSelected ? "bg-[#0B1457] hover:bg-[#0001FF] text-white" : "border-slate-200"
-                    }`}
+                    className={`h-8 w-full rounded-lg text-xs font-semibold cursor-pointer ${isSelected ? "bg-[#0B1457] hover:bg-[#0001FF] text-white" : "border-slate-200"}`}
                     onClick={() => setSelectedTier(t.id)}
                   >
                     {isSelected ? "Selected Tier" : "Select Tier"}
@@ -1963,81 +1933,110 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
           })}
         </div>
 
-        {/* Generate Invoice Action */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+        {/* Generate Invoice CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-[#0B1457]/10 bg-slate-50/60 p-4">
           <div>
             <p className="text-xs font-semibold text-slate-900">
-              Selected: <strong className="text-[#0B1457] font-bold">{selectedTier}</strong> ({cycle === "annual" ? "Annual" : "Monthly"})
+              Selected: <strong className="text-[#0B1457] font-bold">{tiers.find((t) => t.id === selectedTier)?.name ?? selectedTier}</strong> ({cycle === "annual" ? "Annual" : "Monthly"})
             </p>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Generates an official VAT-compliant corporate invoice with a dedicated Providus/Wema NUBAN virtual account.
             </p>
           </div>
           <Button
+            id="billing-generate-invoice-btn-nextjs"
             type="button"
-            className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-semibold shadow-xs cursor-pointer shrink-0"
+            className="h-9 px-5 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-semibold shadow-xs cursor-pointer shrink-0 gap-2"
             disabled={generateBillMutation.isPending || !isAdmin}
             onClick={() => generateBillMutation.mutate()}
           >
-            {generateBillMutation.isPending ? "Generating Invoice…" : "Generate Invoice & Bank Transfer Account"}
+            {generateBillMutation.isPending ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating Invoice…</>
+            ) : (
+              <><Receipt className="h-3.5 w-3.5" /> Generate Invoice &amp; Bank Transfer Account</>
+            )}
           </Button>
         </div>
 
-        {/* Generated Bill Display Modal/Card */}
-        {generatedBill ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Dedicated Virtual Account Statement Generated
-              </span>
-              <span className="font-mono text-xs font-bold text-slate-800">{generatedBill.invoice_reference}</span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 bg-white p-4 rounded-lg border border-emerald-200 text-xs">
-              <div>
-                <p className="text-[10px] uppercase text-slate-400 font-semibold">Bank Name</p>
-                <p className="font-bold text-slate-900 mt-0.5">{generatedBill.virtual_account_bank}</p>
+        {/* Generated Bill Success Card */}
+        <AnimatePresence>
+          {generatedBill ? (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Dedicated Virtual Account Issued
+                </span>
+                <span className="font-mono text-xs font-bold text-slate-800 bg-white border border-emerald-200 rounded px-2 py-0.5">
+                  {generatedBill.invoice_reference}
+                </span>
               </div>
-              <div>
-                <p className="text-[10px] uppercase text-slate-400 font-semibold">Dedicated NUBAN Account</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="font-mono font-bold text-sm text-[#0B1457]">{generatedBill.virtual_account_number}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(generatedBill.virtual_account_number);
-                      toast.success("Account number copied.");
-                    }}
-                    className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer"
-                    title="Copy Account Number"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
+              <div className="grid gap-3 sm:grid-cols-3 bg-white p-4 rounded-lg border border-emerald-200 text-xs">
+                <div>
+                  <p className="text-[10px] uppercase text-slate-400 font-semibold tracking-wider">Bank Name</p>
+                  <p className="font-bold text-slate-900 mt-0.5">{generatedBill.virtual_account_bank}</p>
+                  {generatedBill.payment_gateway && generatedBill.payment_gateway !== "SIMULATED" && (
+                    <span className="mt-1 inline-flex items-center gap-0.5 rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
+                      <ShieldCheck className="h-2.5 w-2.5" />{generatedBill.payment_gateway} Live
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-400 font-semibold tracking-wider">Dedicated NUBAN Account</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="font-mono font-bold text-sm text-[#0B1457]">{generatedBill.virtual_account_number}</p>
+                    <button
+                      id="billing-copy-account-btn-nextjs"
+                      type="button"
+                      onClick={() => { navigator.clipboard?.writeText(generatedBill.virtual_account_number); toast.success("Account number copied to clipboard."); }}
+                      className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer transition-colors"
+                      title="Copy Account Number"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{generatedBill.virtual_account_name}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-400 font-semibold tracking-wider">Amount to Transfer</p>
+                  <p className="font-sans font-bold text-sm text-slate-900 mt-0.5">{money(generatedBill.amount_ngn, "NGN")}</p>
+                  <p className="text-[10px] text-slate-500">{generatedBill.billing_cycle === "annual" ? "Annual (15% off)" : "Monthly"}</p>
                 </div>
               </div>
-              <div>
-                <p className="text-[10px] uppercase text-slate-400 font-semibold">Amount to Transfer</p>
-                <p className="font-sans font-bold text-sm text-slate-900 mt-0.5">{money(generatedBill.amount_ngn, "NGN")}</p>
-              </div>
-            </div>
+              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                Make an instant bank transfer from your corporate internet banking app to the account above.
+                Settlement is automatic — your invoice status updates to <strong>SETTLED</strong> within minutes of receipt.
+              </p>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
-              Make an instant bank transfer from your corporate bank app. Automatic reconciliation clears your account within minutes of receipt.
-            </p>
-          </div>
-        ) : null}
-
-        {/* Statements History Table */}
+        {/* Statements Table */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-            Billing Statements &amp; Invoices ({statements?.length || 0})
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              Billing Statements &amp; Invoices ({statements?.length ?? 0})
+            </h3>
+            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              Live
+            </span>
+          </div>
 
           {isLoading ? (
-            <p className="text-xs text-slate-400">Loading invoices…</p>
+            <div className="flex items-center gap-2 py-6 text-xs text-slate-400">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+            </div>
           ) : !statements || statements.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
-              No subscription invoices issued yet.
+              No subscription invoices issued yet. Select a plan above and generate your first invoice.
             </div>
           ) : (
             <div className="rounded-xl border border-slate-200 overflow-x-auto">
@@ -2049,25 +2048,54 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                     <th className="px-4 py-3">Period</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Virtual Account</th>
+                    <th className="px-4 py-3">Gateway</th>
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {statements.map((s: any) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50">
+                  {(statements as any[]).map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-4 py-3 font-mono font-bold text-[#0B1457]">{s.invoice_reference}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-900">{s.plan_tier} ({s.billing_cycle})</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {s.plan_tier}<span className="ml-1 text-slate-400 font-normal">({s.billing_cycle})</span>
+                      </td>
                       <td className="px-4 py-3 text-slate-500 text-[11px]">{shortDate(s.period_start)} – {shortDate(s.period_end)}</td>
                       <td className="px-4 py-3 font-sans font-semibold text-slate-900">{money(s.amount_ngn, "NGN")}</td>
-                      <td className="px-4 py-3 font-mono text-[11px] text-slate-600">{s.virtual_account_bank} · {s.virtual_account_number}</td>
+                      <td className="px-4 py-3 text-[11px]">
+                        {s.virtual_account_number ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-slate-600">{s.virtual_account_bank} · {s.virtual_account_number}</span>
+                            <button type="button" onClick={() => { navigator.clipboard?.writeText(s.virtual_account_number); toast.success("Copied."); }} className="text-slate-400 hover:text-slate-700 cursor-pointer" title="Copy">
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : <span className="text-slate-400">—</span>}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          s.status === "SETTLED"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}>
-                          {s.status}
-                        </span>
+                        {s.payment_gateway && s.payment_gateway !== "SIMULATED" ? (
+                          <span className="inline-flex items-center gap-1 rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[9px] font-bold text-blue-700">
+                            <ShieldCheck className="h-2.5 w-2.5" />{s.payment_gateway}
+                          </span>
+                        ) : <span className="text-[10px] text-slate-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.status === "SETTLED" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3" /> SETTLED
+                          </span>
+                        ) : s.status === "OVERDUE" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
+                            <AlertCircle className="h-3 w-3" /> OVERDUE
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500" />
+                            </span>
+                            PENDING
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -2077,11 +2105,16 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
           )}
         </div>
 
-        {/* PCI-DSS Zero Raw Card Storage Guarantee (NFR-SEC.4) */}
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-600">
-          <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
-          <p className="text-[11px] leading-relaxed">
-            <strong>PCI-DSS &amp; Local Currency Protection:</strong> Procurely Flow enforces a strict zero raw-card storage policy. All billing collections route through licensed Nigerian financial institutions (Providus, Wema, Monnify, Paystack) via dedicated virtual accounts and bank transfers to prevent auto-renew card failures and naira volatility risks.
+        {/* PCI-DSS Zero Card Storage Guarantee */}
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <div className="shrink-0 rounded-lg bg-white border border-slate-200 p-2 shadow-2xs">
+            <Landmark className="h-4 w-4 text-[#0B1457]" />
+          </div>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            <strong className="text-slate-800">PCI-DSS &amp; Local Currency Protection:</strong>{" "}
+            Procurely Flow enforces a strict zero raw-card storage policy. All billing collections route through licensed
+            Nigerian financial institutions (Providus, Wema, Monnify, Paystack) via dedicated virtual accounts and bank
+            transfers to prevent auto-renew card failures and naira volatility risks.
           </p>
         </div>
       </div>

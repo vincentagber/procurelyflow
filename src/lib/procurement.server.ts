@@ -3,7 +3,7 @@ import { money } from "@/lib/format";
 import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
 import { assertSingleCurrencyPo } from "@/lib/money";
 import { generateAccountingCsv } from "@/lib/export";
-import { generateSubscriptionBill } from "@/lib/paymentBillingChannels";
+import { generateSubscriptionBill, provisionVirtualAccount } from "@/lib/paymentBillingChannels";
 import { randomBytes, createHash } from "crypto";
 
 type Role = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
@@ -2205,16 +2205,16 @@ export async function generateSubscriptionBillServer(
   const actor = await loadActor(userId);
   requireRole(actor, ["admin"]);
 
-  // Pricing matrix per revised strategy document (Page 11)
+  // Pricing matrix — aligned with §NFR-LOC.2 revised strategy (Page 11)
   const monthlyRates: Record<string, number> = {
-    STARTER: 75000,
-    GROWTH: 200000,
-    BUSINESS: 500000,
-    ENTERPRISE: 1200000,
+    STARTER: 75_000,
+    GROWTH: 200_000,
+    BUSINESS: 500_000,
+    ENTERPRISE: 1_200_000,
   };
 
-  const baseMonthly = monthlyRates[input.planTier] || 200000;
-  // 15% annual prepayment discount
+  const baseMonthly = monthlyRates[input.planTier] ?? 200_000;
+  // 15% annual pre-payment discount
   const amountNgn =
     input.billingCycle === "annual" ? Math.round(baseMonthly * 12 * 0.85) : baseMonthly;
 
@@ -2224,38 +2224,48 @@ export async function generateSubscriptionBillServer(
     .eq("id", actor.orgId)
     .single();
 
-  const orgName = org?.name || "Procurely Customer";
+  const orgName = org?.name ?? "Procurely Customer";
 
-  const bill = generateSubscriptionBill({
-    orgId: actor.orgId,
-    orgName,
-    planTier: input.planTier === "ENTERPRISE" ? "ENTERPRISE" : "STANDARD",
-    amountNgn,
-    preferredMethod: input.paymentMethod || "VIRTUAL_ACCOUNT",
-  });
+  // Deterministic invoice reference (timestamp-based, unique per org)
+  const invoiceRef = `BILL-${actor.orgId.slice(0, 4).toUpperCase()}-${Date.now().toString().slice(-8)}`;
+
+  const chosenMethod = input.paymentMethod ?? "VIRTUAL_ACCOUNT";
+
+  // Provision a real gateway virtual account (Monnify → Paystack → Simulation)
+  let gatewayAccount: Awaited<ReturnType<typeof provisionVirtualAccount>> | undefined;
+  if (chosenMethod === "VIRTUAL_ACCOUNT") {
+    gatewayAccount = await provisionVirtualAccount({
+      orgId: actor.orgId,
+      orgName,
+      invoiceRef,
+      amountNgn,
+    });
+  }
 
   const now = new Date();
   const periodStart = now.toISOString().split("T")[0]!;
-  const nextMonth = new Date(now);
+  const nextDate = new Date(now);
   if (input.billingCycle === "annual") {
-    nextMonth.setFullYear(nextMonth.getFullYear() + 1);
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
   } else {
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    nextDate.setMonth(nextDate.getMonth() + 1);
   }
-  const periodEnd = nextMonth.toISOString().split("T")[0]!;
+  const periodEnd = nextDate.toISOString().split("T")[0]!;
 
   const { data: sub, error } = await supabaseAdmin
     .from("tenant_subscriptions")
     .insert({
       org_id: actor.orgId,
-      invoice_reference: bill.invoiceId,
+      invoice_reference: invoiceRef,
       plan_tier: input.planTier,
       billing_cycle: input.billingCycle,
       amount_ngn: amountNgn,
-      payment_method: bill.paymentMethod,
-      virtual_account_bank: bill.virtualAccountDetails?.bankName || "Providus Bank",
-      virtual_account_number: bill.virtualAccountDetails?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-      virtual_account_name: bill.virtualAccountDetails?.accountName || `Procurely Flow - ${orgName.slice(0, 20)}`,
+      payment_method: chosenMethod,
+      virtual_account_bank: gatewayAccount?.bankName ?? null,
+      virtual_account_number: gatewayAccount?.accountNumber ?? null,
+      virtual_account_name: gatewayAccount?.accountName ?? null,
+      payment_gateway: gatewayAccount?.provider ?? "SIMULATED",
+      payment_gateway_reference: gatewayAccount?.gatewayReference ?? null,
       status: "PENDING",
       period_start: periodStart,
       period_end: periodEnd,
@@ -2271,7 +2281,7 @@ export async function generateSubscriptionBillServer(
     orgId: actor.orgId,
     actor,
     action: "subscription_bill_generated" as never,
-    detail: `Subscription invoice ${bill.invoiceId} generated for tier ${input.planTier} (${money(amountNgn, "NGN")} ${input.billingCycle})`,
+    detail: `Subscription invoice ${invoiceRef} generated for tier ${input.planTier} (${money(amountNgn, "NGN")} ${input.billingCycle}) via ${gatewayAccount?.provider ?? "SIMULATED"} gateway`,
   });
 
   return sub;
