@@ -123,10 +123,13 @@ function Approvals() {
         />
       ) : (
         <motion.div variants={staggerContainer} className="space-y-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <span className="flex h-2 w-2 rounded-full bg-signal animate-pulse" />
-            Waiting on your decision ({mine.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <span className="flex h-2 w-2 rounded-full bg-[#0001FF] animate-pulse" />
+              Waiting on your decision ({mine.length})
+            </h2>
+            <span className="text-xs text-slate-400 font-normal">Immediate clearance required</span>
+          </div>
 
           {mine.map((step) => {
             const req = step.requisitions as {
@@ -155,15 +158,15 @@ function Approvals() {
               <motion.article
                 key={step.id}
                 variants={itemFadeIn}
-                whileHover={{ y: -2 }}
+                whileHover={{ y: -1 }}
                 transition={{ duration: 0.18 }}
                 id={`approval-${step.id}`}
-                className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-xs hover:border-border/80 transition-shadow space-y-4"
+                className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs hover:border-slate-300 hover:shadow-2xs transition-all space-y-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-md bg-surface px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground border border-border">
+                      <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700">
                         {req.reference}
                       </span>
                       {req.is_unbudgeted && <StatusPill status="pending" label="Unbudgeted" />}
@@ -171,47 +174,47 @@ function Approvals() {
                     <Link
                       to="/requisitions/$id"
                       params={{ id: req.id }}
-                      className="group inline-flex items-center gap-1 text-lg sm:text-xl font-bold font-display uppercase tracking-wide text-foreground hover:text-accent transition-colors"
+                      className="group inline-flex items-center gap-1 text-base sm:text-lg font-semibold text-slate-900 hover:text-[#0001FF] tracking-tight transition-colors"
                     >
                       <span>{req.title}</span>
-                      <ChevronRight className="h-4 w-4 opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500 font-normal">
                       Needed by{" "}
-                      <span className="font-medium text-foreground">
+                      <span className="font-medium text-slate-700">
                         {shortDate(req.needed_by)}
                       </span>{" "}
                       · Step{" "}
-                      <span className="font-semibold text-foreground">{step.step_order}</span> as{" "}
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-slate-900">{step.step_order}</span> as{" "}
+                      <span className="font-semibold text-slate-900">
                         {ROLE_LABELS[step.required_role] ?? step.required_role}
                       </span>
                     </p>
                   </div>
                   <div className="text-right sm:text-right shrink-0">
-                    <p className="font-display text-2xl font-bold tracking-tight">
+                    <p className="font-sans text-xl sm:text-2xl font-semibold tabular-nums text-slate-900 tracking-tight">
                       {money(req.total_amount, req.currency)}
                     </p>
-                    <p className="text-[11px] text-muted-foreground">{step.reason}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{step.reason}</p>
                   </div>
                 </div>
 
                 {/* Line items summary */}
                 {req.requisition_items?.length > 0 && (
-                  <div className="rounded-lg border border-border/70 bg-surface/60 p-3 space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-muted-foreground font-semibold text-[11px] uppercase tracking-wider">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-slate-500 font-medium text-[11px]">
                       <span>Items ({req.requisition_items.length})</span>
                     </div>
-                    <div className="space-y-1.5 divide-y divide-border/40">
+                    <div className="space-y-1.5 divide-y divide-slate-200/60">
                       {req.requisition_items.map((item) => (
                         <div
                           key={item.id}
-                          className="pt-1.5 first:pt-0 flex items-center justify-between"
+                          className="pt-1.5 first:pt-0 flex items-center justify-between text-slate-700"
                         >
-                          <span className="font-medium text-foreground truncate max-w-[200px] sm:max-w-[360px]">
+                          <span className="font-medium truncate max-w-[200px] sm:max-w-[360px]">
                             {item.quantity} {item.unit} × {item.description}
                           </span>
-                          <span className="tabular-nums text-muted-foreground font-medium">
+                          <span className="tabular-nums font-semibold text-slate-900">
                             {money(item.quantity * item.estimated_unit_price, req.currency)}
                           </span>
                         </div>
@@ -219,8 +222,8 @@ function Approvals() {
                     </div>
 
                     {allAttachments.length > 0 && (
-                      <div className="pt-2 border-t border-border/50">
-                        <p className="text-[11px] font-semibold text-muted-foreground mb-1">
+                      <div className="pt-2 border-t border-slate-200/60">
+                        <p className="text-[11px] font-medium text-slate-500 mb-1">
                           Site Photos ({allAttachments.length})
                         </p>
                         <AttachmentThumbs attachments={allAttachments} readOnly />
@@ -229,21 +232,21 @@ function Approvals() {
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-2.5 pt-1">
                   <Textarea
                     rows={2}
-                    className="text-sm bg-background/50"
-                    placeholder="Add a comment or note for the record…"
+                    className="text-xs bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:border-[#0B1457] rounded-lg"
+                    placeholder="Add an optional review note or sign-off comment for the audit ledger…"
                     value={comments[step.id] ?? ""}
                     onChange={(e) =>
                       setComments((prev) => ({ ...prev, [step.id]: e.target.value }))
                     }
                   />
 
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <div className="flex items-center justify-end gap-2.5">
                     <Button
                       variant="outline"
-                      className="h-12 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground font-semibold text-sm transition-colors"
+                      className="h-9 px-4 rounded-lg border-slate-200 text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 font-medium text-xs transition-colors cursor-pointer"
                       disabled={decide.isPending}
                       onClick={() => {
                         if (!comments[step.id]?.trim()) {
@@ -253,16 +256,16 @@ function Approvals() {
                         }
                       }}
                     >
-                      <XCircle className="mr-1.5 h-4 w-4 shrink-0" />
-                      Reject
+                      <XCircle className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                      Reject Request
                     </Button>
                     <Button
-                      className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors shadow-xs"
+                      className="h-9 px-5 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-semibold text-xs transition-colors shadow-xs cursor-pointer"
                       disabled={decide.isPending}
                       onClick={() => decide.mutate({ stepId: step.id, decision: "approved" })}
                     >
-                      <CheckCircle2 className="mr-1.5 h-4 w-4 shrink-0" />
-                      Approve
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                      Approve &amp; Sign Off
                     </Button>
                   </div>
                 </div>
@@ -273,12 +276,14 @@ function Approvals() {
       )}
 
       {upcoming.length ? (
-        <motion.section variants={itemFadeIn}>
-          <h2 className="font-display text-xl uppercase tracking-wide">Coming to you</h2>
-          <p className="text-xs text-muted-foreground">
-            Routed to your role but still queued behind an earlier approval.
-          </p>
-          <motion.ul variants={staggerContainer} className="mt-3 space-y-2">
+        <motion.section variants={itemFadeIn} className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">Upcoming Pipeline</h2>
+            <p className="text-xs text-slate-500 font-normal">
+              Routed to your role but currently queued behind earlier sequential clearance stages.
+            </p>
+          </div>
+          <motion.ul variants={staggerContainer} className="space-y-2">
             {upcoming.map((step) => {
               const req = step.requisitions as {
                 id: string;
@@ -292,17 +297,17 @@ function Approvals() {
                   key={step.id}
                   variants={itemFadeIn}
                   whileHover={{ y: -1 }}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2.5"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs hover:border-slate-300 transition-all"
                 >
-                  <span className="text-sm">
-                    <Link to="/requisitions/$id" params={{ id: req.id }} className="text-accent">
+                  <span className="text-xs">
+                    <Link to="/requisitions/$id" params={{ id: req.id }} className="text-[#0B1457] hover:text-[#0001FF] font-semibold tabular-nums">
                       {req.reference}
                     </Link>{" "}
-                    <span className="text-muted-foreground">{req.title}</span>
+                    <span className="text-slate-600 ml-1.5">{req.title}</span>
                   </span>
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {money(req.total_amount, req.currency)} · step {step.step_order} as{" "}
-                    {ROLE_LABELS[step.required_role] ?? step.required_role}
+                  <span className="text-xs tabular-nums text-slate-500 font-medium">
+                    {money(req.total_amount, req.currency)} · Step {step.step_order} as{" "}
+                    <strong className="text-slate-700 font-semibold">{ROLE_LABELS[step.required_role] ?? step.required_role}</strong>
                   </span>
                 </motion.li>
               );
@@ -312,19 +317,24 @@ function Approvals() {
       ) : null}
 
       {decided.length ? (
-        <motion.section variants={itemFadeIn}>
-          <h2 className="font-display text-xl uppercase tracking-wide">Recently decided</h2>
-          <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead className="bg-surface">
+        <motion.section variants={itemFadeIn} className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">Recently Decided</h2>
+            <p className="text-xs text-slate-500 font-normal">
+              Historical record of your role sign-offs and rejections.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full min-w-[520px] text-xs">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
                 <tr className="text-left">
-                  <th className="px-3 py-2.5 data-label">Request</th>
-                  <th className="px-3 py-2.5 data-label">Role</th>
-                  <th className="px-3 py-2.5 data-label">Value</th>
-                  <th className="px-3 py-2.5 data-label">Outcome</th>
+                  <th className="px-4 py-2.5">Request Reference &amp; Title</th>
+                  <th className="px-4 py-2.5">Authority Role</th>
+                  <th className="px-4 py-2.5">Committed Value</th>
+                  <th className="px-4 py-2.5">Clearance Outcome</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-slate-100">
                 {decided.map((step) => {
                   const req = step.requisitions as {
                     id: string;
@@ -334,24 +344,24 @@ function Approvals() {
                     currency: "NGN" | "USD";
                   };
                   return (
-                    <motion.tr key={step.id} variants={itemFadeIn} className="hover:bg-surface/50 transition-colors">
-                      <td className="px-3 py-3">
+                    <motion.tr key={step.id} variants={itemFadeIn} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3">
                         <Link
                           to="/requisitions/$id"
                           params={{ id: req.id }}
-                          className="text-accent hover:underline font-semibold"
+                          className="text-[#0B1457] hover:text-[#0001FF] font-semibold tabular-nums"
                         >
                           {req.reference}
                         </Link>{" "}
-                        <span className="text-muted-foreground">{req.title}</span>
+                        <span className="text-slate-600 ml-1.5">{req.title}</span>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-3 font-medium text-slate-700">
                         {ROLE_LABELS[step.required_role] ?? step.required_role}
                       </td>
-                      <td className="px-3 py-3 tabular-nums font-medium">
+                      <td className="px-4 py-3 tabular-nums font-semibold text-slate-900">
                         {money(req.total_amount, req.currency)}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-4 py-3">
                         <StatusPill status={step.status} />
                       </td>
                     </motion.tr>

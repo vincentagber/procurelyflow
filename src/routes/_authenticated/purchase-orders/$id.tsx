@@ -53,34 +53,34 @@ function PurchaseOrderDocument() {
         </Button>
       </div>
 
-      <article className="overflow-hidden rounded-xl border border-border bg-card">
+      <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
         {/* Branded header */}
-        <header className="bg-primary px-5 py-6 text-primary-foreground sm:px-7">
+        <header className="bg-[#0B1457] px-6 py-6 text-white sm:px-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] opacity-80">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                 {buyer.name}
               </p>
-              <h1 className="font-display text-4xl uppercase tracking-wide">Purchase order</h1>
-              <p className="mt-1 font-mono text-sm opacity-90">{po.po_number}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-1">Purchase Order</h1>
+              <p className="mt-1 font-mono text-sm text-slate-300 tabular-nums">{po.po_number}</p>
             </div>
             <div className="text-right">
-              <p className="font-display text-4xl leading-none text-signal">
+              <p className="font-sans text-2xl sm:text-3xl font-bold tabular-nums text-white">
                 {money(po.total_amount, currency)}
               </p>
-              <p className="mt-1 text-[11px] uppercase tracking-wide opacity-85">
-                settlement currency: {currency}
+              <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-300">
+                Settlement Currency: {currency}
               </p>
-              <p className="mt-2 text-xs opacity-85">issued {dateTime(po.issued_at)}</p>
+              <p className="mt-1.5 text-xs text-slate-300">Issued {dateTime(po.issued_at)}</p>
             </div>
           </div>
         </header>
 
-        <div className="space-y-6 px-5 py-6 sm:px-7">
+        <div className="space-y-6 px-6 py-6 sm:px-8">
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill status={po.status} />
             {po.acknowledged_at ? (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-slate-500">
                 Acknowledged by {po.acknowledged_by_name} on {dateTime(po.acknowledged_at)}
               </span>
             ) : (
@@ -174,7 +174,7 @@ function PurchaseOrderDocument() {
               ) : null}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
                 <span className="data-label">Total payable ({currency})</span>
-                <span className="font-display text-3xl">{money(po.total_amount, currency)}</span>
+                <span className="font-sans text-2xl font-bold tabular-nums text-slate-900">{money(po.total_amount, currency)}</span>
               </div>
               {po.fx_rate_note ? (
                 <p className="text-xs text-muted-foreground">FX basis: {po.fx_rate_note}</p>

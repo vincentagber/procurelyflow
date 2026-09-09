@@ -38,25 +38,25 @@ export default function PurchaseOrderDocumentPage({ params }: { params: Promise<
         </Button>
       </div>
 
-      <article className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-xs">
+      <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
         {/* Branded Header */}
-        <header className="bg-[#111315] px-6 py-7 text-white sm:px-8">
+        <header className="bg-[#0B1457] px-6 py-6 text-white sm:px-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                 {buyer.name}
               </p>
-              <h1 className="text-3xl font-extrabold uppercase tracking-wide">Purchase Order</h1>
-              <p className="mt-1 font-mono text-sm opacity-90">{po.po_number}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-1">Purchase Order</h1>
+              <p className="mt-1 font-mono text-sm text-slate-300 tabular-nums">{po.po_number}</p>
             </div>
             <div className="text-right">
-              <p className="font-sans text-3xl font-extrabold text-white">
+              <p className="font-sans text-2xl sm:text-3xl font-bold tabular-nums text-white">
                 {money(po.total_amount, currency)}
               </p>
-              <p className="mt-1 text-[11px] uppercase tracking-wide opacity-80">
+              <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-300">
                 Settlement Currency: {currency}
               </p>
-              <p className="mt-1 text-xs opacity-70">Issued {dateTime(po.issued_at)}</p>
+              <p className="mt-1.5 text-xs text-slate-300">Issued {dateTime(po.issued_at)}</p>
             </div>
           </div>
         </header>

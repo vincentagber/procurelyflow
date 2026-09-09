@@ -11,25 +11,31 @@ export function PageHeader({
   actions?: ReactNode | undefined;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
-      <div>
-        <h1 className="page-title text-foreground">{title}</h1>
-        {subtitle ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
-        ) : null}
+    <header className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="space-y-1 max-w-2xl">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="text-xs sm:text-sm text-slate-500 font-normal leading-normal">
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2.5 shrink-0">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-    </div>
+    </header>
   );
 }
 
 const TONES: Record<string, string> = {
-  neutral: "bg-muted text-muted-foreground",
-  info: "bg-accent/10 text-accent",
-  pending: "bg-warning/15 text-warning-foreground",
-  good: "bg-success/15 text-success",
-  bad: "bg-destructive/12 text-destructive",
-  primary: "bg-primary/10 text-primary",
+  neutral: "bg-slate-50 text-slate-600 border-slate-200/60",
+  info: "bg-blue-50 text-blue-700 border-blue-200/80",
+  pending: "bg-amber-50 text-amber-800 border-amber-200/80",
+  good: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+  bad: "bg-rose-50 text-rose-700 border-rose-200/80",
+  primary: "bg-slate-100 text-[#0B1457] border-slate-200",
 };
 
 const STATUS_TONE: Record<string, keyof typeof TONES> = {
@@ -57,7 +63,7 @@ export function StatusPill({ status, label }: { status: string; label?: string |
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
         TONES[tone],
       )}
     >
@@ -76,10 +82,10 @@ export function EmptyState({
   action?: ReactNode | undefined;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-surface px-6 py-14 text-center">
-      <h2 className="font-display text-2xl uppercase tracking-wide text-foreground">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{body}</p>
-      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-6 py-14 text-center shadow-xs">
+      <h2 className="text-base font-semibold text-slate-900 tracking-tight">{title}</h2>
+      <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 font-normal leading-relaxed">{body}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
 }
@@ -94,10 +100,10 @@ export function Metric({
   hint?: string | undefined;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <p className="data-label">{label}</p>
-      <p className="mt-1 font-display text-3xl leading-none text-foreground">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-1 font-sans text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">{value}</p>
+      {hint ? <p className="mt-1 text-[11px] text-slate-400 font-normal">{hint}</p> : null}
     </div>
   );
 }

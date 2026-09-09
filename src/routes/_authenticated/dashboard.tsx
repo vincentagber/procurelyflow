@@ -250,37 +250,37 @@ function Dashboard() {
       animate="animate"
       className="space-y-6 pb-12 font-sans"
     >
-      {/* Top Header Bar (Matching Reference Header Layout) */}
+      {/* Top Header Bar */}
       <motion.header
         variants={itemFadeIn}
         className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#111315] uppercase sm:text-2xl">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             Dashboard
           </h1>
-          <p className="text-xs text-[#6B7280]">
-            Welcome back, {me.data?.profile?.full_name || "User"} · Procurement Overview
+          <p className="text-xs text-slate-500 font-normal">
+            Welcome back, {me.data?.profile?.full_name || "User"} · Procurement Overview & Spend Velocity
           </p>
         </div>
 
         {/* Search and Action Bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1 sm:w-72">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               type="text"
-              placeholder="Search logs, POs, items..."
+              placeholder="Search logs, POs, items…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white pl-9 text-xs placeholder:text-[#9CA3AF] focus-visible:ring-1 focus-visible:ring-black shadow-xs"
+              className="h-9 rounded-lg border-slate-200 bg-white pl-9 text-xs placeholder:text-slate-400 focus-visible:border-[#0B1457] shadow-2xs"
             />
           </div>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               asChild
-              className="h-10 rounded-lg bg-[#111315] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#202428] transition-colors"
+              className="h-9 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] px-4 text-xs font-semibold text-white shadow-xs transition-colors"
             >
               <Link to="/requisitions/new">
                 <Plus className="mr-1.5 h-3.5 w-3.5" /> New Requisition
@@ -290,22 +290,22 @@ function Dashboard() {
         </div>
       </motion.header>
 
-      {/* Row 1: Top Hero Grid (Matching the 3 Cards in the Reference Image) */}
+      {/* Row 1: Top Hero Grid */}
       <motion.div variants={staggerContainer} className="grid gap-4 lg:grid-cols-12">
         {/* Card 1: Total Volume & Sparkline Curve (Span 6) */}
         <motion.section
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-6 cursor-default"
+          className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-6 cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Total Requisitions & Velocity
             </span>
-            <div className="flex items-center gap-1 rounded-md border border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 text-[11px] font-medium text-[#374151]">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/60 px-2 py-1 text-xs font-medium text-slate-700">
               <span>{timeframe}</span>
-              <ChevronDown className="h-3 w-3 text-[#9CA3AF]" />
+              <ChevronDown className="h-3 w-3 text-slate-400" />
             </div>
           </div>
 
@@ -358,7 +358,7 @@ function Dashboard() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#111315] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md"
+              className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#0B1457] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md"
             >
               <span>
                 {totalReqsCount > 0 ? `${totalReqsCount} Logged` : "0 Requests"}
@@ -366,16 +366,16 @@ function Dashboard() {
             </motion.div>
           </div>
 
-          <div className="flex items-baseline justify-between pt-2 border-t border-[#F3F4F6]">
+          <div className="flex items-baseline justify-between pt-2 border-t border-slate-100">
             <div>
-              <p className="font-sans text-2xl font-extrabold tracking-tight text-[#111315]">
+              <p className="font-sans text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                 {totalReqsCount.toLocaleString()}
               </p>
-              <span className="text-[11px] text-[#9CA3AF]">
+              <span className="text-xs text-slate-400 font-normal">
                 {totalLineItems > 0 ? `${totalLineItems} Processed line item(s)` : "Total Requisitions"}
               </span>
             </div>
-            <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
+            <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
               <ArrowUpRight className="h-3 w-3" /> Live
             </div>
           </div>
@@ -384,15 +384,15 @@ function Dashboard() {
         {/* Card 2: Transactions & Approval Ratio Donut Chart (Span 3) */}
         <motion.section
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
+          className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Pipeline Ratio
             </span>
-            <span className="text-xs text-emerald-600 font-bold">Live</span>
+            <span className="text-xs text-emerald-700 font-semibold">Live</span>
           </div>
 
           {/* SVG Donut Progress Chart */}
@@ -400,14 +400,14 @@ function Dashboard() {
             <div className="relative flex h-28 w-28 items-center justify-center">
               <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-[#F3F4F6]"
+                  className="text-slate-100"
                   stroke="currentColor"
                   strokeWidth="3.8"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <motion.path
-                  className="text-[#111315]"
+                  className="text-[#0B1457]"
                   stroke="currentColor"
                   strokeWidth="3.8"
                   initial={{ strokeDasharray: "0, 100" }}
@@ -419,19 +419,19 @@ function Dashboard() {
                 />
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="font-sans text-xl font-extrabold text-[#111315]">{pipelineRatio}%</span>
-                <span className="text-[9px] uppercase tracking-wider text-[#9CA3AF]">Cleared</span>
+                <span className="font-sans text-xl font-bold text-slate-900 tabular-nums">{pipelineRatio}%</span>
+                <span className="text-[9px] uppercase tracking-wider text-slate-400">Cleared</span>
               </div>
             </div>
           </div>
 
-          {/* Legend Matching Reference Photo */}
-          <div className="flex justify-center gap-4 text-[10px] text-[#6B7280]">
+          {/* Legend */}
+          <div className="flex justify-center gap-4 text-[10px] text-slate-500">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#111315]" /> Approved ({approvedReqsCount})
+              <span className="h-2 w-2 rounded-full bg-[#0B1457]" /> Approved ({approvedReqsCount})
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#E5E7EB]" /> In Review ({inReviewReqsCount})
+              <span className="h-2 w-2 rounded-full bg-slate-200" /> In Review ({inReviewReqsCount})
             </span>
           </div>
         </motion.section>
@@ -439,9 +439,9 @@ function Dashboard() {
         {/* Card 3: Top Spend Breakdown by Category & Project (Span 3) */}
         <motion.section
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.2 }}
-          className="flex flex-col justify-between rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
+          className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-3 cursor-default"
         >
           <div className="flex items-center justify-between">
             {/* View Mode Toggle Pill */}
@@ -577,24 +577,24 @@ function Dashboard() {
         {/* Card A: Committed Spend */}
         <motion.div
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.18 }}
-          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Total Committed Spend
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3F4F6] text-[#111315]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-[#0B1457]">
               <CreditCard className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">
+          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
             {money(committed, "NGN")}
           </p>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#9CA3AF]">Across {allPOs.length} issued PO(s)</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+            <span className="text-xs text-slate-400 font-normal">Across {allPOs.length} issued PO(s)</span>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
               Live
             </span>
           </div>
@@ -603,24 +603,24 @@ function Dashboard() {
         {/* Card B: Total In Approval Pipeline */}
         <motion.div
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.18 }}
-          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Total In Approval
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3F4F6] text-[#111315]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-[#0B1457]">
               <Wallet className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">
+          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
             {money(inApprovalAmount, "NGN")}
           </p>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#9CA3AF]">{awaiting} requisitions pending</span>
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+            <span className="text-xs text-slate-400 font-normal">{awaiting} requisitions pending</span>
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
               {awaiting > 0 ? "Pending" : "Clear"}
             </span>
           </div>
@@ -629,23 +629,23 @@ function Dashboard() {
         {/* Card C: Waiting On You */}
         <motion.div
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.18 }}
-          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Waiting On You
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3F4F6] text-[#111315]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-[#0B1457]">
               <Clock className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">{myPending}</p>
+          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">{myPending}</p>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#9CA3AF]">Assigned to your role</span>
+            <span className="text-xs text-slate-400 font-normal">Assigned to your role</span>
             {myPending > 0 ? (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 animate-pulse">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 animate-pulse">
                 Action Required
               </span>
             ) : (
@@ -657,24 +657,24 @@ function Dashboard() {
         {/* Card D: Purchase Orders Issued */}
         <motion.div
           variants={itemFadeIn}
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ duration: 0.18 }}
-          className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs cursor-default"
+          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs cursor-default"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Purchase Orders
             </span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F3F4F6] text-[#111315]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-[#0B1457]">
               <CheckCircle2 className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-extrabold text-[#111315]">
+          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
             {data?.purchaseOrders.length ?? 0}
           </p>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-[#9CA3AF]">Issued to verified suppliers</span>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-600">
+            <span className="text-xs text-slate-400 font-normal">Issued to verified suppliers</span>
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
               Active
             </span>
           </div>
@@ -803,33 +803,33 @@ function Dashboard() {
       {/* Row 5: Admin Logs / Main Procurement Activity Table */}
       <motion.section
         variants={itemFadeIn}
-        className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
-              Admin Logs & Recent Requisitions
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+              Recent Procurement Logs & Requests
             </h2>
-            <p className="text-xs text-[#6B7280]">Real-time operational activity log</p>
+            <p className="text-xs text-slate-500 font-normal">Real-time operational activity log across all cost centers</p>
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#F9FAFB] transition-colors">
-              <Filter className="h-3.5 w-3.5 text-[#9CA3AF]" /> Filter
+            <button className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer">
+              <Filter className="h-3.5 w-3.5 text-slate-400" /> Filter
             </button>
             <Button
               asChild
               variant="outline"
-              className="h-8 rounded-lg border-[#E5E7EB] text-xs font-semibold"
+              className="h-8 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-2xs"
             >
               <Link to="/requisitions">View All</Link>
             </Button>
           </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-lg border border-[#E5E7EB]">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
           {isLoading ? (
-            <p className="p-6 text-center text-xs text-[#6B7280]">Loading activity logs…</p>
+            <p className="p-6 text-center text-xs text-slate-500">Loading activity logs…</p>
           ) : !filteredRequisitions.length ? (
             <EmptyState
               title="No procurement activity logged yet"
@@ -837,7 +837,7 @@ function Dashboard() {
               action={
                 <Button
                   asChild
-                  className="h-9 rounded-lg bg-[#111315] text-xs font-semibold text-white hover:bg-[#202428] transition-colors"
+                  className="h-9 rounded-lg bg-[#0B1457] text-xs font-semibold text-white hover:bg-[#0001FF] shadow-xs transition-colors"
                 >
                   <Link to="/requisitions/new">Raise First Request</Link>
                 </Button>
@@ -845,67 +845,67 @@ function Dashboard() {
             />
           ) : (
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#F9FAFB] text-[11px] font-semibold text-[#6B7280]">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
                 <tr>
-                  <th className="w-10 px-3 py-3 text-center">
+                  <th className="w-10 px-3 py-2.5 text-center">
                     <input
                       type="checkbox"
-                      className="rounded border-[#D1D5DB]"
+                      className="rounded border-slate-300"
                       aria-label="Select all"
                     />
                   </th>
-                  <th className="px-3 py-3">Full Name / Ref</th>
-                  <th className="px-3 py-3">Description / Title</th>
-                  <th className="px-3 py-3">Value</th>
-                  <th className="hidden px-3 py-3 sm:table-cell">Action Type</th>
-                  <th className="hidden px-3 py-3 md:table-cell">Date Created</th>
-                  <th className="px-3 py-3">Status</th>
-                  <th className="px-3 py-3 text-right">Action</th>
+                  <th className="px-3 py-2.5">Full Name / Ref</th>
+                  <th className="px-3 py-2.5">Description / Title</th>
+                  <th className="px-3 py-2.5">Value</th>
+                  <th className="hidden px-3 py-2.5 sm:table-cell">Action Type</th>
+                  <th className="hidden px-3 py-2.5 md:table-cell">Date Created</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {filteredRequisitions.map((r: any, idx: number) => (
+              <tbody className="divide-y divide-slate-100">
+                {filteredRequisitions.map((r: any) => (
                   <motion.tr
                     key={r.id}
                     variants={itemFadeIn}
-                    className="hover:bg-[#F9FAFB]/90 transition-colors"
+                    className="hover:bg-slate-50/50 transition-colors"
                   >
-                    <td className="px-3 py-3.5 text-center">
+                    <td className="px-3 py-3 text-center">
                       <input
                         type="checkbox"
-                        className="rounded border-[#D1D5DB]"
+                        className="rounded border-slate-300"
                         aria-label={`Select ${r.reference}`}
                       />
                     </td>
-                    <td className="px-3 py-3.5 font-medium text-[#111315]">
+                    <td className="px-3 py-3 font-medium text-slate-900">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#111315] text-[10px] font-bold text-white uppercase">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0B1457] text-[10px] font-bold text-white uppercase">
                           {r.reference.slice(-2)}
                         </div>
-                        <span className="font-mono">{r.reference}</span>
+                        <span className="tabular-nums font-semibold text-[#0B1457]">{r.reference}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3.5 max-w-[200px] truncate text-[#374151]">{r.title}</td>
-                    <td className="px-3 py-3.5 font-semibold tabular-nums text-[#111315]">
+                    <td className="px-3 py-3 max-w-[220px] truncate text-slate-800 font-medium">{r.title}</td>
+                    <td className="px-3 py-3 font-semibold tabular-nums text-slate-900">
                       {money(r.total_amount, r.currency)}
                     </td>
-                    <td className="hidden px-3 py-3.5 sm:table-cell">
-                      <span className="inline-flex items-center gap-1 text-[11px] text-[#6B7280]">
+                    <td className="hidden px-3 py-3 sm:table-cell">
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 font-normal">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                         Requisition Log
                       </span>
                     </td>
-                    <td className="hidden px-3 py-3.5 md:table-cell text-[#6B7280]">
+                    <td className="hidden px-3 py-3 md:table-cell text-slate-500 font-normal">
                       {shortDate(r.created_at)}
                     </td>
-                    <td className="px-3 py-3.5">
+                    <td className="px-3 py-3">
                       <StatusPill status={r.status} label={STATUS_LABELS[r.status]} />
                     </td>
-                    <td className="px-3 py-3.5 text-right">
+                    <td className="px-3 py-3 text-right">
                       <Link
                         to="/requisitions/$id"
                         params={{ id: r.id }}
-                        className="inline-flex items-center gap-1 rounded-md bg-[#111315] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#262A30] transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md bg-[#0B1457] px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-[#0001FF] shadow-xs transition-colors"
                       >
                         Open <ExternalLink className="h-3 w-3" />
                       </Link>

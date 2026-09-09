@@ -115,10 +115,10 @@ function RequisitionDetail() {
             >
               <Copy className="mr-1.5 h-4 w-4" /> Duplicate
             </Button>
-            <Button variant="outline" className="h-11" onClick={() => window.print()}>
-              <Printer className="mr-1.5 h-4 w-4" /> Export PDF
+            <Button variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => window.print()}>
+              <Printer className="mr-1.5 h-3.5 w-3.5" /> Export PDF
             </Button>
-            <Button asChild variant="outline" className="h-11 print:hidden">
+            <Button asChild variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 print:hidden">
               <Link to="/requisitions">All requisitions</Link>
             </Button>
           </>
@@ -128,11 +128,11 @@ function RequisitionDetail() {
       <div className="flex flex-wrap items-center gap-3">
         <StatusPill status={req.status} label={STATUS_LABELS[req.status]} />
         {req.is_unbudgeted ? <StatusPill status="pending" label="Unbudgeted" /> : null}
-        <span className="text-sm text-muted-foreground">
-          Project / cost center: {(req.projects as { name: string } | null)?.name ?? "—"}
+        <span className="text-xs text-slate-500">
+          Project / cost center: <strong className="font-semibold text-slate-700">{(req.projects as { name: string } | null)?.name ?? "—"}</strong>
         </span>
-        <span className="text-sm text-muted-foreground">Needed by {shortDate(req.needed_by)}</span>
-        <span className="ml-auto font-display text-2xl">
+        <span className="text-xs text-slate-500">Needed by <strong className="font-semibold text-slate-700">{shortDate(req.needed_by)}</strong></span>
+        <span className="ml-auto font-sans text-2xl font-bold tabular-nums text-slate-900">
           {money(req.total_amount, req.currency)}
         </span>
       </div>
@@ -140,7 +140,7 @@ function RequisitionDetail() {
       {rfqOpen ? <RfqComposer requisitionId={id} onDone={() => setRfqOpen(false)} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        <section className="overflow-x-auto rounded-lg border border-border bg-card">
+        <section className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
           <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-surface">
               <tr className="text-left">
@@ -283,36 +283,36 @@ function RfqComposer({ requisitionId, onDone }: { requisitionId: string; onDone:
 
   if (links.length) {
     return (
-      <section className="rounded-lg border border-accent/40 bg-accent/5 p-4">
-        <h2 className="font-display text-xl uppercase tracking-wide">Private supplier links</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+        <h2 className="text-base font-semibold text-slate-900 tracking-tight">Private Supplier Links</h2>
+        <p className="mt-1 text-xs text-slate-500">
           Each link is unique and expires with the RFQ. A supplier can only ever see their own
           quote.
         </p>
         <ul className="mt-3 space-y-2">
           {links.map((link) => (
-            <li key={link.url} className="rounded-md border border-border bg-card p-3">
-              <p className="text-sm font-medium">{link.name}</p>
+            <li key={link.url} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <p className="text-xs font-semibold text-slate-900">{link.name}</p>
               <div className="mt-1 flex items-center gap-2">
-                <code className="min-w-0 flex-1 truncate rounded bg-surface px-2 py-1.5 text-xs">
+                <code className="min-w-0 flex-1 truncate rounded bg-white border border-slate-200 px-2 py-1.5 text-xs text-slate-700">
                   {link.url}
                 </code>
                 <Button
                   variant="outline"
                   aria-label="Copy link"
-                  className="h-10 shrink-0"
+                  className="h-9 shrink-0 rounded-lg border-slate-200 text-xs text-slate-700"
                   onClick={() => {
                     navigator.clipboard.writeText(link.url);
                     toast.success("Link copied.");
                   }}
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </li>
           ))}
         </ul>
-        <Button className="mt-4 h-11" onClick={onDone}>
+        <Button className="mt-4 h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs" onClick={onDone}>
           Done
         </Button>
       </section>
@@ -320,8 +320,8 @@ function RfqComposer({ requisitionId, onDone }: { requisitionId: string; onDone:
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="font-display text-xl uppercase tracking-wide">Request quotes</h2>
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+      <h2 className="text-base font-semibold text-slate-900 tracking-tight">Request Quotes</h2>
       {!suppliers?.length ? (
         <p className="mt-2 text-sm text-muted-foreground">
           Add suppliers first, then you can invite them to quote.{" "}

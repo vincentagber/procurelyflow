@@ -84,50 +84,55 @@ export default function ProjectsPage() {
         subtitle="Manage the construction sites, departments, and cost centers tracking budgets."
       />
 
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         {/* Create Form */}
         {canCreate && (
-          <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#111315]">
-              New Project / Site
-            </h2>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs h-fit space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+                New Project / Site
+              </h2>
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
+                Allocate capital to a designated site or department
+              </p>
+            </div>
 
-            <div className="mt-4 space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Project / Cost Center Name</Label>
+            <div className="space-y-3.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700">Project / Cost Center Name</Label>
                 <Input
                   placeholder="e.g. Eko Atlantic Tower Phase 2"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-10 text-xs"
+                  className="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Site Location / City</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700">Site Location / City</Label>
                 <Input
                   placeholder="e.g. Victoria Island, Lagos"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="h-10 text-xs"
+                  className="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs">Budget (NGN ₦)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-slate-700">Budget Limit (₦, optional)</Label>
                 <Input
                   type="number"
                   placeholder="e.g. 50000000"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
-                  className="h-10 text-xs"
+                  className="h-10 rounded-lg border-slate-200 bg-white text-xs font-semibold tabular-nums text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 />
               </div>
 
               <Button
                 disabled={!name || create.isPending}
                 onClick={() => create.mutate()}
-                className="mt-2 w-full bg-[#111315] text-xs font-semibold text-white hover:bg-[#202428]"
+                className="w-full h-9 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Project
               </Button>
@@ -139,9 +144,9 @@ export default function ProjectsPage() {
         <section className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             {isLoading ? (
-              <p className="text-xs text-[#6B7280]">Loading projects…</p>
+              <p className="text-xs text-slate-500 py-12 text-center col-span-2 animate-pulse">Loading projects…</p>
             ) : !data?.length ? (
-              <div className="col-span-2 rounded-xl border border-[#E5E7EB] bg-white p-6">
+              <div className="col-span-2">
                 <EmptyState
                   title="No projects configured yet"
                   body="Create your first construction site or cost center to begin assigning material requests."
@@ -151,29 +156,29 @@ export default function ProjectsPage() {
               data.map((p) => (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-xs"
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-slate-300 hover:shadow-2xs transition-all space-y-3.5"
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-bold text-sm text-[#111315]">{p.name}</h3>
-                      <p className="mt-0.5 text-xs text-[#6B7280] flex items-center gap-1">
-                        <MapPin className="h-3 w-3 text-[#9CA3AF]" />{" "}
+                      <h3 className="font-semibold text-sm text-slate-900 tracking-tight">{p.name}</h3>
+                      <p className="mt-0.5 text-xs text-slate-500 flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-slate-400" />{" "}
                         {p.location || "Location not set"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 border-t border-[#F3F4F6] pt-3 text-xs">
+                  <div className="border-t border-slate-100 pt-3 text-xs space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Total Budget:</span>
-                      <span className="font-bold text-[#111315]">
+                      <span className="text-slate-500">Total Budget:</span>
+                      <span className="font-semibold tabular-nums text-slate-900">
                         {p.budget_amount ? money(p.budget_amount, "NGN") : "Uncapped"}
                       </span>
                     </div>
                     {p.status && p.status.committed > 0 ? (
-                      <div className="mt-1 flex justify-between">
-                        <span className="text-[#6B7280]">Committed Spend:</span>
-                        <span className="font-semibold text-emerald-600">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Committed Spend:</span>
+                        <span className="font-semibold tabular-nums text-emerald-700">
                           {money(p.status.committed, "NGN")}
                         </span>
                       </div>

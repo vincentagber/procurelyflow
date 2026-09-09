@@ -23,7 +23,15 @@ export async function loadActor(userId: string): Promise<Actor> {
     .eq("id", userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!profile?.org_id) throw new Error("Your account is not linked to an organization yet.");
+  if (!profile) {
+    if (!process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+      throw new Error(
+        "Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing in .env. Server-side actions require the service_role key to access organization data. Please add SUPABASE_SERVICE_ROLE_KEY to your .env file.",
+      );
+    }
+    throw new Error("Your user profile was not found.");
+  }
+  if (!profile.org_id) throw new Error("Your account is not linked to an organization yet.");
 
   const { data: roles } = await supabaseAdmin
     .from("user_roles")

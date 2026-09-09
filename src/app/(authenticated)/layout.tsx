@@ -115,12 +115,13 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
   return (
     <div className="min-h-screen bg-[#F8F9FB] text-foreground antialiased md:flex">
       {/* Mobile Top Header */}
-      <header className="flex items-center justify-between border-b border-[#262A30] bg-[#111315] px-4 py-3 md:hidden">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black font-display font-bold text-lg tracking-wider">
-            P
-          </div>
-          <span className="font-sans text-base font-bold tracking-tight text-white">Procurely</span>
+      <header className="flex items-center justify-between border-b border-[#162070] bg-[#0B1457] px-4 py-3 md:hidden">
+        <div className="flex items-center">
+          <img
+            src="/logo-dark.png"
+            alt="Logo"
+            className="h-7 w-auto object-contain rounded-md bg-white p-1"
+          />
         </div>
         <div className="flex items-center gap-2">
           {watchesSuppliers ? <NotificationBell /> : null}

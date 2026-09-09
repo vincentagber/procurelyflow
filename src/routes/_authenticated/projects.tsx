@@ -165,56 +165,59 @@ function Projects() {
             e.preventDefault();
             create.mutate();
           }}
-          className="rounded-lg border border-border bg-card p-4 shadow-xs"
+          className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-4"
         >
-          <p className="data-label">Create a project / cost center</p>
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">Create Project / Cost Center</h2>
+            <p className="text-xs text-slate-500 font-normal">Track departmental allocations and spend limits</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3 pt-1">
             <div className="space-y-1.5">
-              <Label htmlFor="p-name">Project / cost center name</Label>
+              <Label htmlFor="p-name" className="text-xs font-medium text-slate-700">Project / Cost Center Name</Label>
               <Input
                 id="p-name"
                 required
                 minLength={2}
-                className="h-12"
+                className="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 placeholder="e.g. Lekki Phase 2 Towers"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="p-loc">Location (optional)</Label>
+              <Label htmlFor="p-loc" className="text-xs font-medium text-slate-700">Location (optional)</Label>
               <Input
                 id="p-loc"
-                className="h-12"
+                className="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 placeholder="e.g. Victoria Island, Lagos"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="p-budget">Budget limit (optional)</Label>
+              <Label htmlFor="p-budget" className="text-xs font-medium text-slate-700">Budget Limit (₦, optional)</Label>
               <Input
                 id="p-budget"
                 type="number"
                 min="0"
                 step="any"
-                className="h-12"
+                className="h-10 rounded-lg border-slate-200 bg-white text-xs font-semibold tabular-nums text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                 placeholder="e.g. 50000000"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
               />
             </div>
           </div>
-          <div className="mt-3 flex justify-end">
-            <Button className="h-12" disabled={create.isPending}>
-              {create.isPending ? "Creating…" : "Create project"}
+          <div className="flex justify-end pt-1">
+            <Button className="h-9 px-5 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-xs font-semibold text-white shadow-xs cursor-pointer disabled:opacity-50" disabled={create.isPending}>
+              {create.isPending ? "Creating…" : "Create Project"}
             </Button>
           </div>
         </motion.form>
       ) : null}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading projects / cost centers…</p>
+        <p className="text-xs text-slate-500 py-12 text-center animate-pulse">Loading projects / cost centers…</p>
       ) : !data?.length ? (
         <EmptyState
           title="No projects or cost centers yet"
@@ -238,65 +241,65 @@ function Projects() {
               <motion.article
                 key={project.id}
                 variants={itemFadeIn}
-                whileHover={{ y: -3 }}
+                whileHover={{ y: -2 }}
                 transition={{ duration: 0.18 }}
                 onClick={() => setSelectedProjectId(project.id)}
-                className="group cursor-pointer rounded-xl border border-border bg-card p-4 transition-shadow hover:border-accent hover:shadow-md space-y-3"
+                className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:border-slate-300 hover:shadow-2xs space-y-3.5"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h2 className="font-display text-xl uppercase tracking-wide text-foreground group-hover:text-accent transition-colors flex items-center gap-1.5">
+                    <h2 className="text-base font-semibold text-slate-900 group-hover:text-[#0001FF] tracking-tight transition-colors flex items-center gap-1.5">
                       {project.name}
-                      <ChevronRight className="h-4 w-4 opacity-40 group-hover:translate-x-0.5 transition-transform" />
+                      <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                     </h2>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" aria-hidden />
+                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 font-normal">
+                      <MapPin className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                       {project.location || "No location set"}
                     </p>
                   </div>
                   {isOverBudget ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[11px] font-medium text-rose-700">
                       <AlertCircle className="h-3 w-3" /> Over
                     </span>
                   ) : totalBudget > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                       <CheckCircle2 className="h-3 w-3" /> {percentUsed}% used
                     </span>
                   ) : null}
                 </div>
 
                 {totalBudget > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-muted-foreground">
-                      <span>Committed: {money(committed)}</span>
-                      <span>Budget: {money(totalBudget)}</span>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-500 tabular-nums">
+                      <span>Committed: <strong className="font-semibold text-slate-700">{money(committed)}</strong></span>
+                      <span>Budget: <strong className="font-semibold text-slate-700">{money(totalBudget)}</strong></span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${percentUsed}%` }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
                         className={cn(
-                          "h-2 rounded-full",
+                          "h-1.5 rounded-full",
                           isOverBudget
-                            ? "bg-destructive"
+                            ? "bg-rose-600"
                             : percentUsed > 80
                               ? "bg-amber-500"
-                              : "bg-signal",
+                              : "bg-[#0B1457]",
                         )}
                       />
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between pt-2 text-xs border-t border-border/50 text-muted-foreground">
+                <div className="flex items-center justify-between pt-2.5 text-xs border-t border-slate-100 text-slate-500">
                   <span className="flex items-center gap-1">
-                    <Wallet className="h-3.5 w-3.5" /> Remaining
+                    <Wallet className="h-3.5 w-3.5 text-slate-400" /> Remaining
                   </span>
                   <span
                     className={cn(
-                      "font-mono font-semibold",
-                      isOverBudget ? "text-destructive" : "text-foreground",
+                      "font-sans font-semibold tabular-nums",
+                      isOverBudget ? "text-rose-600" : "text-slate-900",
                     )}
                   >
                     {money(remaining)}
@@ -317,20 +320,20 @@ function Projects() {
           {/* Header Section */}
           <DialogHeader className="space-y-3">
             <div className="flex items-start gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EFF3FF] text-[#0001FF] shadow-2xs">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
                 <Building2 className="h-5 w-5" />
               </div>
-              <div className="space-y-1">
-                <DialogTitle className="text-lg font-bold tracking-tight text-[#0B1457]">
+              <div className="space-y-0.5">
+                <DialogTitle className="text-base font-semibold tracking-tight text-slate-900">
                   {selectedProject?.name}
                 </DialogTitle>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-[#4B556D]">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[#F1F4FA] px-2 py-0.5 font-medium">
-                    <MapPin className="h-3 w-3 text-[#0001FF]" />
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-slate-400" />
                     {selectedProject?.location || "No location specified"}
                   </span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[#F1F4FA] px-2 py-0.5 font-semibold text-[#0B1457]">
+                  <span className="text-slate-300">•</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
                     Budget: {selectedProject?.budget_amount ? money(selectedProject.budget_amount) : "No Limit Set"}
                   </span>
                 </div>
@@ -339,11 +342,11 @@ function Projects() {
 
             {/* Budget Utilization Progress Bar */}
             {selectedProject?.budget_amount && selectedProject.budget_amount > 0 ? (
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 space-y-1.5">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-[#4B556D]">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-1.5">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-500">
                     Utilization:{" "}
-                    <span className="text-[#0B1457]">
+                    <span className="font-semibold text-slate-900 tabular-nums">
                       {Math.min(
                         Math.round(
                           ((selectedProject?.status?.committed ?? 0) /
@@ -356,18 +359,19 @@ function Projects() {
                     </span>
                   </span>
                   <span
-                    className={
+                    className={cn(
+                      "font-semibold tabular-nums",
                       (selectedProject?.status?.remaining ?? 0) < 0
-                        ? "text-rose-600 font-bold"
-                        : "text-emerald-700 font-bold"
-                    }
+                        ? "text-rose-600"
+                        : "text-emerald-700",
+                    )}
                   >
                     {(selectedProject?.status?.remaining ?? 0) < 0
                       ? "Over Budget"
                       : `${money(selectedProject?.status?.remaining ?? 0)} Available`}
                   </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[#E2E8F0]">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-300",
@@ -397,74 +401,74 @@ function Projects() {
           </DialogHeader>
 
           {/* 3 Executive Financial Metric Cards */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-1">
             {/* Card 1: Committed Spend */}
-            <div className="rounded-xl border border-[#E2E8F0] border-t-2 border-t-[#0001FF] bg-[#FFFFFF] p-3.5 shadow-2xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#4B556D]">
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+              <span className="text-[11px] font-medium text-slate-500">
                 Committed Spend
               </span>
-              <p className="mt-1 text-base font-bold tabular-nums text-[#0B1457]">
+              <p className="mt-1 text-base font-semibold tabular-nums text-slate-900">
                 {money(selectedProject?.status?.committed ?? 0)}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Approved requisitions</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">Approved requisitions</p>
             </div>
 
             {/* Card 2: Issued Purchase Orders */}
-            <div className="rounded-xl border border-[#E2E8F0] border-t-2 border-t-[#0B1457] bg-[#FFFFFF] p-3.5 shadow-2xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#4B556D]">
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+              <span className="text-[11px] font-medium text-slate-500">
                 Issued POs
               </span>
-              <p className="mt-1 text-base font-bold tabular-nums text-[#0B1457]">
+              <p className="mt-1 text-base font-semibold tabular-nums text-slate-900">
                 {money(selectedProject?.status?.issued ?? 0)}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Contracted supplier POs</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">Contracted supplier POs</p>
             </div>
 
             {/* Card 3: Remaining Budget */}
             <div
               className={cn(
-                "rounded-xl border p-3.5 shadow-2xs border-t-2",
+                "rounded-xl border p-3.5 shadow-2xs",
                 (selectedProject?.status?.remaining ?? 0) < 0
-                  ? "border-rose-200 border-t-rose-500 bg-rose-50/50"
-                  : "border-emerald-200 border-t-emerald-600 bg-emerald-50/40",
+                  ? "border-rose-200 bg-rose-50/50"
+                  : "border-slate-200 bg-white",
               )}
             >
               <span
                 className={cn(
-                  "text-[11px] font-bold uppercase tracking-wider",
+                  "text-[11px] font-medium",
                   (selectedProject?.status?.remaining ?? 0) < 0
                     ? "text-rose-700"
-                    : "text-emerald-800",
+                    : "text-slate-500",
                 )}
               >
                 Remaining Budget
               </span>
               <p
                 className={cn(
-                  "mt-1 text-base font-bold tabular-nums",
+                  "mt-1 text-base font-semibold tabular-nums",
                   (selectedProject?.status?.remaining ?? 0) < 0
                     ? "text-rose-700"
-                    : "text-emerald-700",
+                    : "text-slate-900",
                 )}
               >
                 {money(selectedProject?.status?.remaining ?? 0)}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#4B556D]/80">Available spend headroom</p>
+              <p className="mt-0.5 text-[10px] text-slate-400">Available spend headroom</p>
             </div>
           </div>
 
           {/* Activity Section with Tabs */}
-          <div className="mt-4 space-y-3">
+          <div className="mt-3 space-y-3">
             {/* Tab Pill Switcher */}
-            <div className="flex rounded-lg border border-[#E2E8F0] bg-[#F1F4FA] p-1">
+            <div className="flex rounded-lg border border-slate-200 bg-slate-100/80 p-1">
               <button
                 type="button"
                 onClick={() => setModalTab("requisitions")}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-bold transition-all",
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all cursor-pointer",
                   modalTab === "requisitions"
-                    ? "bg-white text-[#0B1457] shadow-xs"
-                    : "text-[#4B556D] hover:text-[#0B1457]",
+                    ? "bg-white text-slate-900 font-semibold shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900",
                 )}
               >
                 <FileText className="h-3.5 w-3.5" />

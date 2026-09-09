@@ -307,13 +307,13 @@ function RfqDetail() {
       )}
 
       {data.quotes.length ? (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-display text-xl uppercase tracking-wide">Price per item</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <h2 className="text-base font-semibold text-slate-900 tracking-tight">Price Per Item Comparison</h2>
+          <p className="mt-1 text-xs text-slate-500">
             Same requested item, every supplier's unit price side by side. The cheapest unit price
             on each row is marked.
           </p>
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
             <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-surface">
                 <tr className="text-left">
@@ -387,9 +387,9 @@ function RfqDetail() {
       ) : null}
 
       {selectedQuote && !awarded ? (
-        <section className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-display text-xl uppercase tracking-wide">Issue purchase order</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <h2 className="text-base font-semibold text-slate-900 tracking-tight">Issue Purchase Order</h2>
+          <p className="mt-1 text-xs text-slate-500">
             You make the final call — nothing is auto-selected. The PO records the currency
             settlement happens in.
           </p>
@@ -509,14 +509,14 @@ function InvitedSuppliers({ rfqId }: { rfqId: string }) {
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="font-display text-xl uppercase tracking-wide">Invited suppliers</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+      <h2 className="text-base font-semibold text-slate-900 tracking-tight">Invited Suppliers</h2>
+      <p className="mt-1 text-xs text-slate-500">
         Every supplier's private link stays available here for the life of this RFQ. Resending
         re-sends the same link, so a quote already in progress is never lost.
       </p>
 
-      <ul className="mt-3 divide-y divide-border">
+      <ul className="mt-3 divide-y divide-slate-100">
         {(data?.invitations ?? []).map((invite) => {
           const key =
             invite.status === "link_sent" && invite.expired ? "no_response" : invite.status;
@@ -524,35 +524,35 @@ function InvitedSuppliers({ rfqId }: { rfqId: string }) {
           return (
             <li key={invite.id} className="flex flex-wrap items-center gap-2 py-3">
               <div className="min-w-40 flex-1">
-                <p className="font-medium">{invite.supplierName}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="font-semibold text-xs text-slate-900">{invite.supplierName}</p>
+                <p className="text-xs text-slate-500">
                   {invite.supplierEmail ?? "no email on file"} · link expires{" "}
-                  {shortDate(invite.expiresAt)}
+                  <strong className="text-slate-700 font-medium">{shortDate(invite.expiresAt)}</strong>
                   {invite.openedAt ? ` · opened ${dateTime(invite.openedAt)}` : ""}
                 </p>
               </div>
               <span
-                className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${badge.className}`}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase ${badge.className}`}
               >
                 {badge.label}
               </span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="h-10"
+                  className="h-9 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-2xs"
                   onClick={() => copyLink(invite.token)}
                   aria-label={`Copy quote link for ${invite.supplierName}`}
                 >
-                  <Copy className="mr-1.5 h-4 w-4" aria-hidden /> Copy link
+                  <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Copy link
                 </Button>
                 <Button
                   variant="ghost"
-                  className="h-10"
+                  className="h-9 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   disabled={busy === invite.id || !invite.supplierEmail}
                   onClick={() => resend(invite.id)}
                   aria-label={`Resend quote link to ${invite.supplierName}`}
                 >
-                  <Send className="mr-1.5 h-4 w-4" aria-hidden />
+                  <Send className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                   {busy === invite.id ? "Sending…" : "Resend"}
                 </Button>
               </div>

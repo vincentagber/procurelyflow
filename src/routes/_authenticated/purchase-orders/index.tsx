@@ -75,29 +75,33 @@ function PurchaseOrders() {
               <motion.article
                 key={po.id}
                 variants={itemFadeIn}
-                whileHover={{ y: -2 }}
+                whileHover={{ y: -1 }}
                 transition={{ duration: 0.18 }}
-                className="rounded-xl border border-border bg-card shadow-xs hover:border-border/80 transition-shadow overflow-hidden"
+                className="rounded-2xl border border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all overflow-hidden"
               >
                 <button
                   type="button"
                   className="flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left cursor-pointer"
                   onClick={() => setOpenId(isOpen ? null : po.id)}
                 >
-                  <div>
-                    <p className="font-mono text-sm font-bold text-accent">{po.po_number}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {(po.suppliers as { name: string } | null)?.name ?? "Supplier"} · issued{" "}
-                      {dateTime(po.issued_at)}
+                  <div className="space-y-1">
+                    <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-[#0B1457]">
+                      {po.po_number}
+                    </span>
+                    <p className="text-xs text-slate-500 font-normal">
+                      <strong className="font-semibold text-slate-800">
+                        {(po.suppliers as { name: string } | null)?.name ?? "Supplier"}
+                      </strong>{" "}
+                      · Issued {dateTime(po.issued_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-display text-2xl font-bold tracking-tight">
+                      <p className="font-sans text-xl font-semibold tabular-nums text-slate-900 tracking-tight">
                         {money(po.total_amount, po.settlement_currency)}
                       </p>
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                        settles in {po.settlement_currency}
+                      <p className="text-[11px] text-slate-400 font-normal">
+                        Settles in {po.settlement_currency}
                       </p>
                     </div>
                     <StatusPill status={po.status} />
@@ -111,30 +115,30 @@ function PurchaseOrders() {
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="border-t border-border px-5 py-4 bg-surface/40 overflow-hidden"
+                      className="border-t border-slate-200 px-5 py-4 bg-slate-50/60 overflow-hidden"
                     >
                       {po.override_reason ? (
-                        <div className="mb-3 rounded-lg border border-warning/50 bg-warning/10 p-3 text-sm">
-                          <p className="font-semibold text-warning-foreground">Recommendation overridden</p>
-                          <p className="text-muted-foreground mt-0.5">{po.override_reason}</p>
+                        <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs">
+                          <p className="font-semibold text-amber-900">Recommendation Overridden</p>
+                          <p className="text-amber-700 mt-0.5">{po.override_reason}</p>
                         </div>
                       ) : (
-                        <p className="mb-3 text-xs text-muted-foreground">
+                        <p className="mb-3 text-xs text-slate-500">
                           Awarded to lowest compliant quote per selection recommendation.
                         </p>
                       )}
 
-                      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card">
+                      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <table className="w-full text-xs">
-                          <thead className="bg-surface">
-                            <tr className="text-left font-semibold text-muted-foreground">
-                              <th className="px-3 py-2">Item</th>
-                              <th className="px-3 py-2 text-right">Qty</th>
-                              <th className="px-3 py-2 text-right">Unit price</th>
-                              <th className="px-3 py-2 text-right">Line total</th>
+                          <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
+                            <tr className="text-left">
+                              <th className="px-4 py-2.5">Item</th>
+                              <th className="px-4 py-2.5 text-right">Qty</th>
+                              <th className="px-4 py-2.5 text-right">Unit Price</th>
+                              <th className="px-4 py-2.5 text-right">Line Total</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-border">
+                          <tbody className="divide-y divide-slate-100">
                             {(
                               (po.po_line_items as
                                 | Array<{
@@ -146,13 +150,13 @@ function PurchaseOrders() {
                                   }>
                                 | undefined) ?? []
                             ).map((line) => (
-                              <tr key={line.id} className="hover:bg-surface/50">
-                                <td className="px-3 py-2.5 font-medium">{line.description}</td>
-                                <td className="px-3 py-2.5 text-right font-mono tabular-nums">{line.quantity}</td>
-                                <td className="px-3 py-2.5 text-right font-mono tabular-nums">
+                              <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-3 font-medium text-slate-800">{line.description}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-slate-600">{line.quantity}</td>
+                                <td className="px-4 py-3 text-right tabular-nums text-slate-600">
                                   {money(line.unit_price, line.currency as "NGN" | "USD")}
                                 </td>
-                                <td className="px-3 py-2.5 text-right font-mono font-bold tabular-nums">
+                                <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
                                   {money(
                                     line.quantity * line.unit_price,
                                     line.currency as "NGN" | "USD",
@@ -165,20 +169,20 @@ function PurchaseOrders() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
-                        <Button asChild size="sm" className="text-xs">
+                        <Button asChild className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs">
                           <Link to="/purchase-orders/$id" params={{ id: po.id }}>
-                            Open purchase order
+                            Open Purchase Order
                           </Link>
                         </Button>
                         {po.requisitions ? (
-                          <Button asChild size="sm" variant="outline" className="text-xs">
+                          <Button asChild variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50">
                             <Link
                               to="/requisitions/$id"
                               params={{
                                 id: (po.requisitions as { id: string }).id,
                               }}
                             >
-                              View request {(po.requisitions as { reference: string }).reference} →
+                              View Request {(po.requisitions as { reference: string }).reference} →
                             </Link>
                           </Button>
                         ) : null}
