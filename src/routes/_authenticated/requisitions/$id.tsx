@@ -11,6 +11,9 @@ import {
   Smartphone,
   Send,
   Sparkles,
+  Check,
+  Clock,
+  X,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -287,8 +290,19 @@ function RequisitionDetail() {
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-slate-900">
-                          {step.step_order}. {ROLE_LABELS[step.required_role] ?? step.required_role}
+                        <span className="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
+                          {step.status === "approved" ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                          ) : step.status === "pending" ? (
+                            <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                          ) : step.status === "rejected" ? (
+                            <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                          )}
+                          <span>
+                            Stage {step.step_order}: {ROLE_LABELS[step.required_role] ?? step.required_role}
+                          </span>
                         </span>
                         <StatusPill status={step.status} />
                       </div>
@@ -302,26 +316,26 @@ function RequisitionDetail() {
 
                       {/* Real-time Multi-channel Clearance Actions */}
                       {isPending && (
-                        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-1.5">
+                        <div className="pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-2">
                           {canDecide && (
                             <>
                               <Button
                                 size="sm"
-                                className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold gap-1 cursor-pointer"
+                                className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
                                 disabled={decide.isPending}
                                 onClick={() => decide.mutate({ stepId: step.id, decision: "approved" })}
                               >
-                                <CheckCircle2 className="h-3 w-3" />
+                                <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                                 <span>Approve</span>
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 px-2.5 border-rose-200 text-rose-700 hover:bg-rose-50 text-[11px] font-semibold gap-1 cursor-pointer"
+                                className="h-8 px-3 border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold gap-1.5 cursor-pointer"
                                 disabled={decide.isPending}
                                 onClick={() => setRejectModalStepId(step.id)}
                               >
-                                <XCircle className="h-3 w-3" />
+                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
                                 <span>Reject</span>
                               </Button>
                             </>
@@ -329,10 +343,10 @@ function RequisitionDetail() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 px-2.5 border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-semibold gap-1 cursor-pointer"
+                            className="h-8 px-3 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
                             onClick={() => handleOpenWhatsAppModal(step.id)}
                           >
-                            <MessageSquare className="h-3 w-3 text-emerald-600" />
+                            <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
                             <span>WhatsApp 1-Click</span>
                           </Button>
                         </div>

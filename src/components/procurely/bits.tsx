@@ -58,16 +58,25 @@ const STATUS_TONE: Record<string, keyof typeof TONES> = {
   acknowledged: "good",
 };
 
+import { Check, Clock, X } from "lucide-react";
+
 export function StatusPill({ status, label }: { status: string; label?: string | undefined }) {
   const tone = STATUS_TONE[status] ?? "neutral";
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
         TONES[tone],
       )}
     >
-      {label ?? status.replace(/_/g, " ")}
+      {tone === "good" ? (
+        <Check className="h-3 w-3 shrink-0 stroke-[2.5]" />
+      ) : tone === "pending" ? (
+        <Clock className="h-3 w-3 shrink-0 stroke-[2.5]" />
+      ) : tone === "bad" ? (
+        <X className="h-3 w-3 shrink-0 stroke-[2.5]" />
+      ) : null}
+      <span>{label ?? status.replace(/_/g, " ")}</span>
     </span>
   );
 }
