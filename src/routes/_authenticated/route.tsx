@@ -234,20 +234,15 @@ function AppLayout() {
           {/* Brand Header */}
           <div className="px-1 pb-4">
             <div className="flex items-center justify-between">
-              <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0">
+              <Link to="/dashboard" className="flex items-center">
                 <img
                   src="/logo-dark.png"
                   alt="Procurely"
                   className={cn(
-                    "w-auto object-contain rounded-lg bg-white p-1 shadow-sm transition-all",
-                    collapsed ? "h-7" : "h-7",
+                    "w-auto object-contain rounded-lg bg-white p-1.5 shadow-sm transition-all",
+                    collapsed ? "h-7" : "h-8",
                   )}
                 />
-                {!collapsed && (
-                  <span className="font-semibold text-sm tracking-tight text-white truncate">
-                    Procurely
-                  </span>
-                )}
               </Link>
               <div className="hidden md:flex items-center gap-1">
                 {!collapsed && watchesSuppliers ? <NotificationBell /> : null}
