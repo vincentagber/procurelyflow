@@ -17,7 +17,7 @@ export interface TenantSubscriptionBill {
   invoiceId: string;
   orgId: string;
   orgName: string;
-  planTier: "PILOT" | "STANDARD" | "ENTERPRISE";
+  planTier: "PILOT" | "STANDARD" | "STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE";
   billingPeriod: { start: string; end: string };
   amountNgn: number;
   paymentMethod: SubscriptionPaymentMethod;
@@ -39,7 +39,7 @@ export interface TenantSubscriptionBill {
 export function generateSubscriptionBill(params: {
   orgId: string;
   orgName: string;
-  planTier: "PILOT" | "STANDARD" | "ENTERPRISE";
+  planTier: "PILOT" | "STANDARD" | "STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE";
   amountNgn: number;
   preferredMethod?: SubscriptionPaymentMethod;
   gatewayAccount?: {

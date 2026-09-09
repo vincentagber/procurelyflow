@@ -69,6 +69,7 @@ function NewRequisition() {
 
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState<string>("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
   const [neededBy, setNeededBy] = useState("");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
   const [unbudgeted, setUnbudgeted] = useState(false);
@@ -86,7 +87,7 @@ function NewRequisition() {
     queryFn: async () => {
       const { data } = await supabase
         .from("projects")
-        .select("id, name, budget_amount")
+        .select("id, name, budget_amount, location")
         .order("name");
       return data ?? [];
     },
@@ -134,6 +135,7 @@ function NewRequisition() {
           project_id: projectId || null,
           title,
           notes: notes || null,
+          delivery_location: deliveryLocation.trim() || null,
           needed_by: neededBy || null,
           currency,
           is_unbudgeted: unbudgeted,
@@ -258,6 +260,18 @@ function NewRequisition() {
                   className="h-10 text-xs rounded-lg border-slate-200 bg-white shadow-2xs"
                   value={neededBy}
                   onChange={(e) => setNeededBy(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="deliveryLocation" className="text-xs font-medium text-slate-700">
+                  Site Delivery Location / Gate Drop-off (FR-1.1)
+                </Label>
+                <Input
+                  id="deliveryLocation"
+                  className="h-10 text-xs rounded-lg border-slate-200 bg-white shadow-2xs"
+                  placeholder="e.g. Lekki Phase 1 Site Gate 2, Epe Express Yard, or Main Warehouse"
+                  value={deliveryLocation}
+                  onChange={(e) => setDeliveryLocation(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">

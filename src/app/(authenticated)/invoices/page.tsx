@@ -30,6 +30,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
 import { createInvoiceFn, recordPaymentFn } from "@/lib/procurement.functions";
+import { validateNrsVatInputCreditEligibility, generateUblPeppolJson } from "@/lib/nrsEInvoice";
 import { money, shortDate, dateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -541,6 +542,17 @@ export default function InvoicesPage() {
                             Unlinked
                           </span>
                         )}
+                        <div className="mt-1">
+                          {inv.irn && inv.irn.length >= 8 && inv.seller_tin && inv.seller_tin !== "UNREGISTERED" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200">
+                              <ShieldCheck className="h-2.5 w-2.5" /> VAT Credit Eligible
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-semibold text-amber-800 border border-amber-200">
+                              <AlertCircle className="h-2.5 w-2.5 text-amber-600" /> VAT Ineligible (No IRN)
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3 text-right whitespace-nowrap font-mono font-bold text-[#0B1457] tabular-nums">
@@ -1014,6 +1026,87 @@ export default function InvoicesPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Statutory NRS e-Invoicing Compliance Panel (FR-7.4 & FR-7.5) */}
+              {(() => {
+                const assessment = validateNrsVatInputCreditEligibility({
+                  irn: inspectingInvoice.irn,
+                  vatAmount: inspectingInvoice.vat_amount,
+                  sellerTin: inspectingInvoice.seller_tin,
+                });
+
+                return (
+                  <div className={`rounded-xl border p-3.5 space-y-2 text-xs ${
+                    assessment.isEligibleForVatInputCredit
+                      ? "border-emerald-200 bg-emerald-50/50"
+                      : "border-amber-200 bg-amber-50/50"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        {assessment.isEligibleForVatInputCredit ? (
+                          <>
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                            <span className="text-emerald-900">NRS MBS Clearance Stamp: VALID</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <span className="text-amber-900">NRS MBS Clearance: PENDING / UNVALIDATED</span>
+                          </>
+                        )}
+                      </div>
+                      <span className="font-mono text-[11px] font-semibold text-slate-700">
+                        IRN: {inspectingInvoice.irn || "None"}
+                      </span>
+                    </div>
+
+                    <p className={`text-[11px] leading-relaxed ${
+                      assessment.isEligibleForVatInputCredit ? "text-emerald-800" : "text-amber-800"
+                    }`}>
+                      {assessment.warningMessage ||
+                        "Invoice verified through PEPPOL BIS 3.0 UBL clearance. Statutory VAT input-tax credit is eligible for reclaim on corporate filings."}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px] text-slate-600">
+                      <span>PEPPOL BIS 3.0 Customization ID: urn:peppol:pint:billing-1@nrs-mbs-1</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px] font-semibold text-[#0B1457] hover:bg-slate-200/60"
+                        onClick={() => {
+                          const json = generateUblPeppolJson({
+                            invoiceNumber: inspectingInvoice.invoice_number,
+                            issueDate: inspectingInvoice.issue_date || new Date().toISOString().split("T")[0]!,
+                            dueDate: inspectingInvoice.due_date,
+                            sellerLegalName: inspectingInvoice.seller_legal_name,
+                            ...(inspectingInvoice.seller_tin ? { sellerTin: inspectingInvoice.seller_tin } : {}),
+                            buyerLegalName: inspectingInvoice.buyer_legal_name || "Buyer Organisation",
+                            ...(inspectingInvoice.buyer_tin ? { buyerTin: inspectingInvoice.buyer_tin } : {}),
+                            currency: inspectingInvoice.currency,
+                            subtotal: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
+                            vatAmount: inspectingInvoice.vat_amount,
+                            totalAmount: inspectingInvoice.total_amount,
+                            items: [
+                              {
+                                description: `Materials/Services for ${inspectingInvoice.invoice_number}`,
+                                quantity: 1,
+                                unitPrice: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
+                                vatRate: 7.5,
+                                lineTotal: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
+                              },
+                            ],
+                          });
+                          navigator.clipboard?.writeText(json);
+                          toast.success("PEPPOL BIS 3.0 UBL JSON copied to clipboard.");
+                        }}
+                      >
+                        Export UBL JSON
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

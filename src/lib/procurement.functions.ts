@@ -417,3 +417,102 @@ export const logNdpaConsentFn = createServerFn({ method: "POST" })
     const { logNdpaConsent } = await import("@/lib/procurement.server");
     return logNdpaConsent(context.userId, data);
   });
+
+/* ---------- FR-2.6 Approval Delegation Functions ---------- */
+
+export const createApprovalDelegationFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        substituteId: z.string().uuid(),
+        startDate: z.string().min(10),
+        endDate: z.string().min(10),
+        reason: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { createApprovalDelegation } = await import("@/lib/procurement.server");
+    return createApprovalDelegation(context.userId, data);
+  });
+
+export const getActiveDelegationsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getActiveDelegations } = await import("@/lib/procurement.server");
+    return getActiveDelegations(context.userId);
+  });
+
+export const revokeApprovalDelegationFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ delegationId: z.string().uuid() }).parse(raw))
+  .handler(async ({ data, context }) => {
+    const { revokeApprovalDelegation } = await import("@/lib/procurement.server");
+    return revokeApprovalDelegation(context.userId, data.delegationId);
+  });
+
+/* ---------- FR-5.4 PO Change Order Functions ---------- */
+
+export const createPoChangeOrderFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        purchaseOrderId: z.string().uuid(),
+        reason: z.string().min(3),
+        newTotalAmount: z.number().positive(),
+        modifiedItems: z.array(
+          z.object({
+            itemId: z.string(),
+            description: z.string(),
+            oldQuantity: z.number(),
+            newQuantity: z.number(),
+            oldUnitPrice: z.number(),
+            newUnitPrice: z.number(),
+          }),
+        ),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { createPoChangeOrder } = await import("@/lib/procurement.server");
+    return createPoChangeOrder(context.userId, data);
+  });
+
+export const getPoChangeOrdersFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ purchaseOrderId: z.string().uuid() }).parse(raw))
+  .handler(async ({ data, context }) => {
+    const { getPoChangeOrders } = await import("@/lib/procurement.server");
+    return getPoChangeOrders(context.userId, data.purchaseOrderId);
+  });
+
+/* ---------- NFR-LOC.2 B2B Subscription Billing Functions ---------- */
+
+export const generateSubscriptionBillFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        planTier: z.enum(["STARTER", "GROWTH", "BUSINESS", "ENTERPRISE"]),
+        billingCycle: z.enum(["monthly", "annual"]),
+        paymentMethod: z.enum(["VIRTUAL_ACCOUNT", "BANK_TRANSFER", "INVOICE_BILLING"]).optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { generateSubscriptionBillServer } = await import("@/lib/procurement.server");
+    const { paymentMethod, ...rest } = data;
+    return generateSubscriptionBillServer(
+      context.userId,
+      paymentMethod !== undefined ? { ...rest, paymentMethod } : rest,
+    );
+  });
+
+export const getSubscriptionStatementsFn = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getSubscriptionStatements } = await import("@/lib/procurement.server");
+    return getSubscriptionStatements(context.userId);
+  });

@@ -55,6 +55,53 @@ export type Database = {
           },
         ];
       };
+      approval_delegations: {
+        Row: {
+          created_at: string;
+          delegator_id: string;
+          end_date: string;
+          id: string;
+          org_id: string;
+          reason: string | null;
+          start_date: string;
+          status: string;
+          substitute_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          delegator_id: string;
+          end_date: string;
+          id?: string;
+          org_id: string;
+          reason?: string | null;
+          start_date: string;
+          status?: string;
+          substitute_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          delegator_id?: string;
+          end_date?: string;
+          id?: string;
+          org_id?: string;
+          reason?: string | null;
+          start_date?: string;
+          status?: string;
+          substitute_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "approval_delegations_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       approval_rules: {
         Row: {
           approval_mode: Database["public"]["Enums"]["approval_mode"];
@@ -633,6 +680,7 @@ export type Database = {
         Row: {
           acknowledged_at: string | null;
           acknowledged_by_name: string | null;
+          baseline_po_number: string | null;
           delivery_address: string | null;
           fx_rate_note: string | null;
           id: string;
@@ -644,6 +692,7 @@ export type Database = {
           quote_id: string | null;
           recommended_quote_id: string | null;
           requisition_id: string | null;
+          revision_count: number;
           rfq_id: string | null;
           settlement_currency: Database["public"]["Enums"]["currency_code"];
           status: Database["public"]["Enums"]["po_status"];
@@ -653,6 +702,7 @@ export type Database = {
         Insert: {
           acknowledged_at?: string | null;
           acknowledged_by_name?: string | null;
+          baseline_po_number?: string | null;
           delivery_address?: string | null;
           fx_rate_note?: string | null;
           id?: string;
@@ -664,6 +714,7 @@ export type Database = {
           quote_id?: string | null;
           recommended_quote_id?: string | null;
           requisition_id?: string | null;
+          revision_count?: number;
           rfq_id?: string | null;
           settlement_currency?: Database["public"]["Enums"]["currency_code"];
           status?: Database["public"]["Enums"]["po_status"];
@@ -673,6 +724,7 @@ export type Database = {
         Update: {
           acknowledged_at?: string | null;
           acknowledged_by_name?: string | null;
+          baseline_po_number?: string | null;
           delivery_address?: string | null;
           fx_rate_note?: string | null;
           id?: string;
@@ -684,6 +736,7 @@ export type Database = {
           quote_id?: string | null;
           recommended_quote_id?: string | null;
           requisition_id?: string | null;
+          revision_count?: number;
           rfq_id?: string | null;
           settlement_currency?: Database["public"]["Enums"]["currency_code"];
           status?: Database["public"]["Enums"]["po_status"];
@@ -712,18 +765,70 @@ export type Database = {
             referencedRelation: "requisitions";
             referencedColumns: ["id"];
           },
+        ];
+      };
+      po_change_orders: {
+        Row: {
+          created_at: string;
+          currency: Database["public"]["Enums"]["currency_code"];
+          delta_amount: number;
+          id: string;
+          modified_items: Json;
+          new_total_amount: number;
+          org_id: string;
+          previous_total_amount: number;
+          purchase_order_id: string;
+          reason: string;
+          requested_by: string | null;
+          revised_po_number: string;
+          revision_number: number;
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          delta_amount: number;
+          id?: string;
+          modified_items?: Json;
+          new_total_amount: number;
+          org_id: string;
+          previous_total_amount: number;
+          purchase_order_id: string;
+          reason: string;
+          requested_by?: string | null;
+          revised_po_number: string;
+          revision_number?: number;
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          currency?: Database["public"]["Enums"]["currency_code"];
+          delta_amount?: number;
+          id?: string;
+          modified_items?: Json;
+          new_total_amount?: number;
+          org_id?: string;
+          previous_total_amount?: number;
+          purchase_order_id?: string;
+          reason?: string;
+          requested_by?: string | null;
+          revised_po_number?: string;
+          revision_number?: number;
+          status?: string;
+        };
+        Relationships: [
           {
-            foreignKeyName: "purchase_orders_rfq_id_fkey";
-            columns: ["rfq_id"];
+            foreignKeyName: "po_change_orders_org_id_fkey";
+            columns: ["org_id"];
             isOneToOne: false;
-            referencedRelation: "rfqs";
+            referencedRelation: "organizations";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "purchase_orders_supplier_id_fkey";
-            columns: ["supplier_id"];
+            foreignKeyName: "po_change_orders_purchase_order_id_fkey";
+            columns: ["purchase_order_id"];
             isOneToOne: false;
-            referencedRelation: "suppliers";
+            referencedRelation: "purchase_orders";
             referencedColumns: ["id"];
           },
         ];
@@ -906,6 +1011,7 @@ export type Database = {
         Row: {
           created_at: string;
           currency: Database["public"]["Enums"]["currency_code"];
+          delivery_location: string | null;
           id: string;
           is_unbudgeted: boolean;
           needed_by: string | null;
@@ -923,6 +1029,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           currency?: Database["public"]["Enums"]["currency_code"];
+          delivery_location?: string | null;
           id?: string;
           is_unbudgeted?: boolean;
           needed_by?: string | null;
@@ -940,6 +1047,7 @@ export type Database = {
         Update: {
           created_at?: string;
           currency?: Database["public"]["Enums"]["currency_code"];
+          delivery_location?: string | null;
           id?: string;
           is_unbudgeted?: boolean;
           needed_by?: string | null;
@@ -1602,6 +1710,68 @@ export type Database = {
           created_at?: string;
         };
         Relationships: [];
+      };
+      tenant_subscriptions: {
+        Row: {
+          amount_ngn: number;
+          billing_cycle: string;
+          cleared_at: string | null;
+          created_at: string;
+          id: string;
+          invoice_reference: string;
+          org_id: string;
+          payment_method: string;
+          period_end: string;
+          period_start: string;
+          plan_tier: string;
+          status: string;
+          virtual_account_bank: string | null;
+          virtual_account_name: string | null;
+          virtual_account_number: string | null;
+        };
+        Insert: {
+          amount_ngn: number;
+          billing_cycle?: string;
+          cleared_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invoice_reference: string;
+          org_id: string;
+          payment_method?: string;
+          period_end: string;
+          period_start: string;
+          plan_tier?: string;
+          status?: string;
+          virtual_account_bank?: string | null;
+          virtual_account_name?: string | null;
+          virtual_account_number?: string | null;
+        };
+        Update: {
+          amount_ngn?: number;
+          billing_cycle?: string;
+          cleared_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invoice_reference?: string;
+          org_id?: string;
+          payment_method?: string;
+          period_end?: string;
+          period_start?: string;
+          plan_tier?: string;
+          status?: string;
+          virtual_account_bank?: string | null;
+          virtual_account_name?: string | null;
+          virtual_account_number?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_subscriptions_org_id_fkey";
+            columns: ["org_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

@@ -145,6 +145,16 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
                 </div>
               </div>
             </div>
+            {(req as { delivery_location?: string | null }).delivery_location ? (
+              <div className="mt-4 border-t border-[#F3F4F6] pt-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">
+                  Site Delivery Location / Drop-off Point (FR-1.1)
+                </span>
+                <p className="mt-1 text-xs font-semibold text-[#111315]">
+                  {(req as { delivery_location?: string | null }).delivery_location}
+                </p>
+              </div>
+            ) : null}
             {req.notes ? (
               <div className="mt-4 border-t border-[#F3F4F6] pt-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B7280]">

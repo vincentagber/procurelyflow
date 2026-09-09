@@ -132,6 +132,11 @@ function RequisitionDetail() {
           Project / cost center: <strong className="font-semibold text-slate-700">{(req.projects as { name: string } | null)?.name ?? "—"}</strong>
         </span>
         <span className="text-xs text-slate-500">Needed by <strong className="font-semibold text-slate-700">{shortDate(req.needed_by)}</strong></span>
+        {(req as { delivery_location?: string | null }).delivery_location ? (
+          <span className="text-xs text-slate-500">
+            Site Location: <strong className="font-semibold text-slate-700">{(req as { delivery_location?: string | null }).delivery_location}</strong>
+          </span>
+        ) : null}
         <span className="ml-auto font-sans text-2xl font-bold tabular-nums text-slate-900">
           {money(req.total_amount, req.currency)}
         </span>

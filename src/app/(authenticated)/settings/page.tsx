@@ -37,8 +37,18 @@ import {
   Camera,
   User,
   Loader2,
+  CreditCard,
+  Receipt,
+  Copy,
 } from "lucide-react";
-import { logNdpaConsentFn } from "@/lib/procurement.functions";
+import {
+  logNdpaConsentFn,
+  createApprovalDelegationFn,
+  getActiveDelegationsFn,
+  revokeApprovalDelegationFn,
+  generateSubscriptionBillFn,
+  getSubscriptionStatementsFn,
+} from "@/lib/procurement.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, useUpdateProfile, can, type AppRole } from "@/lib/useMe";
@@ -48,7 +58,7 @@ import {
   inviteTeammateFn,
   cancelInvitationFn,
 } from "@/lib/procurement.functions";
-import { money, dateTime, ROLE_LABELS } from "@/lib/format";
+import { money, dateTime, shortDate, ROLE_LABELS } from "@/lib/format";
 import { EmptyState } from "@/components/procurely/bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -217,6 +227,20 @@ export default function SettingsPage() {
               <span>Team &amp; Permissions</span>
             </TabsTrigger>
             <TabsTrigger
+              value="delegations"
+              className="flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:font-semibold transition-all shadow-none data-[state=active]:shadow-2xs cursor-pointer"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-slate-500" />
+              <span>Delegations (FR-2.6)</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="billing"
+              className="flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:font-semibold transition-all shadow-none data-[state=active]:shadow-2xs cursor-pointer"
+            >
+              <CreditCard className="h-3.5 w-3.5 text-slate-500" />
+              <span>Subscription &amp; Billing</span>
+            </TabsTrigger>
+            <TabsTrigger
               value="audit"
               className="flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs font-medium text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:font-semibold transition-all shadow-none data-[state=active]:shadow-2xs cursor-pointer"
             >
@@ -252,6 +276,16 @@ export default function SettingsPage() {
         {/* Tab 2: Team & Permissions */}
         <TabsContent value="team" className="mt-0">
           <TeamSection isAdmin={isAdmin} />
+        </TabsContent>
+
+        {/* Tab 3: Approval Authority Delegation (FR-2.6) */}
+        <TabsContent value="delegations" className="mt-0">
+          <DelegationsSection isAdmin={isAdmin} />
+        </TabsContent>
+
+        {/* Tab 4: Subscription & Virtual Account Billing (NFR-LOC.2) */}
+        <TabsContent value="billing" className="mt-0">
+          <BillingSection isAdmin={isAdmin} />
         </TabsContent>
 
         {/* Tab 3: Cryptographic Audit Log */}
@@ -1509,6 +1543,546 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
               )}
             </Button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   4b. APPROVAL DELEGATIONS SECTION (FR-2.6)
+   ========================================================================= */
+
+function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
+  const me = useMe();
+  const queryClient = useQueryClient();
+
+  const [substituteId, setSubstituteId] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [reason, setReason] = useState("");
+
+  const { data: teamMembers } = useQuery({
+    queryKey: ["team-members-delegation"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, department")
+        .order("full_name");
+      return (data ?? []).filter((p) => p.id !== me.data?.userId);
+    },
+  });
+
+  const { data: delegations, isLoading } = useQuery({
+    queryKey: ["approval-delegations"],
+    queryFn: () => getActiveDelegationsFn(),
+  });
+
+  const createDelegationMutation = useMutation({
+    mutationFn: async () => {
+      if (!substituteId) throw new Error("Select a substitute approver.");
+      if (!startDate || !endDate) throw new Error("Select start and end dates.");
+      if (startDate > endDate) throw new Error("Start date cannot be after end date.");
+
+      return createApprovalDelegationFn({
+        data: {
+          substituteId,
+          startDate,
+          endDate,
+          reason: reason.trim() || undefined,
+        },
+      });
+    },
+    onSuccess: async () => {
+      toast.success("Approval authority delegation successfully activated.");
+      setSubstituteId("");
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+      await queryClient.invalidateQueries({ queryKey: ["approval-delegations"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed creating delegation."),
+  });
+
+  const revokeDelegationMutation = useMutation({
+    mutationFn: async (delegationId: string) => {
+      return revokeApprovalDelegationFn({ data: { delegationId } });
+    },
+    onSuccess: async () => {
+      toast.success("Delegation revoked.");
+      await queryClient.invalidateQueries({ queryKey: ["approval-delegations"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed revoking delegation."),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-6">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+            Approval Authority Delegation (FR-2.6)
+          </h2>
+          <p className="mt-1 text-xs text-slate-500 leading-relaxed font-normal">
+            Temporarily delegate your financial signing authority to a named colleague while away on annual leave, site inspection, or travel. The substitute can approve on your behalf, and all actions are cryptographically tagged in the SHA-256 audit ledger.
+          </p>
+        </div>
+
+        {/* Create Delegation Form */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5 space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            Set Up New Delegation
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5 sm:col-span-1">
+              <Label className="text-xs font-medium text-slate-700">Substitute Approver</Label>
+              <Select value={substituteId} onValueChange={setSubstituteId}>
+                <SelectTrigger className="h-10 rounded-lg border-slate-200 bg-white text-xs shadow-2xs">
+                  <SelectValue placeholder="Choose colleague…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(teamMembers ?? []).map((m) => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">
+                      {m.full_name || m.email} {m.department ? `(${m.department})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="del-start" className="text-xs font-medium text-slate-700">
+                Effective From
+              </Label>
+              <Input
+                id="del-start"
+                type="date"
+                className="h-10 rounded-lg border-slate-200 bg-white text-xs shadow-2xs"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="del-end" className="text-xs font-medium text-slate-700">
+                Effective Until
+              </Label>
+              <Input
+                id="del-end"
+                type="date"
+                className="h-10 rounded-lg border-slate-200 bg-white text-xs shadow-2xs"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="del-reason" className="text-xs font-medium text-slate-700">
+              Reason / Context (Optional)
+            </Label>
+            <Input
+              id="del-reason"
+              placeholder="e.g. Annual leave, site travel to Epe coastal highway, conference"
+              className="h-10 rounded-lg border-slate-200 bg-white text-xs shadow-2xs"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-semibold shadow-xs cursor-pointer"
+              disabled={createDelegationMutation.isPending || !substituteId || !startDate || !endDate}
+              onClick={() => createDelegationMutation.mutate()}
+            >
+              {createDelegationMutation.isPending ? "Activating Delegation…" : "Activate Delegation Authority"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Delegations List */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            Recorded Delegations ({delegations?.length || 0})
+          </h3>
+
+          {isLoading ? (
+            <p className="text-xs text-slate-400">Loading delegation records…</p>
+          ) : !delegations || delegations.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+              No active or past approval delegations recorded.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+              {delegations.map((d: any) => {
+                const isDelegator = d.delegator_id === me.data?.userId;
+                const isSubstitute = d.substitute_id === me.data?.userId;
+                const canRevoke = (isDelegator || isAdmin) && d.status === "active";
+
+                return (
+                  <div key={d.id} className="p-4 bg-white hover:bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-slate-900">
+                          {d.delegator?.full_name || "Approver"} → {d.substitute?.full_name || "Substitute"}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            d.status === "active"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}
+                        >
+                          {d.status === "active" ? "Active" : "Revoked"}
+                        </span>
+                        {isSubstitute ? (
+                          <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 text-[10px] font-medium">
+                            Delegated to You
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-slate-500 text-[11px]">
+                        Validity: <strong className="font-mono text-slate-700">{shortDate(d.start_date)}</strong> to{" "}
+                        <strong className="font-mono text-slate-700">{shortDate(d.end_date)}</strong>
+                        {d.reason ? ` · "${d.reason}"` : ""}
+                      </p>
+                    </div>
+
+                    {canRevoke ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold cursor-pointer shrink-0"
+                        disabled={revokeDelegationMutation.isPending}
+                        onClick={() => revokeDelegationMutation.mutate(d.id)}
+                      >
+                        Revoke Authority
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   4c. LOCALIZED B2B SUBSCRIPTION & VIRTUAL ACCOUNTS (NFR-LOC.2)
+   ========================================================================= */
+
+function BillingSection({ isAdmin }: { isAdmin: boolean }) {
+  const me = useMe();
+  const queryClient = useQueryClient();
+  const [cycle, setCycle] = useState<"monthly" | "annual">("monthly");
+  const [selectedTier, setSelectedTier] = useState<"STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE">("GROWTH");
+  const [generatedBill, setGeneratedBill] = useState<any>(null);
+
+  const { data: statements, isLoading } = useQuery({
+    queryKey: ["tenant-subscriptions"],
+    queryFn: () => getSubscriptionStatementsFn(),
+  });
+
+  const generateBillMutation = useMutation({
+    mutationFn: async () => {
+      return generateSubscriptionBillFn({
+        data: {
+          planTier: selectedTier,
+          billingCycle: cycle,
+          paymentMethod: "VIRTUAL_ACCOUNT",
+        },
+      });
+    },
+    onSuccess: async (bill) => {
+      setGeneratedBill(bill);
+      toast.success("B2B invoice & dedicated virtual account generated.");
+      await queryClient.invalidateQueries({ queryKey: ["tenant-subscriptions"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed generating billing statement."),
+  });
+
+  const tiers = [
+    {
+      id: "STARTER" as const,
+      name: "Starter",
+      monthly: 75000,
+      annual: 765000,
+      description: "Small organisation, one branch or project site",
+      features: [
+        "Requisitions & Multi-item lines",
+        "Threshold approval routing",
+        "Digital RFQ links & quote entry",
+        "Automated side-by-side comparison",
+      ],
+    },
+    {
+      id: "GROWTH" as const,
+      name: "Growth",
+      monthly: 200000,
+      annual: 2040000,
+      popular: true,
+      description: "Growing enterprise with multiple approvers and active sites",
+      features: [
+        "Everything in Starter",
+        "WhatsApp 1-click token approvals",
+        "Site Delivery & Inspection capture",
+        "3-Way Invoice Matching & NRS e-invoicing",
+        "Offline inspection local sync queue",
+      ],
+    },
+    {
+      id: "BUSINESS" as const,
+      name: "Business",
+      monthly: 500000,
+      annual: 5100000,
+      description: "Multiple concurrent projects, entities or heavy capex",
+      features: [
+        "Everything in Growth",
+        "PO Change Orders & baseline preservation",
+        "Approval delegation & SLA escalation",
+        "Executive governance anomaly suite",
+        "Multi-project budget drilldown",
+      ],
+    },
+    {
+      id: "ENTERPRISE" as const,
+      name: "Enterprise",
+      monthly: 1200000,
+      annual: 12240000,
+      description: "Large organisations requiring custom integrations & dedicated SLA",
+      features: [
+        "Everything in Business",
+        "SAP & Dynamics 365 OData connectors",
+        "Custom ERP general ledger export",
+        "Dedicated account manager & 99.5% SLA",
+        "Statutory NDPA compliance auditing support",
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+              Subscription &amp; Nigerian B2B Invoicing (§NFR-LOC.2)
+            </h2>
+            <p className="mt-1 text-xs text-slate-500 font-normal">
+              Predictable, transparent software subscription billing tailored for African enterprise finance teams via bank transfer and dedicated NUBAN virtual accounts.
+            </p>
+          </div>
+
+          {/* Monthly vs Annual Toggle */}
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-1 text-xs font-semibold shrink-0">
+            <button
+              type="button"
+              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
+                cycle === "monthly" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+              onClick={() => setCycle("monthly")}
+            >
+              Monthly Billing
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer flex items-center gap-1.5 ${
+                cycle === "annual" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+              onClick={() => setCycle("annual")}
+            >
+              <span>Annual Billing</span>
+              <span className="rounded bg-emerald-400/20 text-emerald-700 px-1 py-0.2 text-[9px] font-bold">
+                Save 15%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Pricing Tiers Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {tiers.map((t) => {
+            const isSelected = selectedTier === t.id;
+            const price = cycle === "annual" ? t.annual : t.monthly;
+
+            return (
+              <div
+                key={t.id}
+                className={`relative flex flex-col justify-between rounded-xl border p-4 transition-all ${
+                  isSelected
+                    ? "border-[#0B1457] bg-slate-50/40 shadow-xs ring-1 ring-[#0B1457]"
+                    : "border-slate-200 bg-white hover:border-slate-300"
+                }`}
+              >
+                {t.popular ? (
+                  <span className="absolute -top-2.5 right-4 rounded-full bg-[#0B1457] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-2xs">
+                    Most Popular
+                  </span>
+                ) : null}
+
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{t.name}</h3>
+                    <p className="mt-1 text-[11px] text-slate-500 line-clamp-2">{t.description}</p>
+                  </div>
+
+                  <div>
+                    <span className="text-xl font-bold font-sans text-slate-900 tabular-nums">
+                      {money(price, "NGN")}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-normal"> / {cycle === "annual" ? "year" : "month"}</span>
+                  </div>
+
+                  <ul className="space-y-1.5 border-t border-slate-100 pt-3 text-[11px] text-slate-600">
+                    {t.features.map((f, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600 mt-0.5" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="pt-4 mt-auto">
+                  <Button
+                    type="button"
+                    variant={isSelected ? "default" : "outline"}
+                    className={`h-8 w-full rounded-lg text-xs font-semibold cursor-pointer ${
+                      isSelected ? "bg-[#0B1457] hover:bg-[#0001FF] text-white" : "border-slate-200"
+                    }`}
+                    onClick={() => setSelectedTier(t.id)}
+                  >
+                    {isSelected ? "Selected Tier" : "Select Tier"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Generate Invoice Action */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+          <div>
+            <p className="text-xs font-semibold text-slate-900">
+              Selected: <strong className="text-[#0B1457] font-bold">{selectedTier}</strong> ({cycle === "annual" ? "Annual" : "Monthly"})
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Generates an official VAT-compliant corporate invoice with a dedicated Providus/Wema NUBAN virtual account.
+            </p>
+          </div>
+          <Button
+            type="button"
+            className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-semibold shadow-xs cursor-pointer shrink-0"
+            disabled={generateBillMutation.isPending || !isAdmin}
+            onClick={() => generateBillMutation.mutate()}
+          >
+            {generateBillMutation.isPending ? "Generating Invoice…" : "Generate Invoice & Bank Transfer Account"}
+          </Button>
+        </div>
+
+        {/* Generated Bill Display Modal/Card */}
+        {generatedBill ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Dedicated Virtual Account Statement Generated
+              </span>
+              <span className="font-mono text-xs font-bold text-slate-800">{generatedBill.invoice_reference}</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 bg-white p-4 rounded-lg border border-emerald-200 text-xs">
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-semibold">Bank Name</p>
+                <p className="font-bold text-slate-900 mt-0.5">{generatedBill.virtual_account_bank}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-semibold">Dedicated NUBAN Account</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="font-mono font-bold text-sm text-[#0B1457]">{generatedBill.virtual_account_number}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(generatedBill.virtual_account_number);
+                      toast.success("Account number copied.");
+                    }}
+                    className="p-1 hover:bg-slate-100 rounded text-slate-500 cursor-pointer"
+                    title="Copy Account Number"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-slate-400 font-semibold">Amount to Transfer</p>
+                <p className="font-sans font-bold text-sm text-slate-900 mt-0.5">{money(generatedBill.amount_ngn, "NGN")}</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              Make an instant bank transfer from your corporate bank app. Automatic reconciliation clears your account within minutes of receipt.
+            </p>
+          </div>
+        ) : null}
+
+        {/* Statements History Table */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+            Billing Statements &amp; Invoices ({statements?.length || 0})
+          </h3>
+
+          {isLoading ? (
+            <p className="text-xs text-slate-400">Loading invoices…</p>
+          ) : !statements || statements.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
+              No subscription invoices issued yet.
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-200 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
+                  <tr>
+                    <th className="px-4 py-3">Invoice Ref</th>
+                    <th className="px-4 py-3">Plan Tier</th>
+                    <th className="px-4 py-3">Period</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Virtual Account</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {statements.map((s: any) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50">
+                      <td className="px-4 py-3 font-mono font-bold text-[#0B1457]">{s.invoice_reference}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{s.plan_tier} ({s.billing_cycle})</td>
+                      <td className="px-4 py-3 text-slate-500 text-[11px]">{shortDate(s.period_start)} – {shortDate(s.period_end)}</td>
+                      <td className="px-4 py-3 font-sans font-semibold text-slate-900">{money(s.amount_ngn, "NGN")}</td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-slate-600">{s.virtual_account_bank} · {s.virtual_account_number}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          s.status === "SETTLED"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          {s.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* PCI-DSS Zero Raw Card Storage Guarantee (NFR-SEC.4) */}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 text-xs text-slate-600">
+          <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
+          <p className="text-[11px] leading-relaxed">
+            <strong>PCI-DSS &amp; Local Currency Protection:</strong> Procurely Flow enforces a strict zero raw-card storage policy. All billing collections route through licensed Nigerian financial institutions (Providus, Wema, Monnify, Paystack) via dedicated virtual accounts and bank transfers to prevent auto-renew card failures and naira volatility risks.
+          </p>
         </div>
       </div>
     </div>

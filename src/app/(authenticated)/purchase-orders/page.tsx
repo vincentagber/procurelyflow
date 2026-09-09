@@ -65,7 +65,7 @@ export default function PurchaseOrdersPage() {
                     </span>
                     <p className="text-xs text-slate-500 font-normal">
                       <strong className="font-semibold text-slate-800">
-                        {(po.suppliers as { name: string } | null)?.name ?? "Supplier"}
+                        {(po.suppliers as unknown as { name: string } | null)?.name ?? "Supplier"}
                       </strong>{" "}
                       · Issued {dateTime(po.issued_at)}
                     </p>

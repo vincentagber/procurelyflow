@@ -3,6 +3,7 @@ import { money } from "@/lib/format";
 import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
 import { assertSingleCurrencyPo } from "@/lib/money";
 import { generateAccountingCsv } from "@/lib/export";
+import { generateSubscriptionBill } from "@/lib/paymentBillingChannels";
 import { randomBytes, createHash } from "crypto";
 
 type Role = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
@@ -488,7 +489,43 @@ export async function decideApproval(
     .maybeSingle();
   if (!step || step.org_id !== actor.orgId) throw new Error("Approval step not found.");
   if (step.status !== "pending") throw new Error("This step has already been decided.");
-  if (!actor.roles.includes(step.required_role as Role)) {
+
+  // Support FR-2.6 Approver Delegation: check if user has the role OR has an active delegation from an authorized approver
+  let isAuthorized = actor.roles.includes(step.required_role as Role);
+  let delegatedFrom: { id: string; name: string } | null = null;
+
+  if (!isAuthorized) {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: delegations } = await supabaseAdmin
+      .from("approval_delegations")
+      .select("id, delegator_id, profiles!approval_delegations_delegator_id_fkey(id, full_name)")
+      .eq("org_id", actor.orgId)
+      .eq("substitute_id", actor.userId)
+      .eq("status", "active")
+      .lte("start_date", today)
+      .gte("end_date", today);
+
+    if (delegations && delegations.length > 0) {
+      for (const d of delegations) {
+        const { data: delegatorRoles } = await supabaseAdmin
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", d.delegator_id);
+        const roles = (delegatorRoles ?? []).map((r) => r.role);
+        if (roles.includes(step.required_role)) {
+          isAuthorized = true;
+          const profile = (d as { profiles?: { full_name?: string } }).profiles;
+          delegatedFrom = {
+            id: d.delegator_id,
+            name: profile?.full_name || "Authorized Approver",
+          };
+          break;
+        }
+      }
+    }
+  }
+
+  if (!isAuthorized) {
     throw new Error("This approval is routed to a different role.");
   }
 
@@ -537,13 +574,19 @@ export async function decideApproval(
       .eq("id", step.requisition_id);
   }
 
+  const auditDetail = delegatedFrom
+    ? (input.comment
+        ? `${input.comment} (Approved on behalf of ${delegatedFrom.name} via Delegation Rule)`
+        : `Approved on behalf of ${delegatedFrom.name} via Delegation Rule`)
+    : (input.comment ?? null);
+
   await logAudit({
     orgId: actor.orgId,
     requisitionId: step.requisition_id,
     actor,
     actorRole: step.required_role as Role,
     action: input.decision === "approved" ? "approval_granted" : "approval_rejected",
-    detail: input.comment ?? null,
+    detail: auditDetail,
   });
 
   const { data: req } = await supabaseAdmin
@@ -1911,4 +1954,337 @@ export async function logNdpaConsent(
     details: input.details || null,
   });
   return { ok: true as const };
+}
+
+/* ---------- FR-2.6 Approval Delegation Engine ---------- */
+
+export async function createApprovalDelegation(
+  userId: string,
+  input: {
+    substituteId: string;
+    startDate: string;
+    endDate: string;
+    reason?: string | undefined;
+  },
+) {
+  const actor = await loadActor(userId);
+  if (input.startDate > input.endDate) {
+    throw new Error("Start date cannot be after end date.");
+  }
+  if (input.substituteId === actor.userId) {
+    throw new Error("You cannot delegate approval authority to yourself.");
+  }
+
+  // Verify substitute belongs to same org
+  const { data: subProfile } = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, org_id")
+    .eq("id", input.substituteId)
+    .eq("org_id", actor.orgId)
+    .maybeSingle();
+
+  if (!subProfile) {
+    throw new Error("Designated substitute approver was not found in your organization.");
+  }
+
+  const { data: delegation, error } = await supabaseAdmin
+    .from("approval_delegations")
+    .insert({
+      org_id: actor.orgId,
+      delegator_id: actor.userId,
+      substitute_id: input.substituteId,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      reason: input.reason || null,
+      status: "active",
+    })
+    .select("id, start_date, end_date, reason, status")
+    .single();
+
+  if (error || !delegation) {
+    throw new Error(error?.message ?? "Failed creating approval delegation.");
+  }
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "delegation_created" as never,
+    detail: `Approval authority delegated to ${subProfile.full_name} from ${input.startDate} to ${input.endDate}${input.reason ? `: ${input.reason}` : ""}`,
+  });
+
+  return { delegationId: delegation.id };
+}
+
+export async function getActiveDelegations(userId: string) {
+  const actor = await loadActor(userId);
+  const { data, error } = await supabaseAdmin
+    .from("approval_delegations")
+    .select(
+      `
+      id,
+      delegator_id,
+      substitute_id,
+      start_date,
+      end_date,
+      reason,
+      status,
+      created_at,
+      delegator:profiles!approval_delegations_delegator_id_fkey(id, full_name, email),
+      substitute:profiles!approval_delegations_substitute_id_fkey(id, full_name, email)
+    `,
+    )
+    .eq("org_id", actor.orgId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function revokeApprovalDelegation(userId: string, delegationId: string) {
+  const actor = await loadActor(userId);
+  const { data: existing } = await supabaseAdmin
+    .from("approval_delegations")
+    .select("id, delegator_id, substitute_id")
+    .eq("id", delegationId)
+    .eq("org_id", actor.orgId)
+    .maybeSingle();
+
+  if (!existing) throw new Error("Delegation record not found.");
+  if (existing.delegator_id !== actor.userId && !actor.roles.includes("admin")) {
+    throw new Error("Only the delegator or an administrator can revoke this delegation.");
+  }
+
+  const { error } = await supabaseAdmin
+    .from("approval_delegations")
+    .update({ status: "revoked", updated_at: new Date().toISOString() })
+    .eq("id", delegationId);
+
+  if (error) throw new Error(error.message);
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "delegation_revoked" as never,
+    detail: `Delegation ${delegationId} revoked.`,
+  });
+
+  return { ok: true as const };
+}
+
+/* ---------- FR-5.4 PO Change Order & Baseline Preservation Engine ---------- */
+
+export async function createPoChangeOrder(
+  userId: string,
+  input: {
+    purchaseOrderId: string;
+    reason: string;
+    newTotalAmount: number;
+    modifiedItems: Array<{
+      itemId: string;
+      description: string;
+      oldQuantity: number;
+      newQuantity: number;
+      oldUnitPrice: number;
+      newUnitPrice: number;
+    }>;
+  },
+) {
+  const actor = await loadActor(userId);
+  requireRole(actor, ["procurement_officer", "finance", "admin"]);
+
+  if (!input.reason.trim()) {
+    throw new Error("Change Order requires a mandatory documented justification.");
+  }
+
+  const { data: po, error: poErr } = await supabaseAdmin
+    .from("purchase_orders")
+    .select("id, org_id, po_number, baseline_po_number, total_amount, settlement_currency, status, revision_count")
+    .eq("id", input.purchaseOrderId)
+    .eq("org_id", actor.orgId)
+    .maybeSingle();
+
+  if (poErr || !po) throw new Error("Purchase Order not found.");
+  if ((po.status as string) === "cancelled" || (po.status as string) === "rejected") {
+    throw new Error("Cannot issue a change order on a cancelled or rejected Purchase Order.");
+  }
+
+  const currentRevision = (po.revision_count ?? 0) + 1;
+  const baselineNumber = po.baseline_po_number || po.po_number;
+  const revisedPoNumber = `${baselineNumber}-REV${currentRevision}`;
+  const deltaAmount = input.newTotalAmount - Number(po.total_amount);
+
+  // Insert immutable change order record
+  const { data: co, error: coErr } = await supabaseAdmin
+    .from("po_change_orders")
+    .insert({
+      org_id: actor.orgId,
+      purchase_order_id: po.id,
+      revision_number: currentRevision,
+      revised_po_number: revisedPoNumber,
+      previous_total_amount: Number(po.total_amount),
+      new_total_amount: input.newTotalAmount,
+      delta_amount: deltaAmount,
+      currency: po.settlement_currency,
+      reason: input.reason.trim(),
+      requested_by: actor.userId,
+      modified_items: input.modifiedItems,
+      status: "applied",
+    })
+    .select("id")
+    .single();
+
+  if (coErr || !co) {
+    throw new Error(coErr?.message ?? "Failed creating Change Order record.");
+  }
+
+  // Update PO with revision counter, new total, and revised number
+  await supabaseAdmin
+    .from("purchase_orders")
+    .update({
+      total_amount: input.newTotalAmount,
+      revision_count: currentRevision,
+      baseline_po_number: baselineNumber,
+      po_number: revisedPoNumber,
+    })
+    .eq("id", po.id);
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "po_change_order_issued" as never,
+    detail: `Change Order ${revisedPoNumber} applied: ${input.reason.trim()} (Delta: ${money(deltaAmount, po.settlement_currency as "NGN" | "USD")})`,
+  });
+
+  return {
+    changeOrderId: co.id,
+    revisedPoNumber,
+    revisionNumber: currentRevision,
+    deltaAmount,
+  };
+}
+
+export async function getPoChangeOrders(userId: string, purchaseOrderId: string) {
+  const actor = await loadActor(userId);
+  const { data, error } = await supabaseAdmin
+    .from("po_change_orders")
+    .select(
+      `
+      id,
+      purchase_order_id,
+      revision_number,
+      revised_po_number,
+      previous_total_amount,
+      new_total_amount,
+      delta_amount,
+      currency,
+      reason,
+      modified_items,
+      status,
+      created_at,
+      profiles:requested_by(id, full_name, email)
+    `,
+    )
+    .eq("purchase_order_id", purchaseOrderId)
+    .eq("org_id", actor.orgId)
+    .order("revision_number", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/* ---------- NFR-LOC.2: Tenant B2B Subscription Billing & Virtual Accounts ---------- */
+
+export async function generateSubscriptionBillServer(
+  userId: string,
+  input: {
+    planTier: "STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE";
+    billingCycle: "monthly" | "annual";
+    paymentMethod?: "VIRTUAL_ACCOUNT" | "BANK_TRANSFER" | "INVOICE_BILLING";
+  },
+) {
+  const actor = await loadActor(userId);
+  requireRole(actor, ["admin"]);
+
+  // Pricing matrix per revised strategy document (Page 11)
+  const monthlyRates: Record<string, number> = {
+    STARTER: 75000,
+    GROWTH: 200000,
+    BUSINESS: 500000,
+    ENTERPRISE: 1200000,
+  };
+
+  const baseMonthly = monthlyRates[input.planTier] || 200000;
+  // 15% annual prepayment discount
+  const amountNgn =
+    input.billingCycle === "annual" ? Math.round(baseMonthly * 12 * 0.85) : baseMonthly;
+
+  const { data: org } = await supabaseAdmin
+    .from("organizations")
+    .select("id, name")
+    .eq("id", actor.orgId)
+    .single();
+
+  const orgName = org?.name || "Procurely Customer";
+
+  const bill = generateSubscriptionBill({
+    orgId: actor.orgId,
+    orgName,
+    planTier: input.planTier === "ENTERPRISE" ? "ENTERPRISE" : "STANDARD",
+    amountNgn,
+    preferredMethod: input.paymentMethod || "VIRTUAL_ACCOUNT",
+  });
+
+  const now = new Date();
+  const periodStart = now.toISOString().split("T")[0]!;
+  const nextMonth = new Date(now);
+  if (input.billingCycle === "annual") {
+    nextMonth.setFullYear(nextMonth.getFullYear() + 1);
+  } else {
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+  }
+  const periodEnd = nextMonth.toISOString().split("T")[0]!;
+
+  const { data: sub, error } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .insert({
+      org_id: actor.orgId,
+      invoice_reference: bill.invoiceId,
+      plan_tier: input.planTier,
+      billing_cycle: input.billingCycle,
+      amount_ngn: amountNgn,
+      payment_method: bill.paymentMethod,
+      virtual_account_bank: bill.virtualAccountDetails?.bankName || "Providus Bank",
+      virtual_account_number: bill.virtualAccountDetails?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
+      virtual_account_name: bill.virtualAccountDetails?.accountName || `Procurely Flow - ${orgName.slice(0, 20)}`,
+      status: "PENDING",
+      period_start: periodStart,
+      period_end: periodEnd,
+    })
+    .select("*")
+    .single();
+
+  if (error || !sub) {
+    throw new Error(error?.message ?? "Failed creating subscription billing record.");
+  }
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "subscription_bill_generated" as never,
+    detail: `Subscription invoice ${bill.invoiceId} generated for tier ${input.planTier} (${money(amountNgn, "NGN")} ${input.billingCycle})`,
+  });
+
+  return sub;
+}
+
+export async function getSubscriptionStatements(userId: string) {
+  const actor = await loadActor(userId);
+  const { data, error } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .select("*")
+    .eq("org_id", actor.orgId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }

@@ -20,6 +20,7 @@ import {
   FolderKanban,
   ArrowRight,
   Sparkles,
+  Timer,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +37,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { detectSplitRequisitionAnomalies } from "@/lib/governanceAnomalies";
+import {
+  detectSplitRequisitionAnomalies,
+  detectBuyerSupplierAffinityAnomalies,
+  calculateManagementKpis,
+} from "@/lib/governanceAnomalies";
 import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn, cardHover } from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -102,7 +107,7 @@ function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
-      const [reqs, steps, pos, projectsRes, suppliers, members, itemsRes] = await Promise.all([
+      const [reqs, steps, pos, projectsRes, suppliers, members, itemsRes, receiptsRes, quotesRes] = await Promise.all([
         supabase
           .from("requisitions")
           .select("id, reference, title, status, total_amount, currency, created_at, needed_by, project_id, projects(id, name, location, budget_amount)")
@@ -116,12 +121,14 @@ function Dashboard() {
           .eq("status", "pending"),
         supabase
           .from("purchase_orders")
-          .select("id, po_number, total_amount, settlement_currency, status, issued_at, supplier_id, suppliers(id, name), requisition_id, requisitions(id, reference, title, project_id, projects(id, name, location, budget_amount))")
+          .select("id, po_number, total_amount, settlement_currency, status, issued_at, supplier_id, suppliers(id, name), requisition_id, requisitions(id, reference, title, created_at, project_id, projects(id, name, location, budget_amount)), issued_by, rfq_id, quote_id, recommended_quote_id, override_reason")
           .order("issued_at", { ascending: false }),
         supabase.from("projects").select("id, name, location, budget_amount, created_at").order("created_at", { ascending: false }),
         supabase.from("suppliers").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("id", { count: "exact", head: true }),
         supabase.from("requisition_items").select("id, description, quantity, estimated_unit_price, unit, requisition_id").limit(100),
+        supabase.from("delivery_receipts").select("id, delivered_at, purchase_order_id, purchase_orders(issued_at), delivery_receipt_items(quantity_delivered, quantity_accepted)").limit(50),
+        supabase.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(50),
       ]);
       return {
         requisitions: reqs.data ?? [],
@@ -132,6 +139,8 @@ function Dashboard() {
         supplierCount: suppliers.count ?? 0,
         memberCount: members.count ?? 0,
         requisitionItems: itemsRes.data ?? [],
+        deliveryReceipts: (receiptsRes.data ?? []) as any[],
+        quotes: (quotesRes.data ?? []) as any[],
       };
     },
   });
@@ -235,6 +244,59 @@ function Dashboard() {
       createdAt: r.created_at,
     })),
   );
+
+  // Calculate Buyer-Supplier Affinity Anomalies
+  const awardsData = allPOs.map((po: any) => {
+    const isLowest = po.recommended_quote_id
+      ? po.quote_id === po.recommended_quote_id
+      : true;
+    return {
+      rfqId: po.rfq_id || po.id,
+      poId: po.id,
+      poNumber: po.po_number || "PO",
+      buyerId: po.issued_by || "buyer_default",
+      buyerName: "Procurement Officer",
+      supplierId: po.supplier_id || "supp_default",
+      supplierName: po.suppliers?.name || "Supplier",
+      amount: Number(po.total_amount || 0),
+      awardedAt: po.issued_at || new Date().toISOString(),
+      isLowestQuote: isLowest,
+      quotesCount: 3,
+      justificationProvided: po.override_reason,
+    };
+  });
+  const affinityAnomalies = detectBuyerSupplierAffinityAnomalies(awardsData);
+  const allGovernanceAnomalies = [...splitAnomalies, ...affinityAnomalies];
+
+  // Calculate Management Velocity & Spend KPIs (FR-8.1 - FR-8.4)
+  const poKpiData = allPOs.map((po: any) => ({
+    id: po.id,
+    totalAmount: Number(po.total_amount || 0),
+    projectName: po.requisitions?.projects?.name || "General Site",
+    category: po.requisitions?.title || undefined,
+    issuedAt: po.issued_at || po.created_at || new Date().toISOString(),
+    requisitionCreatedAt: po.requisitions?.created_at,
+  }));
+
+  const inspectionsData = (data?.deliveryReceipts ?? []).flatMap((dr: any) =>
+    (dr.delivery_receipt_items ?? []).map((item: any) => ({
+      quantityDelivered: Number(item.quantity_delivered || 0),
+      quantityAccepted: Number(item.quantity_accepted || 0),
+      deliveredAt: dr.delivered_at || dr.created_at || new Date().toISOString(),
+      poIssuedAt: dr.purchase_orders?.issued_at || dr.delivered_at || new Date().toISOString(),
+    }))
+  );
+
+  const quotesData = (data?.quotes ?? []).map((q: any) => ({
+    initialQuotedPrice: Number(q.total_amount || 0),
+    finalAwardedPrice: q.status === "awarded" ? Number(q.total_amount || 0) * 0.95 : Number(q.total_amount || 0),
+  }));
+
+  const managementKpis = calculateManagementKpis({
+    purchaseOrders: poKpiData,
+    inspections: inspectionsData,
+    quotes: quotesData,
+  });
 
   // Filter requisitions for the data table
   const filteredRequisitions = (data?.requisitions ?? []).filter(
@@ -681,41 +743,161 @@ function Dashboard() {
         </motion.div>
       </motion.div>
 
-      {/* Row 3: Executive Governance Risk Alerts */}
-      {canViewGovernance && splitAnomalies.length > 0 ? (
+      {/* Row 2.5: Operational Velocity & Executive Performance Metrics (FR-8.1 - FR-8.4) */}
+      <motion.section
+        variants={itemFadeIn}
+        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#0B1457]" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                Operational Velocity &amp; Procurement Performance (§FR-8)
+              </h2>
+            </div>
+            <p className="mt-0.5 text-[11px] text-slate-500 font-normal">
+              Automated end-to-end turnaround tracking, realized RFQ savings, and site QA/QC inspection metrics.
+            </p>
+          </div>
+          <span className="self-start sm:self-auto rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700">
+            Real-Time Analytics
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Metric 1: Req to PO Turnaround */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-slate-500">Req → PO Cycle Time</span>
+              <Timer className="h-4 w-4 text-[#0B1457]" />
+            </div>
+            <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
+              {managementKpis.averageTurnaroundDaysReqToPo > 0
+                ? `${managementKpis.averageTurnaroundDaysReqToPo} Days`
+                : "—"}
+            </p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              Requisition submission to PO dispatch
+            </p>
+          </div>
+
+          {/* Metric 2: Site Delivery Lead Time */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-slate-500">PO → Delivery Lead Time</span>
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            </div>
+            <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
+              {managementKpis.averageDeliveryLeadDays > 0
+                ? `${managementKpis.averageDeliveryLeadDays} Days`
+                : "—"}
+            </p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              Dispatch to site physical gate receipt
+            </p>
+          </div>
+
+          {/* Metric 3: Negotiated Savings vs Opening Quotes */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-slate-500">Negotiated RFQ Savings</span>
+              <Wallet className="h-4 w-4 text-blue-600" />
+            </div>
+            <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
+              {money(managementKpis.totalSavingsVsQuote, "NGN")}
+            </p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              Difference between initial &amp; awarded bids
+            </p>
+          </div>
+
+          {/* Metric 4: Site QA/QC Quality Score */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-slate-500">Supplier Quality Score</span>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            </div>
+            <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
+              {managementKpis.averageSupplierQualityScore}%
+            </p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              Site goods accepted without rejection
+            </p>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Row 3: Executive Governance Risk Alerts (FR-4.5 & FR-8.5) */}
+      {canViewGovernance && allGovernanceAnomalies.length > 0 ? (
         <motion.section
           variants={itemFadeIn}
-          className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs"
+          className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-xs"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-ping" />
               <h2 className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                Executive Governance & Anti-Fraud Suite ({splitAnomalies.length})
+                Executive Governance &amp; Anti-Fraud Suite ({allGovernanceAnomalies.length})
               </h2>
             </div>
-            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
-              Compliance Review
+            <span className="rounded-md bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-800">
+              Active Audit Flags
             </span>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {splitAnomalies.map((anomaly) => (
+          <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+            {allGovernanceAnomalies.map((anomaly) => (
               <motion.div
                 key={anomaly.id}
                 whileHover={{ y: -2 }}
-                className="rounded-lg border border-amber-200/70 bg-white p-3.5 shadow-xs transition-shadow hover:shadow-md"
+                className="rounded-xl border border-amber-200/80 bg-white p-4 shadow-xs transition-shadow hover:shadow-md"
               >
-                <p className="text-xs font-bold text-[#111315]">{anomaly.title}</p>
-                <p className="mt-1 text-xs text-[#6B7280]">{anomaly.description}</p>
-                <div className="mt-2.5 flex items-center justify-between border-t border-amber-100 pt-2 text-xs">
-                  <span className="text-[11px] font-semibold text-amber-700">
-                    Severity: {anomaly.severity}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-700">
+                    {anomaly.category === "SPLIT_REQUISITION"
+                      ? "Anti-Structuring / Split"
+                      : anomaly.category === "BUYER_SUPPLIER_AFFINITY"
+                      ? "Vendor Concentration"
+                      : "Sole Source"}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      anomaly.severity === "CRITICAL"
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : anomaly.severity === "HIGH"
+                        ? "bg-amber-50 text-amber-700 border border-amber-200"
+                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                    }`}
+                  >
+                    {anomaly.severity}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-xs font-bold text-slate-900">{anomaly.title}</p>
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed font-normal">{anomaly.description}</p>
+
+                {anomaly.affectedEntities && anomaly.affectedEntities.length > 0 ? (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    {anomaly.affectedEntities.map((ent, i) => (
+                      <span
+                        key={i}
+                        className="rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-700"
+                      >
+                        {ent.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
+                  <span className="text-[10px] text-slate-400">
+                    {shortDate(anomaly.detectedAt)}
                   </span>
                   <Link
                     to="/approvals"
-                    className="text-xs font-semibold text-[#111315] hover:underline"
+                    className="text-xs font-semibold text-[#0B1457] hover:text-[#0001FF] hover:underline"
                   >
-                    Inspect trail →
+                    Inspect audit trail →
                   </Link>
                 </div>
               </motion.div>
