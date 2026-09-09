@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   Building2,
   Receipt,
+  Pencil,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,8 @@ import { bootstrapOrg, myPendingInvite, acceptInviteFn } from "@/lib/procurement
 import { myOrgAccessFn, amIPlatformAdmin } from "@/lib/platform.functions";
 import { ROLE_LABELS } from "@/lib/format";
 import { NotificationBell } from "@/components/procurely/notifications";
+import { UserAvatar } from "@/components/procurely/UserAvatar";
+import { ProfileEditDialog } from "@/components/procurely/ProfileEditDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,6 +122,7 @@ const NAV_SECTIONS: NavSection[] = [
 function AppLayout() {
   const me = useMe();
   const [open, setOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem("sidebar_collapsed") === "true";
@@ -269,7 +273,8 @@ function AppLayout() {
               const visibleItems = section.items.filter(
                 (item) => !item.roles || can(me.data?.roles, [...item.roles]),
               );
-              if (!visibleItems.length) return null;
+              const hasItems = visibleItems.length > 0 || section.title === "General";
+              if (!hasItems) return null;
 
               return (
                 <div key={section.title} className="space-y-0.5">
@@ -372,24 +377,59 @@ function AppLayout() {
         <div className="mt-4 border-t border-[#162070] pt-3.5">
           {collapsed ? (
             <div className="flex flex-col items-center gap-2">
-              <div
-                title={`${me.data.profile?.full_name || "User"} (${me.data.email})`}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm cursor-default"
+              <button
+                type="button"
+                onClick={() => setEditProfileOpen(true)}
+                title={`Edit Profile: ${me.data.profile?.full_name || "User"} (${me.data.email})`}
+                className="group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#0001FF]"
               >
-                {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
-              </div>
+                <UserAvatar
+                  name={me.data.profile?.full_name}
+                  email={me.data.email}
+                  avatarUrl={me.data.profile?.avatar_url}
+                  size="sm"
+                  className="h-8 w-8 transition-transform group-hover:scale-105"
+                />
+              </button>
+              <button
+                type="button"
+                onClick={signOut}
+                title="Log out"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-white/50 hover:bg-red-500/20 hover:text-red-300 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 px-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm">
-                {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-white">
-                  {me.data.profile?.full_name || "User"}
-                </p>
-                <p className="truncate text-[10px] text-white/50">{me.data.email}</p>
-              </div>
+            <div className="flex items-center justify-between gap-1 rounded-xl p-1 hover:bg-white/5 transition-colors">
+              <button
+                type="button"
+                onClick={() => setEditProfileOpen(true)}
+                title="Click to edit your name and profile picture"
+                className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 text-left transition-colors cursor-pointer focus:outline-hidden"
+              >
+                <UserAvatar
+                  name={me.data.profile?.full_name}
+                  email={me.data.email}
+                  avatarUrl={me.data.profile?.avatar_url}
+                  size="sm"
+                  className="h-8 w-8 transition-transform group-hover:scale-105"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-white group-hover:text-blue-200 transition-colors">
+                    {me.data.profile?.full_name || "User"}
+                  </p>
+                  <p className="truncate text-[10px] text-white/50">{me.data.email}</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={signOut}
+                title="Log out"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 hover:bg-red-500/20 hover:text-red-300 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           )}
         </div>
@@ -401,6 +441,11 @@ function AppLayout() {
           <Outlet />
         </AnimatedPageWrapper>
       </main>
+
+      <ProfileEditDialog
+        open={editProfileOpen}
+        onOpenChange={setEditProfileOpen}
+      />
     </div>
   );
 }

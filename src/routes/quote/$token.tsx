@@ -48,7 +48,7 @@ type Line = {
   vatRate: string;
 };
 
-const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 async function fileToBase64(file: File) {
   const buffer = new Uint8Array(await file.arrayBuffer());
@@ -114,7 +114,7 @@ function SupplierQuote() {
       let attachment: { name: string; contentType: string; dataBase64: string } | undefined;
       if (file) {
         if (file.size > MAX_ATTACHMENT_BYTES) {
-          throw new Error("That file is larger than 4MB. Please attach a smaller file.");
+          throw new Error("That file is larger than 25MB. Please attach a smaller file.");
         }
         attachment = {
           name: file.name,
@@ -483,16 +483,16 @@ function SupplierQuote() {
             />
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="attachment">Attachment (optional, max 4MB)</Label>
+            <Label htmlFor="attachment">Attachment (optional, max 25MB)</Label>
             <Input
               id="attachment"
               type="file"
               className="h-12 pt-2.5"
-              accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg,.webp,image/*,application/*"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             <p className="text-xs text-muted-foreground">
-              Attach your formal quotation, spec sheet or catalogue if you have one.
+              Attach your formal quotation, spec sheet, catalogue, or document (PDF, Excel, Word, or photo up to 25 MB).
             </p>
           </div>
         </div>

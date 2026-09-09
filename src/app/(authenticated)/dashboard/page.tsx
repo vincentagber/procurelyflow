@@ -420,10 +420,10 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => setSpendViewMode("category")}
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-[10px] font-bold transition-all",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
                   spendViewMode === "category"
-                    ? "bg-white text-[#0B1457] shadow-2xs"
-                    : "text-[#64748B] hover:text-[#0B1457]",
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                    : "text-slate-500 hover:text-slate-900",
                 )}
               >
                 Category
@@ -432,17 +432,17 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => setSpendViewMode("project")}
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-[10px] font-bold transition-all",
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
                   spendViewMode === "project"
-                    ? "bg-white text-[#0B1457] shadow-2xs"
-                    : "text-[#64748B] hover:text-[#0B1457]",
+                    ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                    : "text-slate-500 hover:text-slate-900",
                 )}
               >
                 Project
               </button>
             </div>
 
-            <span className="text-[11px] font-bold text-[#0001FF]">
+            <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-medium text-slate-600">
               {spendViewMode === "category" ? (committed > 0 ? "Committed Spend" : "Q3 Allocation") : `${projectBreakdown.length} Sites`}
             </span>
           </div>
@@ -451,20 +451,20 @@ export default function DashboardPage() {
             {spendViewMode === "category" ? (
               committed === 0 ? (
                 <div className="py-4 text-center">
-                  <p className="text-xs font-semibold text-[#111315]">₦ 0.00 Total Category Spend</p>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1">No committed purchase orders logged yet.</p>
+                  <p className="text-xs font-semibold text-slate-900">₦ 0.00 Total Category Spend</p>
+                  <p className="text-xs text-slate-500 mt-1">No committed purchase orders logged yet.</p>
                 </div>
               ) : (
                 CATEGORY_BREAKDOWN.map((cat, idx) => (
                   <div key={idx} className="group cursor-default">
                     <div className="flex justify-between items-baseline text-xs">
-                      <span className="font-medium text-[#111315]">{cat.name}</span>
-                      <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums">
-                        <span className="font-bold text-[#0B1457]">{money(cat.amount)}</span>
-                        <span className="text-[#9CA3AF]">({Math.round(cat.share * 100)}%)</span>
+                      <span className="font-medium text-slate-900">{cat.name}</span>
+                      <div className="flex items-center gap-1.5 font-sans text-xs tabular-nums">
+                        <span className="font-semibold text-slate-900">{money(cat.amount)}</span>
+                        <span className="text-slate-400">({Math.round(cat.share * 100)}%)</span>
                       </div>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.round(cat.share * 100)}%` }}
@@ -478,8 +478,8 @@ export default function DashboardPage() {
             ) : (
               projectBreakdown.length === 0 ? (
                 <div className="py-4 text-center">
-                  <p className="text-xs font-semibold text-[#111315]">No sites configured</p>
-                  <Link href="/projects" className="text-[11px] font-bold text-[#0001FF] hover:underline mt-1 inline-block">
+                  <p className="text-xs font-semibold text-slate-900">No sites configured</p>
+                  <Link href="/projects" className="text-xs font-semibold text-[#0B1457] hover:text-[#0001FF] hover:underline mt-1 inline-block">
                     + Add Project / Cost Center
                   </Link>
                 </div>
@@ -488,23 +488,23 @@ export default function DashboardPage() {
                   <div
                     key={proj.id}
                     onClick={() => setSelectedDrilldownProject(proj)}
-                    className="group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-[#F8FAFC] transition-all"
+                    className="group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-slate-50 transition-all"
                     title="Click to view detailed project spend breakdown"
                   >
                     <div className="flex justify-between items-baseline text-xs">
                       <div className="flex items-center gap-1 truncate max-w-[140px]">
-                        <span className="font-medium text-[#111315] truncate group-hover:text-[#0001FF] transition-colors">
+                        <span className="font-medium text-slate-900 truncate group-hover:text-[#0001FF] transition-colors">
                           {proj.name}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 font-mono text-[11px] tabular-nums shrink-0">
-                        <span className="font-bold text-[#0B1457]">{money(proj.committed)}</span>
-                        <span className="text-[10px] font-semibold text-[#64748B]">
+                      <div className="flex items-center gap-1 font-sans text-xs tabular-nums shrink-0">
+                        <span className="font-semibold text-slate-900">{money(proj.committed)}</span>
+                        <span className="text-xs text-slate-500 font-normal">
                           ({proj.utilization}%)
                         </span>
                       </div>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-[#F3F4F6] overflow-hidden">
+                    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.max(4, proj.utilization)}%` }}
@@ -512,10 +512,10 @@ export default function DashboardPage() {
                         className={cn(
                           "h-1.5 rounded-full",
                           proj.utilization > 75
-                            ? "bg-[#EF4444]"
+                            ? "bg-rose-500"
                             : proj.utilization > 50
-                              ? "bg-[#F59E0B]"
-                              : "bg-[#0001FF]",
+                              ? "bg-amber-500"
+                              : "bg-[#0B1457]",
                         )}
                       />
                     </div>
@@ -525,13 +525,13 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between pt-1 border-t border-[#F3F4F6] text-[10px] text-[#9CA3AF]">
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-400">
             <span>Derived from active purchase orders</span>
             {projectBreakdown.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSelectedDrilldownProject(projectBreakdown[0] || null)}
-                className="flex items-center gap-0.5 font-bold text-[#0001FF] hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0B1457] hover:text-[#0001FF] transition-colors cursor-pointer"
               >
                 <span>Drilldown</span>
                 <ArrowRight className="h-3 w-3" />
@@ -937,18 +937,22 @@ export default function DashboardPage() {
         open={!!selectedDrilldownProject}
         onOpenChange={(open) => !open && setSelectedDrilldownProject(null)}
       >
-        <DialogContent className="max-w-3xl rounded-2xl p-6 bg-white border border-[#E2E8F0] shadow-xl">
-          <DialogHeader className="space-y-1 text-left">
+        <DialogContent className="max-w-3xl rounded-2xl p-6 bg-white border border-slate-200 shadow-xl font-sans">
+          <DialogHeader className="space-y-1.5 text-left border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
-              <span className="rounded-md bg-[#EFF3FF] px-2 py-0.5 text-[10px] font-extrabold text-[#0001FF]">
+              <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold text-[#0B1457]">
                 Project Spend Drilldown
               </span>
-              <span className="text-xs text-[#64748B] font-medium">{selectedDrilldownProject?.location}</span>
+              {selectedDrilldownProject?.location ? (
+                <span className="text-xs text-slate-500 font-normal">
+                  {selectedDrilldownProject.location}
+                </span>
+              ) : null}
             </div>
-            <DialogTitle className="text-lg font-bold text-[#0B1457]">
+            <DialogTitle className="text-xl font-bold tracking-tight text-slate-900">
               {selectedDrilldownProject?.name}
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#4B556D]">
+            <DialogDescription className="text-xs text-slate-500 font-normal leading-relaxed">
               Real-time commitment breakdown, approved purchase orders, and remaining budgetary allowance.
             </DialogDescription>
           </DialogHeader>
@@ -961,101 +965,117 @@ export default function DashboardPage() {
               className="space-y-5 pt-2"
             >
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Committed Spend</p>
-                  <p className="font-mono text-base font-extrabold text-[#0B1457] tabular-nums">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1.5">
+                  <p className="text-xs font-medium text-slate-500">Committed Spend</p>
+                  <p className="font-sans text-xl font-semibold tabular-nums text-slate-900 tracking-tight">
                     {money(selectedDrilldownProject.committed)}
                   </p>
-                  <p className="text-[10px] font-bold text-[#10B981]">
+                  <p className="text-xs font-medium text-emerald-700">
                     {selectedDrilldownProject.budget > 0
                       ? `${selectedDrilldownProject.utilization}% of total budget`
                       : "Uncapped Budget"}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Allocated Budget</p>
-                  <p className="font-mono text-base font-extrabold text-[#0B1457] tabular-nums">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1.5">
+                  <p className="text-xs font-medium text-slate-500">Allocated Budget</p>
+                  <p className="font-sans text-xl font-semibold tabular-nums text-slate-900 tracking-tight">
                     {selectedDrilldownProject.budget > 0 ? money(selectedDrilldownProject.budget) : "₦ 0.00"}
                   </p>
-                  <p className="text-[10px] text-[#64748B]">Approved Capex</p>
+                  <p className="text-xs text-slate-500 font-normal">Approved Capex</p>
                 </div>
-                <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Remaining Budget</p>
-                  <p className="font-mono text-base font-extrabold text-[#0001FF] tabular-nums">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1.5">
+                  <p className="text-xs font-medium text-slate-500">Remaining Budget</p>
+                  <p className="font-sans text-xl font-semibold tabular-nums text-[#0B1457] tracking-tight">
                     {selectedDrilldownProject.budget > 0 ? money(selectedDrilldownProject.remaining) : "—"}
                   </p>
-                  <p className="text-[10px] font-bold text-[#0001FF]">
+                  <p className="text-xs font-medium text-slate-600">
                     {selectedDrilldownProject.budget > 0 ? "Available to commit" : "No budget limit"}
                   </p>
                 </div>
               </div>
 
               {selectedDrilldownProject.budget > 0 && (
-                <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-[#0B1457]">
-                    <span>Budget Consumption Velocity</span>
-                    <span className="font-mono tabular-nums">{selectedDrilldownProject.utilization}% Utilized</span>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-slate-700">Budget Consumption Velocity</span>
+                    <span className="font-semibold tabular-nums text-slate-900">
+                      {selectedDrilldownProject.utilization}% Utilized
+                    </span>
                   </div>
-                  <div className="h-2.5 w-full rounded-full bg-[#F1F5F9] overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, selectedDrilldownProject.utilization)}%` }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
-                      className="h-full bg-gradient-to-r from-[#0001FF] to-[#0B1457] rounded-full"
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        selectedDrilldownProject.utilization > 90
+                          ? "bg-rose-500"
+                          : selectedDrilldownProject.utilization > 75
+                            ? "bg-amber-500"
+                            : "bg-[#0B1457]",
+                      )}
                     />
                   </div>
                 </div>
               )}
 
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#0B1457]">
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                  <p className="text-xs font-semibold text-slate-800">
                     Active Purchase Orders on this Site ({selectedDrilldownProject.purchaseOrders.length})
                   </p>
-                  <span className="text-[10px] font-semibold text-[#64748B]">
-                    Committed Total: {money(selectedDrilldownProject.committed)}
+                  <span className="text-xs text-slate-500 font-normal">
+                    Committed Total:{" "}
+                    <strong className="font-semibold text-slate-900 tabular-nums">
+                      {money(selectedDrilldownProject.committed)}
+                    </strong>
                   </span>
                 </div>
 
                 {selectedDrilldownProject.purchaseOrders.length === 0 ? (
-                  <div className="p-4 rounded-lg bg-white border border-[#E2E8F0] text-center">
-                    <p className="text-xs font-semibold text-[#111315]">No purchase orders issued yet for this site</p>
-                    <p className="text-[11px] text-[#64748B] mt-1">
+                  <div className="p-6 text-center bg-white">
+                    <p className="text-xs font-semibold text-slate-800">No purchase orders issued yet for this site</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
                       Committed spend will reflect automatically once purchase orders are issued to verified suppliers.
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-[#F8FAFC] text-[10px] font-bold uppercase text-[#64748B]">
+                      <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
                         <tr>
-                          <th className="px-3 py-2">PO Ref</th>
-                          <th className="px-3 py-2">Supplier</th>
-                          <th className="px-3 py-2">Issued</th>
-                          <th className="px-3 py-2">Status</th>
-                          <th className="px-3 py-2 text-right">Value</th>
+                          <th className="px-4 py-2.5 font-medium">PO Ref</th>
+                          <th className="px-4 py-2.5 font-medium">Supplier</th>
+                          <th className="px-4 py-2.5 font-medium">Issued</th>
+                          <th className="px-4 py-2.5 font-medium">Status</th>
+                          <th className="px-4 py-2.5 font-medium text-right">Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#F1F5F9]">
+                      <tbody className="divide-y divide-slate-100">
                         {selectedDrilldownProject.purchaseOrders.map((po: any) => (
-                          <tr key={po.id} className="hover:bg-[#F8FAFC]/70">
-                            <td className="px-3 py-2.5 font-mono font-bold text-[#0001FF]">
-                              <Link href="/purchase-orders" className="hover:underline">
+                          <tr key={po.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <Link
+                                href="/purchase-orders"
+                                className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-[#0B1457] hover:text-[#0001FF]"
+                              >
                                 {po.po_number || po.id.slice(0, 8)}
                               </Link>
                             </td>
-                            <td className="px-3 py-2.5 text-[#111315]">
+                            <td className="px-4 py-3 font-medium text-slate-900">
                               {po.suppliers?.name || "Verified Vendor"}
                             </td>
-                            <td className="px-3 py-2.5 text-[#64748B]">
+                            <td className="px-4 py-3 text-slate-500 font-normal">
                               {po.issued_at ? shortDate(po.issued_at) : "—"}
                             </td>
-                            <td className="px-3 py-2.5">
-                              <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase bg-emerald-50 text-emerald-700">
-                                {po.status || "issued"}
-                              </span>
+                            <td className="px-4 py-3">
+                              <StatusPill
+                                status={po.status || "issued"}
+                                label={po.status ? STATUS_LABELS[po.status] || po.status : "Issued"}
+                              />
                             </td>
-                            <td className="px-3 py-2.5 text-right font-mono font-bold text-[#0B1457] tabular-nums">
+                            <td className="px-4 py-3 text-right font-sans font-semibold text-slate-900 tabular-nums">
                               {money(po.total_amount, po.settlement_currency || "NGN")}
                             </td>
                           </tr>
@@ -1066,18 +1086,18 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-[#64748B]">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-xs text-slate-500 font-normal">
                   {selectedDrilldownProject.requisitions.length} requisition(s) linked to this site
                 </span>
                 <div className="flex items-center gap-2">
-                  <Button asChild variant="outline" className="h-9 rounded-xl border-[#E2E8F0] text-xs font-semibold">
+                  <Button asChild variant="outline" className="h-9 px-3 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50">
                     <Link href="/requisitions/new">
-                      <Plus className="mr-1 h-3.5 w-3.5" />
+                      <Plus className="mr-1.5 h-3.5 w-3.5" />
                       New Requisition
                     </Link>
                   </Button>
-                  <Button asChild className="h-9 rounded-xl bg-[#0001FF] px-4 text-xs font-bold text-white hover:bg-[#0B1457] shadow-xs">
+                  <Button asChild className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs">
                     <Link href="/projects">
                       <span>Projects Hub</span>
                       <ArrowRight className="ml-1.5 h-3.5 w-3.5" />

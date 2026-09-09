@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Camera, X, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Camera, Paperclip, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
@@ -180,24 +180,24 @@ function NewRequisition() {
 
   async function handleFileChange(index: number, file: File | null) {
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error("Each photo must be under 4 MB.");
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Each document or photo must be under 50 MB.");
       return;
     }
     const itemId = crypto.randomUUID();
     setUploadingIndex(index);
     try {
       const { signedUrl, path } = await attachmentUploadUrlFn({
-        data: { itemId, filename: file.name, contentType: file.type },
+        data: { itemId, filename: file.name, contentType: file.type || "application/octet-stream" },
       });
       const res = await fetch(signedUrl, { method: "PUT", body: file });
       if (!res.ok) throw new Error("Upload failed");
       updateLine(index, {
         attachments: [...lines[index]!.attachments, { path, name: file.name }],
       });
-      toast.success("Photo attached.");
+      toast.success("Document attached.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't attach photo.");
+      toast.error(error instanceof Error ? error.message : "Couldn't attach document.");
     } finally {
       setUploadingIndex(null);
     }
@@ -391,12 +391,11 @@ function NewRequisition() {
 
                   <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
                     <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-2xs">
-                      <Camera className="h-3.5 w-3.5 text-[#0B1457]" />
-                      {uploadingIndex === index ? "Uploading…" : "Snap photo"}
+                      <Paperclip className="h-3.5 w-3.5 text-[#0B1457]" />
+                      {uploadingIndex === index ? "Uploading…" : "Attach document / photo"}
                       <input
                         type="file"
-                        accept="image/*"
-                        capture="environment"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg,.webp,image/*,application/*"
                         className="sr-only"
                         onChange={(e) => handleFileChange(index, e.target.files?.[0] ?? null)}
                         disabled={uploadingIndex === index}

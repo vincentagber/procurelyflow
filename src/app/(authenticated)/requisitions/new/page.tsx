@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Camera, X, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Camera, Paperclip, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
@@ -166,24 +166,24 @@ export default function NewRequisitionPage() {
 
   async function handleFileChange(index: number, file: File | null) {
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error("Each photo must be under 4 MB.");
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Each document or photo must be under 50 MB.");
       return;
     }
     const itemId = crypto.randomUUID();
     setUploadingIndex(index);
     try {
       const { signedUrl, path } = await attachmentUploadUrlFn({
-        data: { itemId, filename: file.name, contentType: file.type },
+        data: { itemId, filename: file.name, contentType: file.type || "application/octet-stream" },
       });
       const res = await fetch(signedUrl, { method: "PUT", body: file });
       if (!res.ok) throw new Error("Upload failed");
       updateLine(index, {
         attachments: [...lines[index]!.attachments, { path, name: file.name }],
       });
-      toast.success("Photo attached.");
+      toast.success("Document attached.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Couldn't attach photo.");
+      toast.error(error instanceof Error ? error.message : "Couldn't attach document.");
     } finally {
       setUploadingIndex(null);
     }
@@ -342,6 +342,35 @@ export default function NewRequisitionPage() {
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                  </div>
+
+                  <AttachmentThumbs
+                    attachments={l.attachments}
+                    onRemove={(path) => removeAttachment(index, path)}
+                    readOnly={false}
+                  />
+
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 mt-2">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-all shadow-2xs">
+                      <Paperclip className="h-3.5 w-3.5 text-[#0B1457]" />
+                      {uploadingIndex === index ? "Uploading…" : "Attach document / photo"}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip,.png,.jpg,.jpeg,.webp,image/*,application/*"
+                        className="sr-only"
+                        onChange={(e) => handleFileChange(index, e.target.files?.[0] ?? null)}
+                        disabled={uploadingIndex === index}
+                      />
+                    </label>
+                    <p className="text-right text-xs text-slate-500">
+                      Subtotal{" "}
+                      <span className="font-semibold text-slate-900 tabular-nums">
+                        {money(
+                          (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0),
+                          currency,
+                        )}
+                      </span>
+                    </p>
                   </div>
                 </div>
               ))}

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Truck,
   Camera,
+  Paperclip,
   WifiOff,
   RefreshCw,
   Search,
@@ -175,6 +176,10 @@ function Deliveries() {
   const handlePhotoUpload = async (file: File) => {
     try {
       setIsUploadingPhoto(true);
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error("Each document or photo must be under 50 MB.");
+        return;
+      }
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `deliveries/${Date.now()}_${safeName}`;
       const { data, error } = await supabase.storage
@@ -183,9 +188,9 @@ function Deliveries() {
 
       if (error) throw error;
       setPhotos((prev) => [...prev, { path: data.path, name: file.name }]);
-      toast.success("Delivery note photo attached.");
+      toast.success("Delivery document attached.");
     } catch {
-      toast.error("Failed uploading photo.");
+      toast.error("Failed uploading document.");
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -492,17 +497,16 @@ function Deliveries() {
         <div className="space-y-2">
           <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
             <Camera className="h-4 w-4 text-slate-500" />
-            <span>Delivery Note &amp; Site Inspection Photo</span>
+            <span>Delivery Waybill &amp; Site Documents</span>
           </Label>
 
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:border-slate-400 transition-colors shadow-2xs">
-              <Camera className="h-4 w-4 text-slate-500" />
-              <span>{isUploadingPhoto ? "Uploading..." : "Take / Upload Photo"}</span>
+              <Paperclip className="h-4 w-4 text-[#0B1457]" />
+              <span>{isUploadingPhoto ? "Uploading..." : "Attach Waybill / Document"}</span>
               <input
                 type="file"
-                accept="image/*"
-                capture="environment"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.png,.jpg,.jpeg,.webp,image/*,application/*"
                 className="hidden"
                 disabled={isUploadingPhoto}
                 onChange={(e) => {
@@ -513,7 +517,7 @@ function Deliveries() {
             </label>
 
             <span className="text-xs text-slate-500">
-              Attach picture of signed waybill or physical delivery receipt.
+              Attach signed waybill, delivery note, inspection report, or photo (PDF, Word, Excel, Images up to 50 MB).
             </span>
           </div>
 

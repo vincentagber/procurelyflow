@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  ShieldCheck,
   Lock,
   Mail,
   Building2,
@@ -18,7 +17,6 @@ import {
   Scale,
   Receipt,
   ChevronDown,
-  Check,
   Fingerprint,
 } from "lucide-react";
 
@@ -232,56 +230,23 @@ function AuthPage() {
           </Link>
         </div>
 
-        {/* Middle Core Proposition & Verified Executive Testimonial */}
-        <div className="relative z-10 my-auto max-w-lg space-y-8 py-10">
-          <h2 className="font-display text-3xl font-extrabold uppercase tracking-wide text-white xl:text-4xl leading-tight">
-            One auditable flow from site request to purchase order.
-          </h2>
-
-          {/* Social Proof Executive Quote Card */}
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 backdrop-blur-md shadow-xl shadow-black/10 space-y-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/avatars/avatar-ca.jpg"
-                alt="Executive"
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-[#0001FF]"
-              />
-              <div>
-                <p className="text-xs font-bold text-white">Engr. Babatunde Adeleke</p>
-                <p className="text-[11px] text-white/70">Chief Operating Officer, Coastal Infra Plc</p>
-              </div>
-            </div>
-            <p className="text-xs leading-relaxed text-white/90 italic">
-              "Procurely Flow eliminated over 40 scattered WhatsApp requisitions a day across our 12 sites.
-              Our board and audit committee now have 100% immutable transparency."
+        {/* Middle Core Proposition & Showcase Illustration */}
+        <div className="relative z-10 my-auto max-w-lg space-y-8 py-6">
+          <div className="space-y-3">
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-white xl:text-4xl leading-tight">
+              One auditable flow from site request to purchase order.
+            </h2>
+            <p className="text-sm font-normal text-white/80 leading-relaxed max-w-md">
+              Enterprise procurement operating system for construction, energy, and commercial operations.
             </p>
-            <div className="flex items-center gap-4 border-t border-white/10 pt-3 text-[11px] font-medium text-white/80">
-              <span className="flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> ₦4.2B Audited Spend
-              </span>
-            </div>
           </div>
 
-          {/* Value Bullet Points */}
-          <div className="space-y-3 pt-2 text-xs text-white/85">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-white">
-                <Check className="h-3 w-3 stroke-[3]" />
-              </div>
-              <span>SHA-256 Cryptographic tamper-evident audit ledger</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-white">
-                <Check className="h-3 w-3 stroke-[3]" />
-              </div>
-              <span>1-Click threshold approvals via WhatsApp & encrypted tokens</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-white">
-                <Check className="h-3 w-3 stroke-[3]" />
-              </div>
-              <span>Automated 3-way matching and NRS e-invoicing compliance</span>
-            </div>
+          <div className="w-full max-w-[380px] overflow-hidden rounded-2xl border border-white/15 bg-white p-3 shadow-2xl shadow-black/30 transition-transform duration-300 hover:scale-[1.01]">
+            <img
+              src="/auth-illustration.jpg"
+              alt="Procurely Flow"
+              className="h-auto w-full rounded-xl object-contain"
+            />
           </div>
         </div>
       </div>
