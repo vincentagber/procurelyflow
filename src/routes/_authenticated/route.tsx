@@ -16,6 +16,9 @@ import {
   ShieldAlert,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  Building2,
+  Receipt,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -41,53 +44,77 @@ export const Route = createFileRoute("/_authenticated")({
   component: AppLayout,
 });
 
-const NAV = [
-  { to: "/dashboard", label: "Overview", icon: ClipboardList, roles: null },
-  { to: "/requisitions", label: "Requisitions", icon: ClipboardList, roles: null },
-  {
-    to: "/approvals",
-    label: "Approvals",
-    icon: CheckSquare,
-    roles: ["approver", "finance", "executive", "admin"],
-  },
-  { to: "/projects", label: "Projects / Cost Centers", icon: FolderKanban, roles: null },
-  {
-    to: "/rfqs",
-    label: "RFQs & quotes",
-    icon: Send,
-    roles: ["procurement_officer", "finance", "executive", "admin"],
-  },
-  {
-    to: "/purchase-orders",
-    label: "Purchase orders",
-    icon: ReceiptText,
-    roles: ["procurement_officer", "finance", "executive", "admin"],
-  },
-  {
-    to: "/deliveries",
-    label: "Deliveries & Inspection",
-    icon: Truck,
-    roles: null,
-  },
-  {
-    to: "/invoices",
-    label: "Invoices & 3-Way Match",
-    icon: ReceiptText,
-    roles: ["procurement_officer", "finance", "executive", "admin"],
-  },
-  {
-    to: "/suppliers",
-    label: "Suppliers",
-    icon: Truck,
-    roles: ["procurement_officer", "finance", "admin"],
-  },
-  { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-] as const satisfies ReadonlyArray<{
+interface NavItem {
   to: string;
   label: string;
-  icon: typeof ClipboardList;
+  icon: typeof LayoutDashboard;
   roles: readonly AppRole[] | null;
-}>;
+  badgeKey?: "pendingApprovals";
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: "Main Menu",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: null },
+      { to: "/requisitions", label: "Requisitions", icon: ClipboardList, roles: null },
+      {
+        to: "/approvals",
+        label: "Approvals",
+        icon: CheckSquare,
+        roles: ["approver", "finance", "executive", "admin"],
+        badgeKey: "pendingApprovals",
+      },
+      { to: "/projects", label: "Projects / Cost Centers", icon: FolderKanban, roles: null },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      {
+        to: "/rfqs",
+        label: "RFQs & Quotes",
+        icon: Send,
+        roles: ["procurement_officer", "finance", "executive", "admin"],
+      },
+      {
+        to: "/purchase-orders",
+        label: "Purchase Orders",
+        icon: ReceiptText,
+        roles: ["procurement_officer", "finance", "executive", "admin"],
+      },
+      {
+        to: "/deliveries",
+        label: "Deliveries & Inspection",
+        icon: Truck,
+        roles: null,
+      },
+      {
+        to: "/invoices",
+        label: "Invoices & 3-Way Match",
+        icon: Receipt,
+        roles: ["procurement_officer", "finance", "executive", "admin"],
+      },
+      {
+        to: "/suppliers",
+        label: "Suppliers Directory",
+        icon: Building2,
+        roles: ["procurement_officer", "finance", "admin"],
+      },
+    ],
+  },
+  {
+    title: "General",
+    items: [
+      { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+    ],
+  },
+];
 
 function AppLayout() {
   const me = useMe();
@@ -117,6 +144,20 @@ function AppLayout() {
     queryKey: ["platform-admin-gate"],
     queryFn: () => amIPlatformAdmin(),
   });
+
+  const pendingApprovalsQuery = useQuery({
+    queryKey: ["sidebar-pending-approvals-count", me.data?.userId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("approval_steps")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      return count ?? 0;
+    },
+    enabled: !!me.data?.userId,
+    staleTime: 30000,
+  });
+  const pendingApprovalsCount = pendingApprovalsQuery.data ?? 0;
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -191,26 +232,31 @@ function AppLayout() {
       >
         <div>
           {/* Brand Header */}
-          <div className="px-1 pb-5">
+          <div className="px-1 pb-4">
             <div className="flex items-center justify-between">
-              <Link to="/dashboard" className="flex items-center">
+              <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0">
                 <img
                   src="/logo-dark.png"
-                  alt="Logo"
+                  alt="Procurely"
                   className={cn(
-                    "w-auto object-contain rounded-lg bg-white p-1.5 shadow-sm transition-all",
-                    collapsed ? "h-7" : "h-8",
+                    "w-auto object-contain rounded-lg bg-white p-1 shadow-sm transition-all",
+                    collapsed ? "h-7" : "h-7",
                   )}
                 />
+                {!collapsed && (
+                  <span className="font-semibold text-sm tracking-tight text-white truncate">
+                    Procurely
+                  </span>
+                )}
               </Link>
-              <div className="hidden md:flex items-center gap-1.5">
+              <div className="hidden md:flex items-center gap-1">
                 {!collapsed && watchesSuppliers ? <NotificationBell /> : null}
                 <button
                   type="button"
                   onClick={toggleCollapsed}
                   title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                   aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
                 >
                   {collapsed ? (
                     <ChevronRight className="h-4 w-4" />
@@ -222,59 +268,113 @@ function AppLayout() {
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="space-y-1">
-            {NAV.filter((item) => !item.roles || can(me.data?.roles, [...item.roles])).map(
-              (item) => (
+          {/* Navigation Sections Categorized (Main Menu, Operations, General) */}
+          <nav className="space-y-3.5">
+            {NAV_SECTIONS.map((section, idx) => {
+              const visibleItems = section.items.filter(
+                (item) => !item.roles || can(me.data?.roles, [...item.roles]),
+              );
+              if (!visibleItems.length) return null;
+
+              return (
+                <div key={section.title} className="space-y-0.5">
+                  {/* Category Header (or subtle divider when collapsed) */}
+                  {collapsed ? (
+                    idx > 0 ? <div className="h-px bg-white/10 my-2 mx-1" /> : null
+                  ) : (
+                    <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/40 select-none">
+                      {section.title}
+                    </div>
+                  )}
+
+                  <div className="space-y-0.5">
+                    {visibleItems.map((item) => {
+                      const badgeCount =
+                        item.badgeKey === "pendingApprovals" ? pendingApprovalsCount : 0;
+
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setOpen(false)}
+                          title={collapsed ? item.label : undefined}
+                          activeProps={{
+                            className:
+                              "bg-[#0001FF] text-white font-medium shadow-xs",
+                          }}
+                          inactiveProps={{
+                            className:
+                              "text-white/70 hover:bg-white/10 hover:text-white font-normal",
+                          }}
+                          className={cn(
+                            "group flex items-center rounded-xl py-2 text-xs transition-all",
+                            collapsed ? "justify-center px-2" : "justify-between px-3",
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <item.icon
+                              className="h-4 w-4 shrink-0 transition-colors group-hover:text-white"
+                              aria-hidden
+                            />
+                            {!collapsed && <span className="truncate">{item.label}</span>}
+                          </div>
+
+                          {!collapsed && badgeCount > 0 && (
+                            <span className="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold text-white tabular-nums">
+                              {badgeCount}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+
+                    {/* Add Log out into General category section */}
+                    {section.title === "General" && (
+                      <button
+                        type="button"
+                        onClick={signOut}
+                        title={collapsed ? "Log out" : undefined}
+                        className={cn(
+                          "group w-full flex items-center rounded-xl py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-all cursor-pointer",
+                          collapsed ? "justify-center px-2" : "gap-2.5 px-3",
+                        )}
+                      >
+                        <LogOut className="h-4 w-4 shrink-0 text-white/60 group-hover:text-white transition-colors" />
+                        {!collapsed && <span>Log out</span>}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Platform Admin in General / Standalone */}
+            {platform.data?.isPlatformAdmin ? (
+              <div className="pt-1">
+                {!collapsed && (
+                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-amber-400/60 select-none">
+                    Platform
+                  </div>
+                )}
                 <Link
-                  key={item.to}
-                  to={item.to}
+                  to="/platform-admin"
                   onClick={() => setOpen(false)}
-                  title={collapsed ? item.label : undefined}
-                  activeProps={{
-                    className:
-                      "bg-[#0001FF] text-white font-semibold shadow-inner",
-                  }}
-                  inactiveProps={{
-                    className: "text-white/70 hover:bg-white/10 hover:text-white font-normal",
-                  }}
+                  title={collapsed ? "Platform Admin" : undefined}
                   className={cn(
-                    "group flex items-center rounded-lg py-2.5 text-sm transition-all",
-                    collapsed ? "justify-center px-2" : "justify-between px-3",
+                    "flex items-center rounded-xl border border-amber-500/30 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors",
+                    collapsed ? "justify-center px-2" : "gap-2.5 px-3",
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <item.icon
-                      className="h-4 w-4 shrink-0 transition-colors group-hover:text-white"
-                      aria-hidden
-                    />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </div>
+                  <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
+                  {!collapsed && <span>Platform Admin</span>}
                 </Link>
-              ),
-            )}
+              </div>
+            ) : null}
           </nav>
-
-          {platform.data?.isPlatformAdmin ? (
-            <div className="mt-4 border-t border-[#22252A] pt-3">
-              <Link
-                to="/platform-admin"
-                onClick={() => setOpen(false)}
-                title={collapsed ? "Platform Admin" : undefined}
-                className={cn(
-                  "flex items-center rounded-lg border border-amber-500/30 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors",
-                  collapsed ? "justify-center px-2" : "gap-2.5 px-3",
-                )}
-              >
-                <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
-                {!collapsed && <span>Platform Admin</span>}
-              </Link>
-            </div>
-          ) : null}
         </div>
 
-        {/* User Profile & Sign Out Footer */}
-        <div className="mt-6 border-t border-[#162070] pt-4">
+        {/* User Profile Footer */}
+        <div className="mt-4 border-t border-[#162070] pt-3.5">
           {collapsed ? (
             <div className="flex flex-col items-center gap-2">
               <div
@@ -283,36 +383,18 @@ function AppLayout() {
               >
                 {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
               </div>
-              <button
-                onClick={signOut}
-                title="Sign out"
-                aria-label="Sign out"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
-              >
-                <LogOut className="h-4 w-4" aria-hidden />
-              </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm">
-                  {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-white">
-                    {me.data.profile?.full_name || "User"}
-                  </p>
-                  <p className="truncate text-[10px] text-white/50">{me.data.email}</p>
-                </div>
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0001FF] text-xs font-bold text-white uppercase shadow-sm">
+                {me.data.profile?.full_name?.slice(0, 2) || me.data.email.slice(0, 2)}
               </div>
-              <button
-                onClick={signOut}
-                title="Sign out"
-                aria-label="Sign out"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
-              >
-                <LogOut className="h-4 w-4" aria-hidden />
-              </button>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-white">
+                  {me.data.profile?.full_name || "User"}
+                </p>
+                <p className="truncate text-[10px] text-white/50">{me.data.email}</p>
+              </div>
             </div>
           )}
         </div>
