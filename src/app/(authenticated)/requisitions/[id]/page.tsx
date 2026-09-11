@@ -19,6 +19,7 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa6";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, can } from "@/lib/useMe";
@@ -382,7 +383,7 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
                           className="h-8 px-3 border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
                           onClick={() => handleOpenWhatsAppModal(s.id)}
                         >
-                          <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                          <FaWhatsapp className="h-4 w-4 text-[#25D366] shrink-0" />
                           <span>WhatsApp 1-Click</span>
                         </Button>
                       </div>
@@ -454,7 +455,7 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-900 font-bold text-base">
-              <MessageSquare className="h-5 w-5 text-emerald-600" />
+              <FaWhatsapp className="h-5 w-5 text-[#25D366] shrink-0" />
               WhatsApp &amp; Mobile Clearance Channel
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
@@ -491,12 +492,12 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
               <div className="grid sm:grid-cols-2 gap-2 pt-1">
                 <Button
                   type="button"
-                  className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  className="h-10 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs cursor-pointer shadow-xs gap-1.5"
                   onClick={() => {
                     window.open(generatedLinks.whatsappDirectUrl, "_blank", "noopener,noreferrer");
                   }}
                 >
-                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                  <FaWhatsapp className="h-4 w-4 shrink-0" />
                   Launch WhatsApp
                 </Button>
                 <Button

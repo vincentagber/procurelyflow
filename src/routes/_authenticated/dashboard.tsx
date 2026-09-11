@@ -52,6 +52,18 @@ import {
   ForensicGovernanceEmblemIcon,
   GovernanceVerifiedBadgeIcon,
 } from "@/components/procurely/ProductDesignerIcons";
+import {
+  MdPolicy,
+  MdSecurity,
+  MdVerified,
+  MdVerifiedUser,
+  MdRadar,
+  MdFactCheck,
+  MdTune,
+  MdCallSplit,
+  MdHub,
+} from "react-icons/md";
+import { FaArrowsRotate } from "react-icons/fa6";
 import { cn } from "@/lib/utils";
 import {
   detectSplitRequisitionAnomalies,
@@ -890,7 +902,7 @@ function Dashboard() {
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                        <MdVerified className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                         100% Compliant · Controls Verified
                       </>
                     )}
@@ -918,7 +930,7 @@ function Dashboard() {
                   }, 600);
                 }}
               >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isScanning ? "animate-spin" : ""}`} />
+                <MdRadar className={`h-4 w-4 mr-1.5 text-slate-500 shrink-0 ${isScanning ? "animate-spin" : ""}`} />
                 {isScanning ? "Scanning…" : "Deep Scan"}
               </Button>
               <Button
@@ -930,7 +942,7 @@ function Dashboard() {
                   setIsForensicModalOpen(true);
                 }}
               >
-                <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
+                <MdFactCheck className="h-4 w-4 mr-1.5 text-emerald-400 shrink-0" />
                 Open Forensic Audit View
               </Button>
             </div>
@@ -1054,9 +1066,10 @@ function Dashboard() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs font-semibold border-emerald-300 text-emerald-900 hover:bg-emerald-100/60 shrink-0 cursor-pointer"
+                className="h-8 text-xs font-semibold border-emerald-300 text-emerald-900 hover:bg-emerald-100/60 shrink-0 cursor-pointer inline-flex items-center gap-1.5"
                 onClick={() => setIsForensicModalOpen(true)}
               >
+                <MdTune className="h-3.5 w-3.5 shrink-0" />
                 Configure Forensic Rules
               </Button>
             </div>
@@ -1072,14 +1085,15 @@ function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-200">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-xl bg-[#0B1457] flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0">
-                  <ShieldAlert className="h-5 w-5 text-emerald-400" />
+                  <MdPolicy className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-base font-bold text-slate-900 tracking-tight">
                       Governance &amp; Forensic Audit Dossier (§FR-4.5, §FR-8.5)
                     </h3>
-                    <span className="rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-[10px] font-bold">
+                    <span className="rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 text-[10px] font-bold inline-flex items-center gap-1.5">
+                      <MdRadar className="h-3.5 w-3.5 text-emerald-600 animate-pulse shrink-0" />
                       Live Forensic Stream
                     </span>
                   </div>
@@ -1139,13 +1153,13 @@ function Dashboard() {
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 w-full text-xs font-semibold bg-[#0B1457] hover:bg-[#0001FF] text-white cursor-pointer"
+                  className="h-8 w-full text-xs font-semibold bg-[#0B1457] hover:bg-[#0001FF] text-white cursor-pointer inline-flex items-center justify-center gap-1.5"
                   onClick={() => {
                     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
                     toast.success("Forensic thresholds applied & transactions re-scanned.");
                   }}
                 >
-                  <RefreshCw className="h-3 w-3 mr-1.5" /> Re-scan
+                  <FaArrowsRotate className="h-3 w-3 shrink-0" /> Re-scan
                 </Button>
               </div>
             </div>
@@ -1155,28 +1169,31 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={() => setForensicTab("ALL")}
-                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all ${
+                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
                   forensicTab === "ALL" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
+                <MdFactCheck className="h-3.5 w-3.5 shrink-0" />
                 All Anomalies ({allGovernanceAnomalies.length})
               </button>
               <button
                 type="button"
                 onClick={() => setForensicTab("SPLIT")}
-                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all ${
+                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
                   forensicTab === "SPLIT" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
+                <MdCallSplit className="h-3.5 w-3.5 shrink-0" />
                 Split Requisitions ({splitAnomalies.length})
               </button>
               <button
                 type="button"
                 onClick={() => setForensicTab("AFFINITY")}
-                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all ${
+                className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
                   forensicTab === "AFFINITY" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
+                <MdHub className="h-3.5 w-3.5 shrink-0" />
                 Concentration Risk ({affinityAnomalies.length})
               </button>
             </div>
@@ -1194,7 +1211,7 @@ function Dashboard() {
                 if (list.length === 0) {
                   return (
                     <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500 space-y-2">
-                      <ShieldCheck className="h-8 w-8 text-emerald-600 mx-auto" />
+                      <MdVerifiedUser className="h-8 w-8 text-emerald-600 mx-auto" />
                       <p className="font-bold text-slate-800">No anomalies detected in this category.</p>
                       <p className="text-[11px] text-slate-500">
                         Current transactions comply with the configured {money(forensicThreshold, "NGN")} threshold and {concentrationThreshold}% vendor limit.
