@@ -174,12 +174,12 @@ describe("Automated Quotation Comparison & Side-by-Side Bid Analysis Engine", ()
 
     // 2. Line Item Pricing & Lowest Price Detection
     assert.equal(analysis.lineItems.length, 1);
-    const cementRow = analysis.lineItems[0];
+    const cementRow = analysis.lineItems[0]!;
     assert.equal(cementRow.lowestUnitPrice, 7800);
     assert.equal(cementRow.highestUnitPrice, 8500);
     assert.equal(cementRow.lowestSupplierId, "supp-bua");
-    assert.equal(cementRow.byQuote["quote-3"].isLowestPrice, true);
-    assert.equal(cementRow.byQuote["quote-1"].isLowestPrice, false);
+    assert.equal(cementRow.byQuote["quote-3"]!.isLowestPrice, true);
+    assert.equal(cementRow.byQuote["quote-1"]!.isLowestPrice, false);
 
     // 3. Landed Cost Calculation (Base + VAT + Delivery)
     const quoteDangote = analysis.quotes.find((q) => q.id === "quote-1")!;

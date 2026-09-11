@@ -273,7 +273,7 @@ function Dashboard() {
       id: r.id,
       reference: r.reference,
       requesterId: (r as { requester_id?: string }).requester_id || "req-01",
-      requesterName: r.requester_id === me.data?.user?.id ? (me.data?.profile?.full_name || "Procurement Initiator") : "Site Engineer / Buyer",
+      requesterName: r.requester_id === me.data?.userId ? (me.data?.profile?.full_name || "Procurement Initiator") : "Site Engineer / Buyer",
       projectId: (r as { project_id?: string }).project_id || "proj-01",
       projectName: (r as { projects?: { name?: string } }).projects?.name || "Lekki Coastal Highway Tower A",
       amount: Number(r.total_amount),

@@ -55,7 +55,7 @@ import { motion, AnimatePresence } from "@/components/ui/animated";
 
 export default function RfqDetailPage() {
   const params = useParams();
-  const id = params?.id as string;
+  const id = params?.["id"] as string;
   const router = useRouter();
   const queryClient = useQueryClient();
 

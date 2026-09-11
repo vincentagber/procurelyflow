@@ -336,7 +336,7 @@ export async function decideApprovalByToken(
       _roles: [step.required_role as any],
     });
     if (usersWithRole && usersWithRole.length > 0) {
-      actorUserId = usersWithRole[0].user_id;
+      actorUserId = usersWithRole[0]!.user_id;
     } else {
       actorUserId = "whatsapp_email_system";
     }
@@ -388,18 +388,18 @@ export async function generateStepApprovalLinks(stepId: string, originUrl?: stri
     _roles: [step.required_role as any],
   });
 
-  const approverUserId = users && users.length > 0 ? users[0].user_id : null;
+  const approverUserId = users && users.length > 0 ? users[0]!.user_id : null;
   let approverPhone: string | null = null;
   let approverEmail: string | null = null;
 
   if (approverUserId) {
     const { data: prof } = await supabaseAdmin
       .from("profiles")
-      .select("phone, email")
+      .select("email, full_name")
       .eq("id", approverUserId)
       .maybeSingle();
-    approverPhone = prof?.phone || null;
-    approverEmail = prof?.email || null;
+    approverPhone = (prof as any)?.phone ?? null;
+    approverEmail = prof?.email ?? null;
   }
 
   const { rawToken: approveToken } = await createSecureActionToken({
@@ -409,7 +409,7 @@ export async function generateStepApprovalLinks(stepId: string, originUrl?: stri
     entityId: step.id,
     actorId: approverUserId,
     recipientIdentifier: approverPhone || approverEmail || "whatsapp_approver",
-    ttlMinutes: 60 * 48, // 48 hours
+    ttlMinutes: 60 * 72,
   });
 
   const base = originUrl ? originUrl.replace(/\/$/, "") : "http://localhost:3002";
@@ -2005,7 +2005,7 @@ export async function whatsappApprovalWebhook(input: {
   fromPhone: string;
   stepId: string;
   decision: "approved" | "rejected";
-  comment?: string;
+  comment?: string | undefined;
 }) {
   const { data: step } = await supabaseAdmin
     .from("approval_steps")
@@ -2616,9 +2616,7 @@ export async function settleSubscriptionBillServer(
     .update({
       status: "SETTLED",
       cleared_at: now,
-      settled_at: now,
-      payment_gateway: "PROVIDUS_WEMA_NIP",
-      payment_gateway_reference: settlementRef,
+      payment_method: "BANK_TRANSFER_NIP",
     })
     .eq("id", sub.id)
     .select("*")
@@ -2632,7 +2630,7 @@ export async function settleSubscriptionBillServer(
   await supabaseAdmin
     .from("organizations")
     .update({
-      plan: sub.plan_tier,
+      plan: (sub.plan_tier.toLowerCase() || "growth") as any,
     })
     .eq("id", actor.orgId);
 

@@ -61,11 +61,15 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
   const [whatsappModalStep, setWhatsappModalStep] = useState<string | null>(null);
   const [generatedLinks, setGeneratedLinks] = useState<{
     stepId: string;
-    requisitionRef: string;
-    approverPhone?: string | null;
+    requisitionReference: string;
+    approveToken?: string;
+    webReviewUrl: string;
+    webApproveUrl: string;
+    webRejectUrl: string;
     whatsappMessage: string;
     whatsappDirectUrl: string;
-    webApprovalUrl: string;
+    approverPhone: string | null;
+    approverEmail?: string | null;
   } | null>(null);
   const [isGeneratingLinks, setIsGeneratingLinks] = useState(false);
   const [rejectModalStepId, setRejectModalStepId] = useState<string | null>(null);
@@ -299,7 +303,7 @@ export default function RequisitionDetailPage({ params }: { params: Promise<{ id
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
                 Approval Chain
               </h3>
-              {req.status === "submitted" && (
+              {req.status === "pending_approval" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                   Active Routing

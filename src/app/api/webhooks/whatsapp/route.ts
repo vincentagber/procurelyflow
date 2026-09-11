@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const challenge = searchParams.get("hub.challenge");
 
   // Standard Meta WhatsApp Webhook Handshake
-  if (mode === "subscribe" && token === (process.env.WHATSAPP_VERIFY_TOKEN || "procurely_whatsapp_token")) {
+  if (mode === "subscribe" && token === (process.env["WHATSAPP_VERIFY_TOKEN"] || "procurely_whatsapp_token")) {
     return new NextResponse(challenge, { status: 200 });
   }
 

@@ -140,7 +140,7 @@ function TokenApprovalPage() {
           </div>
         </div>
 
-        {isDecided || requisition.status !== "pending" ? (
+        {isDecided || requisition.status !== "pending_approval" ? (
           <div className="rounded-2xl border border-emerald-200 bg-white p-6 sm:p-8 text-center space-y-3 shadow-xs">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
               <CheckCircle2 className="h-7 w-7" />

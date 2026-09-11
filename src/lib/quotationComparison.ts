@@ -79,7 +79,7 @@ export interface EvaluatedQuoteItemCell {
 
 export interface EvaluatedLineItem {
   key: string;
-  requisitionItemId?: string;
+  requisitionItemId?: string | undefined;
   description: string;
   quantity: number;
   unit: string;
@@ -113,10 +113,10 @@ export interface EvaluatedQuoteAnalysis {
   // Commercial & Credit Terms
   paymentTerms: string;
   paymentTermsScore: number; // 0 to 10
-  warrantyNote?: string | null;
+  warrantyNote?: string | null | undefined;
   validityDays: number;
   isExpired: boolean;
-  attachmentPath?: string | null;
+  attachmentPath?: string | null | undefined;
 
   // Supplier Standing & Historical Performance
   supplierRating: number; // 0 to 5
@@ -143,8 +143,8 @@ export interface SideBySideBidAnalysis {
   rfqId: string;
   rfqReference: string;
   requisitionTitle: string;
-  siteProjectName?: string;
-  neededByDate?: string | null;
+  siteProjectName?: string | undefined;
+  neededByDate?: string | null | undefined;
   closesAt: string;
   totalInvitedSuppliers: number;
   totalQuotesReceived: number;
@@ -264,20 +264,22 @@ export function analyzeSupplierQuotes(params: {
       }
 
       const unitPrice = Number(item.unitPrice) || 0;
-      const quantity = Number(item.quantity) || row.quantity;
+      const quantity = Number(item.quantity) || (row ? row.quantity : 1);
       const extendedPrice = unitPrice * quantity;
       const vatRate = Number(item.vatRate ?? 7.5);
       const vatAmount = item.vatAmount != null ? Number(item.vatAmount) : (extendedPrice * vatRate) / 100;
 
-      row.byQuote[q.id] = {
-        unitPrice,
-        extendedPrice,
-        vatRate,
-        vatAmount,
-        currency: q.currency,
-        isLowestPrice: false,
-        savingsVsHighest: 0,
-      };
+      if (row) {
+        row.byQuote[q.id] = {
+          unitPrice,
+          extendedPrice,
+          vatRate,
+          vatAmount,
+          currency: q.currency,
+          isLowestPrice: false,
+          savingsVsHighest: 0,
+        };
+      }
     }
   }
 
@@ -291,8 +293,8 @@ export function analyzeSupplierQuotes(params: {
 
     if (prices.length > 0) {
       prices.sort((a, b) => a.unitPrice - b.unitPrice);
-      const lowest = prices[0];
-      const highest = prices[prices.length - 1];
+      const lowest = prices[0]!;
+      const highest = prices[prices.length - 1]!;
       row.lowestUnitPrice = lowest.unitPrice;
       row.highestUnitPrice = highest.unitPrice;
 
@@ -380,10 +382,10 @@ export function analyzeSupplierQuotes(params: {
       isDeliveryDelayedVsNeededBy,
       paymentTerms,
       paymentTermsScore,
-      warrantyNote: quote.warrantyNote,
+      warrantyNote: quote.warrantyNote ?? null,
       validityDays: Number(quote.validityDays) || 30,
       isExpired,
-      attachmentPath: quote.attachmentPath,
+      attachmentPath: quote.attachmentPath ?? null,
       supplierRating: rating,
       isCompliant: supplier.isCompliant !== false,
       taxIdStatus: supplier.taxId ? "VERIFIED" : "PENDING",
@@ -430,13 +432,14 @@ export function analyzeSupplierQuotes(params: {
 
   // 4. Rank Landed Costs & Variance
   const sortedByCost = [...evaluatedQuotes].sort((a, b) => a.totalLandedCost - b.totalLandedCost);
-  const lowestLandedCost = sortedByCost[0].totalLandedCost;
-  const highestLandedCost = sortedByCost[sortedByCost.length - 1].totalLandedCost;
+  const lowestLandedCost = sortedByCost[0]!.totalLandedCost;
+  const highestLandedCost = sortedByCost[sortedByCost.length - 1]!.totalLandedCost;
   const averageLandedCost =
     sortedByCost.reduce((sum, q) => sum + q.totalLandedCost, 0) / sortedByCost.length;
 
   for (let i = 0; i < sortedByCost.length; i++) {
     const q = sortedByCost[i];
+    if (!q) continue;
     q.landedCostRank = i + 1;
     q.landedCostVarianceVsLowest = q.totalLandedCost - lowestLandedCost;
     q.landedCostVariancePercent =
@@ -504,10 +507,11 @@ export function analyzeSupplierQuotes(params: {
   const rankingPool = compliantQuotes.length > 0 ? compliantQuotes : evaluatedQuotes;
 
   const sortedByScore = [...rankingPool].sort((a, b) => b.commercialScore - a.commercialScore);
-  const recommended = sortedByScore[0];
+  const recommended = sortedByScore[0] ?? evaluatedQuotes[0]!;
 
   for (let i = 0; i < evaluatedQuotes.length; i++) {
     const q = evaluatedQuotes[i];
+    if (!q) continue;
     const rankIndex = sortedByScore.findIndex((item) => item.id === q.id);
     q.recommendationRank = rankIndex !== -1 ? rankIndex + 1 : sortedByScore.length + 1;
     if (q.id === recommended.id) {
@@ -567,7 +571,7 @@ export function analyzeSupplierQuotes(params: {
     recommendedQuoteAmount: recommended.totalLandedCost,
     recommendationRationale,
     totalPotentialCostAvoidance: costAvoidance,
-    cheapestLandedCostQuoteId: sortedByCost[0].id,
+    cheapestLandedCostQuoteId: sortedByCost[0]?.id ?? recommended.id,
     hasNonCompliantBids,
     hasExpiredBids,
     hasDeliveryDateRisks,

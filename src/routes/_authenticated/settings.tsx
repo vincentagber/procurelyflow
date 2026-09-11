@@ -452,9 +452,9 @@ function RulesSection({
           label: "Tier 1: Operational Spend (Below ₦500k)",
           min_amount: 0,
           max_amount: 500000,
-          required_roles: ["approver"],
-          approval_mode: "sequential",
-          extra_role_if_unbudgeted: "executive",
+          required_roles: ["approver"] as AppRole[],
+          approval_mode: "sequential" as const,
+          extra_role_if_unbudgeted: "executive" as const,
           sort_order: 1,
         },
         {
@@ -462,9 +462,9 @@ function RulesSection({
           label: "Tier 2: Mid-Range Spend (₦500k – ₦5m)",
           min_amount: 500000,
           max_amount: 5000000,
-          required_roles: ["approver", "finance"],
-          approval_mode: "sequential",
-          extra_role_if_unbudgeted: "executive",
+          required_roles: ["approver", "finance"] as AppRole[],
+          approval_mode: "sequential" as const,
+          extra_role_if_unbudgeted: "executive" as const,
           sort_order: 2,
         },
         {
@@ -472,9 +472,9 @@ function RulesSection({
           label: "Tier 3: Major CapEx (> ₦5m)",
           min_amount: 5000000,
           max_amount: null,
-          required_roles: ["finance", "executive"],
-          approval_mode: "sequential",
-          extra_role_if_unbudgeted: "admin",
+          required_roles: ["finance", "executive"] as AppRole[],
+          approval_mode: "sequential" as const,
+          extra_role_if_unbudgeted: "admin" as const,
           sort_order: 3,
         },
       ];
@@ -2069,7 +2069,7 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
     return true;
   });
 
-  const activePlan = me.data?.org?.plan || "GROWTH";
+  const activePlan = "GROWTH";
 
   return (
     <div className="space-y-6">
@@ -2546,8 +2546,8 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             <div className="grid sm:grid-cols-2 gap-4 py-5 text-xs border-b border-slate-100">
               <div className="space-y-1">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Billed To (Customer)</p>
-                <p className="font-bold text-slate-900 text-sm">{me.data?.org?.name || "Corporate Customer"}</p>
-                <p className="text-slate-600">Org ID: <span className="font-mono text-[11px]">{me.data?.org?.id || "—"}</span></p>
+                <p className="font-bold text-slate-900 text-sm">{me.data?.orgName || "Corporate Customer"}</p>
+                <p className="text-slate-600">Org ID: <span className="font-mono text-[11px]">{me.data?.profile?.org_id || "—"}</span></p>
                 <p className="text-slate-600">Jurisdiction: Federal Republic of Nigeria</p>
               </div>
 

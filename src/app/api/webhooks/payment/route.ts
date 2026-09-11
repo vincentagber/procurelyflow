@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   verifyPaymentGatewayWebhookSignature,
   assertPciDssCardDataAbsence,
@@ -19,10 +19,10 @@ export async function POST(req: Request) {
       req.headers.get("x-providus-signature") ||
       "";
 
-    const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || "procurely_live_webhook_secret";
+    const webhookSecret = process.env["PAYMENT_WEBHOOK_SECRET"] || "procurely_live_webhook_secret";
 
     // If signature provided and secret is configured, verify HMAC signature
-    if (signature && process.env.PAYMENT_WEBHOOK_SECRET) {
+    if (signature && process.env["PAYMENT_WEBHOOK_SECRET"]) {
       const isValid = verifyPaymentGatewayWebhookSignature(
         rawBody,
         signature,
@@ -72,9 +72,7 @@ export async function POST(req: Request) {
       .update({
         status: "SETTLED",
         cleared_at: now,
-        settled_at: now,
-        payment_gateway: payload.provider || "PROVIDUS_WEMA_NIP",
-        payment_gateway_reference: settlementRef,
+        payment_method: payload.provider || "PROVIDUS_WEMA_NIP",
       })
       .eq("id", sub.id);
 
@@ -82,7 +80,7 @@ export async function POST(req: Request) {
     await supabaseAdmin
       .from("organizations")
       .update({
-        plan: sub.plan_tier,
+        plan: (sub.plan_tier.toLowerCase() || "growth") as any,
       })
       .eq("id", sub.org_id);
 
