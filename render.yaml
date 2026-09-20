@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    buildCommand: rm -rf node_modules package-lock.json && npm install && npm run build
+    buildCommand: rm -rf node_modules package-lock.json && npm install --include=dev --include=optional && npm run build
     startCommand: npm start
     healthCheckPath: /
     autoDeploy: true
