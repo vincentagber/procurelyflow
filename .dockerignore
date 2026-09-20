@@ -1,0 +1,9 @@
+node_modules
+.output
+.wrangler
+.tanstack
+.git
+.agents
+*.log
+.env
+.env.local

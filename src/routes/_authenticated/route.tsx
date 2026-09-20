@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ClipboardList,
@@ -14,8 +14,8 @@ import {
   Menu,
   X,
   ShieldAlert,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   LayoutDashboard,
   Building2,
   Receipt,
@@ -139,6 +139,26 @@ function AppLayout() {
     }
   }
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        const target = e.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [collapsed]);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const access = useQuery({ queryKey: ["org-access"], queryFn: () => myOrgAccessFn() });
@@ -215,11 +235,12 @@ function AppLayout() {
         <div className="flex items-center gap-2">
           {watchesSuppliers ? <NotificationBell /> : null}
           <button
+            type="button"
             aria-label="Open menu"
             onClick={() => setOpen((v) => !v)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white transition-colors hover:bg-white/15"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 hover:bg-white/12 hover:border-white/20 hover:text-white transition-all shadow-xs"
           >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
         </div>
       </header>
@@ -233,40 +254,64 @@ function AppLayout() {
         )}
       >
         <div>
-          {/* Brand Header */}
+          {/* Brand Header & Sidebar Toggle */}
           <div className="px-1 pb-4">
-            <div className="flex items-center justify-between">
-              <Link to="/dashboard" className="flex items-center">
-                <img
-                  src="/logo-dark.png"
-                  alt="Procurely"
-                  className={cn(
-                    "w-auto object-contain rounded-lg bg-white p-1.5 shadow-sm transition-all",
-                    collapsed ? "h-7" : "h-8",
-                  )}
-                />
-              </Link>
-              <div className="hidden md:flex items-center gap-1">
-                {!collapsed && watchesSuppliers ? <NotificationBell /> : null}
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white transition-colors"
+            {collapsed ? (
+              <div className="flex flex-col items-center gap-2.5">
+                <Link
+                  to="/dashboard"
+                  title="Procurely Dashboard"
+                  className="flex items-center justify-center rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0001FF]"
                 >
-                  {collapsed ? (
-                    <ChevronRight className="h-4 w-4" />
-                  ) : (
-                    <ChevronLeft className="h-4 w-4" />
-                  )}
-                </button>
+                  <img
+                    src="/apple-touch-icon.png"
+                    alt="Procurely"
+                    className="h-8 w-8 rounded-lg object-contain shadow-xs ring-1 ring-white/10 hover:ring-white/30 transition-all"
+                  />
+                </Link>
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={toggleCollapsed}
+                    title="Expand sidebar (⌘B)"
+                    aria-label="Expand sidebar"
+                    className="group flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/60 hover:bg-white/12 hover:border-white/20 hover:text-white transition-all shadow-xs cursor-pointer active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                  >
+                    <PanelLeftOpen className="h-4 w-4 transition-transform group-hover:scale-105" />
+                  </button>
+                  {watchesSuppliers ? <NotificationBell /> : null}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/dashboard"
+                  className="flex items-center rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#0001FF]"
+                >
+                  <img
+                    src="/logo-dark.png"
+                    alt="Procurely"
+                    className="h-8 w-auto object-contain rounded-lg bg-white p-1.5 shadow-xs transition-opacity hover:opacity-95"
+                  />
+                </Link>
+                <div className="hidden md:flex items-center gap-1.5">
+                  {watchesSuppliers ? <NotificationBell /> : null}
+                  <button
+                    type="button"
+                    onClick={toggleCollapsed}
+                    title="Collapse sidebar (⌘B)"
+                    aria-label="Collapse sidebar"
+                    className="group flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/60 hover:bg-white/12 hover:border-white/20 hover:text-white transition-all shadow-xs cursor-pointer active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400/50"
+                  >
+                    <PanelLeftClose className="h-4 w-4 transition-transform group-hover:scale-105" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Navigation Sections Categorized (Main Menu, Operations, General) */}
-          <nav className="space-y-3.5">
+          <nav className={cn(collapsed ? "space-y-4" : "space-y-5")}>
             {NAV_SECTIONS.map((section, idx) => {
               const visibleItems = section.items.filter(
                 (item) => !item.roles || can(me.data?.roles, [...item.roles]),
@@ -275,19 +320,19 @@ function AppLayout() {
               if (!hasItems) return null;
 
               return (
-                <div key={section.title} className="space-y-0.5">
+                <div key={section.title} className={cn(collapsed ? "space-y-1.5" : "space-y-1")}>
                   {/* Category Header (or subtle divider when collapsed) */}
                   {collapsed ? (
                     idx > 0 ? (
-                      <div className="h-px bg-white/10 my-2 mx-1" />
+                      <div className="h-px bg-white/10 my-2.5 mx-1.5" />
                     ) : null
                   ) : (
-                    <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/40 select-none">
+                    <div className="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40 select-none">
                       {section.title}
                     </div>
                   )}
 
-                  <div className="space-y-0.5">
+                  <div className={cn(collapsed ? "space-y-1.5" : "space-y-1")}>
                     {visibleItems.map((item) => {
                       const badgeCount =
                         item.badgeKey === "pendingApprovals" ? pendingApprovalsCount : 0;
@@ -306,11 +351,13 @@ function AppLayout() {
                               "text-white/70 hover:bg-white/10 hover:text-white font-normal",
                           }}
                           className={cn(
-                            "group flex items-center rounded-xl py-2 text-xs transition-all",
-                            collapsed ? "justify-center px-2" : "justify-between px-3",
+                            "group flex items-center rounded-xl text-xs transition-all",
+                            collapsed
+                              ? "h-10 w-10 mx-auto justify-center p-0"
+                              : "justify-between px-3 py-2.5 min-h-[38px]",
                           )}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center gap-3 min-w-0">
                             <item.icon
                               className="h-4 w-4 shrink-0 transition-colors group-hover:text-white"
                               aria-hidden
@@ -334,11 +381,13 @@ function AppLayout() {
                         onClick={signOut}
                         title={collapsed ? "Log out" : undefined}
                         className={cn(
-                          "group w-full flex items-center rounded-xl py-2 text-xs text-white/70 hover:bg-white/10 hover:text-white transition-all cursor-pointer",
-                          collapsed ? "justify-center px-2" : "gap-2.5 px-3",
+                          "group w-full flex items-center rounded-xl text-xs text-white/70 hover:bg-red-500/15 hover:text-red-200 transition-all cursor-pointer",
+                          collapsed
+                            ? "h-10 w-10 mx-auto justify-center p-0"
+                            : "gap-3 px-3 py-2.5 min-h-[38px]",
                         )}
                       >
-                        <LogOut className="h-4 w-4 shrink-0 text-white/60 group-hover:text-white transition-colors" />
+                        <LogOut className="h-4 w-4 shrink-0 text-white/60 group-hover:text-red-300 transition-colors" />
                         {!collapsed && <span>Log out</span>}
                       </button>
                     )}
@@ -349,9 +398,9 @@ function AppLayout() {
 
             {/* Platform Admin in General / Standalone */}
             {platform.data?.isPlatformAdmin ? (
-              <div className="pt-1">
+              <div className="pt-2">
                 {!collapsed && (
-                  <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-amber-400/60 select-none">
+                  <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-400/60 select-none">
                     Platform
                   </div>
                 )}
@@ -360,8 +409,10 @@ function AppLayout() {
                   onClick={() => setOpen(false)}
                   title={collapsed ? "Platform Admin" : undefined}
                   className={cn(
-                    "flex items-center rounded-xl border border-amber-500/30 py-2 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors",
-                    collapsed ? "justify-center px-2" : "gap-2.5 px-3",
+                    "flex items-center rounded-xl border border-amber-500/30 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors",
+                    collapsed
+                      ? "h-10 w-10 mx-auto justify-center p-0"
+                      : "gap-3 px-3 py-2.5 min-h-[38px]",
                   )}
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />

@@ -998,7 +998,7 @@ function Dashboard() {
         </div>
       </motion.section>
 
-      {/* Row 3: Dedicated Governance & Forensic Audit Module (FR-4.5 & FR-8.5) */}
+      {/* Row 3: Dedicated Governance & Forensic Audit Module (§FR-4.5, §FR-8.5) */}
       {canViewGovernance ? (
         <motion.section
           variants={itemFadeIn}

@@ -276,7 +276,7 @@ describe("Enterprise ERP Connectors (SAP S/4HANA, Dynamics 365, Webhook Signatur
   });
 });
 
-describe("Executive Governance & Anti-Fraud Anomaly Detection Engine", () => {
+describe("Executive Governance & Anti-Fraud Anomaly Detection Engine (§FR-4.5, §FR-8.5)", () => {
   it("detects split requisitions raised by a requester just below approval threshold within time window", () => {
     const sampleRequisitions = [
       {

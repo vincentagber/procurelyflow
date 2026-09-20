@@ -6,6 +6,7 @@ import { Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { sweepRfqDeadlinesFn } from "@/lib/procurement.functions";
 import { dateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -20,7 +21,7 @@ type Notification = {
 };
 
 /** Bell for procurement: quote arrivals, full response sets, deadline lapses. */
-export function NotificationBell() {
+export function NotificationBell({ className }: { className?: string } = {}) {
   const queryClient = useQueryClient();
 
   const { data } = useQuery({
@@ -64,12 +65,16 @@ export function NotificationBell() {
     <Popover>
       <PopoverTrigger asChild>
         <button
+          type="button"
           aria-label={unread ? `${unread} unread notifications` : "Notifications"}
-          className="relative flex h-11 w-11 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent"
+          className={cn(
+            "relative flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 hover:bg-white/12 hover:border-white/20 hover:text-white transition-all shadow-xs cursor-pointer active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-400/50",
+            className,
+          )}
         >
-          <Bell className="h-5 w-5" aria-hidden />
+          <Bell className="h-4 w-4" aria-hidden />
           {unread ? (
-            <span className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-signal px-1 text-[10px] font-bold leading-4 text-white">
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E5484D] px-1 text-[9px] font-bold leading-none text-white shadow-xs">
               {unread > 9 ? "9+" : unread}
             </span>
           ) : null}

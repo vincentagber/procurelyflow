@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: procurely-flow
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NITRO_PRESET
+        value: node-server
+      - key: NODE_ENV
+        value: production
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: EMAIL_DRIVER
+        value: console
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: Procurely Flow <notifications@procurely.app>
+      - key: WHATSAPP_DRIVER
+        value: console
+      - key: TERMII_API_KEY
+        sync: false
+      - key: PAYMENT_GATEWAY_DRIVER
+        value: manual
+      - key: MONNIFY_API_KEY
+        sync: false
+      - key: MONNIFY_SECRET_KEY
+        sync: false
+      - key: MONNIFY_CONTRACT_CODE
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: ENTERPRISE_WEBHOOK_SECRET
+        generateValue: true

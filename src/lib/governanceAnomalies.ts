@@ -1,5 +1,5 @@
 /**
- * Executive Governance & Anti-Fraud Anomaly Detection Engine (FR-4.5 / FR-8.5)
+ * Executive Governance & Anti-Fraud Anomaly Detection Engine (§FR-4.5, §FR-8.5)
  *
  * Implements real-time forensic detection for:
  * 1. Split Requisitions / Anti-Structuring (evading approval thresholds)
