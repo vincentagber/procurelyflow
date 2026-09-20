@@ -151,8 +151,12 @@ function PurchaseOrders() {
                                 | undefined) ?? []
                             ).map((line) => (
                               <tr key={line.id} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="px-4 py-3 font-medium text-slate-800">{line.description}</td>
-                                <td className="px-4 py-3 text-right tabular-nums text-slate-600">{line.quantity}</td>
+                                <td className="px-4 py-3 font-medium text-slate-800">
+                                  {line.description}
+                                </td>
+                                <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                                  {line.quantity}
+                                </td>
                                 <td className="px-4 py-3 text-right tabular-nums text-slate-600">
                                   {money(line.unit_price, line.currency as "NGN" | "USD")}
                                 </td>
@@ -169,13 +173,20 @@ function PurchaseOrders() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
-                        <Button asChild className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs">
+                        <Button
+                          asChild
+                          className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs"
+                        >
                           <Link to="/purchase-orders/$id" params={{ id: po.id }}>
                             Open Purchase Order
                           </Link>
                         </Button>
                         {po.requisitions ? (
-                          <Button asChild variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                          >
                             <Link
                               to="/requisitions/$id"
                               params={{

@@ -576,16 +576,35 @@ export const simulateWhatsAppApprovalFn = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) =>
     z
       .object({
-        fromPhone: z.string().min(5),
+        fromPhone: z.string().min(5).optional(),
         stepId: z.string().uuid(),
-        decision: z.enum(["approved", "rejected"]),
+        decision: z.enum(["approved", "rejected"]).optional(),
         comment: z.string().optional(),
       })
       .parse(raw),
   )
   .handler(async ({ data }) => {
     const { whatsappApprovalWebhook } = await import("@/lib/procurement.server");
-    return whatsappApprovalWebhook(data);
+    return whatsappApprovalWebhook({
+      fromPhone: data.fromPhone || "+2348030000000",
+      stepId: data.stepId,
+      decision: data.decision || "approved",
+      comment: data.comment,
+    });
   });
 
-
+export const exportAccountingLedgerFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        currency: currencyEnum.optional().default("NGN"),
+      })
+      .optional()
+      .default({ currency: "NGN" })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { exportAccountingLedger } = await import("@/lib/procurement.server");
+    return exportAccountingLedger(context.userId, data?.currency || "NGN");
+  });

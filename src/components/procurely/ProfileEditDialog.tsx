@@ -1,16 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import {
-  Camera,
-  Trash2,
-  User,
-  Building2,
-  Mail,
-  Shield,
-  Loader2,
-  X,
-  Check,
-} from "lucide-react";
+import { Camera, Trash2, User, Building2, Mail, Shield, Loader2, X, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, useUpdateProfile } from "@/lib/useMe";
 import { UserAvatar } from "./UserAvatar";
@@ -126,7 +116,10 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div>
-            <h2 id="profile-dialog-title" className="text-lg font-semibold text-slate-900 tracking-tight">
+            <h2
+              id="profile-dialog-title"
+              className="text-lg font-semibold text-slate-900 tracking-tight"
+            >
               Edit User Profile
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -213,7 +206,10 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
           {/* Form Fields */}
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="full-name" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="full-name"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <User className="h-3.5 w-3.5 text-slate-400" />
                 <span>Full Name *</span>
               </Label>
@@ -229,7 +225,10 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="department" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="department"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <Building2 className="h-3.5 w-3.5 text-slate-400" />
                 <span>Department / Unit</span>
               </Label>
@@ -244,7 +243,10 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="email"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 <span>Email Address (Read-only)</span>
               </Label>

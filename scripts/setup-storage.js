@@ -13,7 +13,12 @@ async function main() {
   // 2. Insert or update buckets
   const buckets = [
     { id: "procurement-files", name: "procurement-files", public: false, limit: 52428800 },
-    { id: "requisition-attachments", name: "requisition-attachments", public: true, limit: 52428800 },
+    {
+      id: "requisition-attachments",
+      name: "requisition-attachments",
+      public: true,
+      limit: 52428800,
+    },
     { id: "delivery-photos", name: "delivery-photos", public: true, limit: 52428800 },
     { id: "invoices", name: "invoices", public: true, limit: 52428800 },
     { id: "avatars", name: "avatars", public: true, limit: 10485760 },
@@ -25,7 +30,7 @@ async function main() {
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (id) DO UPDATE
        SET public = EXCLUDED.public, file_size_limit = EXCLUDED.file_size_limit;`,
-      [b.id, b.name, b.public, b.limit]
+      [b.id, b.name, b.public, b.limit],
     );
     console.log(`✓ Bucket ready: ${b.id}`);
   }
@@ -53,7 +58,9 @@ async function main() {
     }
   }
 
-  const res = await client.query(`SELECT id, name, public, file_size_limit, allowed_mime_types FROM storage.buckets;`);
+  const res = await client.query(
+    `SELECT id, name, public, file_size_limit, allowed_mime_types FROM storage.buckets;`,
+  );
   console.log("\nStorage Buckets Status:");
   console.table(res.rows);
 

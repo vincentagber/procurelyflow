@@ -18,11 +18,16 @@ import {
   Check,
   Info,
   ShieldCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
-import { createInvoiceFn, recordPaymentFn } from "@/lib/procurement.functions";
+import {
+  createInvoiceFn,
+  recordPaymentFn,
+  exportAccountingLedgerFn,
+} from "@/lib/procurement.functions";
 import { validateNrsVatInputCreditEligibility, generateUblPeppolJson } from "@/lib/nrsEInvoice";
 import { money, shortDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -144,6 +149,7 @@ function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "matched" | "variance" | "pending_delivery" | "paid"
   >("all");
+  const [isExportingLedger, setIsExportingLedger] = useState(false);
 
   // Query Purchase Orders
   const { data: pos } = useQuery({
@@ -253,6 +259,32 @@ function InvoicesPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed recording settlement."),
   });
 
+  async function handleExportLedger() {
+    try {
+      setIsExportingLedger(true);
+      const res = await exportAccountingLedgerFn();
+      const blob = new Blob([res.csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        res.filename || `procurely-accounting-ledger-${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(
+        `Exported ${res.recordCount} accounting lines. SHA-256: ${res.checksum.slice(0, 10)}…`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export accounting ledger.");
+    } finally {
+      setIsExportingLedger(false);
+    }
+  }
+
   function resetForm() {
     setSelectedPoId("");
     setInvoiceNumber("");
@@ -361,11 +393,22 @@ function InvoicesPage() {
             Invoices &amp; Three-Way Matching
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Reconcile purchase orders, warehouse delivery receipts (GRN), and supplier invoices before payment authorization.
+            Reconcile purchase orders, warehouse delivery receipts (GRN), and supplier invoices
+            before payment authorization.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          <Button
+            variant="outline"
+            disabled={isExportingLedger}
+            onClick={handleExportLedger}
+            className="h-9 px-3.5 rounded-lg text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 shadow-2xs gap-1.5 cursor-pointer"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+            <span>{isExportingLedger ? "Generating Ledger…" : "Export Accounting CSV"}</span>
+          </Button>
+
           <Button
             onClick={() => {
               resetForm();
@@ -388,7 +431,9 @@ function InvoicesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-900">Purchase Order</p>
-              <p className="text-xs text-slate-500 mt-0.5">Approved line-item quantity and contracted unit rate.</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Approved line-item quantity and contracted unit rate.
+              </p>
             </div>
           </div>
 
@@ -398,7 +443,9 @@ function InvoicesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-900">Delivery Receipt (GRN)</p>
-              <p className="text-xs text-slate-500 mt-0.5">Warehouse receiving confirmation and inspection sign-off.</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Warehouse receiving confirmation and inspection sign-off.
+              </p>
             </div>
           </div>
 
@@ -408,7 +455,9 @@ function InvoicesPage() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-900">Supplier Invoice</p>
-              <p className="text-xs text-slate-500 mt-0.5">NRS TIN validation, 7.5% VAT, and 2% statutory WHT.</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                NRS TIN validation, 7.5% VAT, and 2% statutory WHT.
+              </p>
             </div>
           </div>
         </div>
@@ -440,9 +489,7 @@ function InvoicesPage() {
             <Select
               value={statusFilter}
               onValueChange={(val) =>
-                setStatusFilter(
-                  val as "all" | "matched" | "variance" | "pending_delivery" | "paid",
-                )
+                setStatusFilter(val as "all" | "matched" | "variance" | "pending_delivery" | "paid")
               }
             >
               <SelectTrigger className="h-10 rounded-lg border-slate-200 bg-white text-xs shadow-2xs w-36">
@@ -461,9 +508,7 @@ function InvoicesPage() {
 
         {/* Invoices Table */}
         {isLoading ? (
-          <div className="py-12 text-center text-xs text-slate-500">
-            Loading invoices…
-          </div>
+          <div className="py-12 text-center text-xs text-slate-500">Loading invoices…</div>
         ) : !filteredInvoices.length ? (
           <div className="py-14 text-center space-y-3">
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
@@ -472,7 +517,8 @@ function InvoicesPage() {
             <div>
               <p className="text-xs font-semibold text-slate-900">No invoices recorded</p>
               <p className="text-xs text-slate-500 mt-0.5 max-w-sm mx-auto">
-                Supplier invoices logged against authorized purchase orders will appear here for automated 3-way matching.
+                Supplier invoices logged against authorized purchase orders will appear here for
+                automated 3-way matching.
               </p>
             </div>
             <Button
@@ -539,7 +585,9 @@ function InvoicesPage() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         {po ? (
                           <div>
-                            <p className="font-mono font-semibold text-slate-900 tabular-nums">{po.po_number}</p>
+                            <p className="font-mono font-semibold text-slate-900 tabular-nums">
+                              {po.po_number}
+                            </p>
                             <p className="text-[11px] font-mono text-slate-500 tabular-nums">
                               {money(po.total_amount, po.settlement_currency as "NGN" | "USD")}
                             </p>
@@ -568,13 +616,17 @@ function InvoicesPage() {
                           </span>
                         )}
                         <div className="mt-1">
-                          {inv.irn && inv.irn.length >= 8 && inv.seller_tin && inv.seller_tin !== "UNREGISTERED" ? (
+                          {inv.irn &&
+                          inv.irn.length >= 8 &&
+                          inv.seller_tin &&
+                          inv.seller_tin !== "UNREGISTERED" ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 border border-emerald-200">
                               <ShieldCheck className="h-2.5 w-2.5" /> VAT Credit Eligible
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-semibold text-amber-800 border border-amber-200">
-                              <AlertCircle className="h-2.5 w-2.5 text-amber-600" /> VAT Ineligible (No IRN)
+                              <AlertCircle className="h-2.5 w-2.5 text-amber-600" /> VAT Ineligible
+                              (No IRN)
                             </span>
                           )}
                         </div>
@@ -642,7 +694,8 @@ function InvoicesPage() {
                 </span>
               </div>
               <DialogDescription className="text-xs text-slate-500 mt-1 font-normal leading-normal">
-                Record verified supplier invoices and run automated 3-way parity checks against authorized purchase orders.
+                Record verified supplier invoices and run automated 3-way parity checks against
+                authorized purchase orders.
               </DialogDescription>
             </div>
 
@@ -715,7 +768,10 @@ function InvoicesPage() {
                 {/* Invoice Number & Due Date */}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="inv-num-route-modal" className="text-xs font-medium text-slate-700">
+                    <Label
+                      htmlFor="inv-num-route-modal"
+                      className="text-xs font-medium text-slate-700"
+                    >
                       Supplier Invoice Number
                     </Label>
                     <Input
@@ -729,7 +785,10 @@ function InvoicesPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="inv-due-route-modal" className="text-xs font-medium text-slate-700">
+                    <Label
+                      htmlFor="inv-due-route-modal"
+                      className="text-xs font-medium text-slate-700"
+                    >
                       Due Date for Settlement
                     </Label>
                     <Input
@@ -745,7 +804,10 @@ function InvoicesPage() {
                 {/* Amount & Currency */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="inv-amt-route-modal" className="text-xs font-medium text-slate-700">
+                    <Label
+                      htmlFor="inv-amt-route-modal"
+                      className="text-xs font-medium text-slate-700"
+                    >
                       Gross Billed Amount
                     </Label>
                     <div className="relative">
@@ -766,9 +828,7 @@ function InvoicesPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-700">
-                      Currency
-                    </Label>
+                    <Label className="text-xs font-medium text-slate-700">Currency</Label>
                     <div className="flex h-10 rounded-lg border border-slate-200 p-1 bg-slate-100/70">
                       <button
                         type="button"
@@ -777,7 +837,7 @@ function InvoicesPage() {
                           "flex-1 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer",
                           currency === "NGN"
                             ? "bg-white text-slate-900 shadow-2xs font-bold"
-                            : "text-slate-500 hover:text-slate-800"
+                            : "text-slate-500 hover:text-slate-800",
                         )}
                       >
                         <span>NGN</span>
@@ -790,7 +850,7 @@ function InvoicesPage() {
                           "flex-1 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer",
                           currency === "USD"
                             ? "bg-white text-slate-900 shadow-2xs font-bold"
-                            : "text-slate-500 hover:text-slate-800"
+                            : "text-slate-500 hover:text-slate-800",
                         )}
                       >
                         <span>USD</span>
@@ -803,7 +863,10 @@ function InvoicesPage() {
                 {/* Seller Legal Entity & TIN */}
                 <div className="grid gap-3 sm:grid-cols-2 pt-1">
                   <div className="space-y-1.5">
-                    <Label htmlFor="s-name-route-modal" className="text-xs font-medium text-slate-700">
+                    <Label
+                      htmlFor="s-name-route-modal"
+                      className="text-xs font-medium text-slate-700"
+                    >
                       Seller Legal Entity
                     </Label>
                     <Input
@@ -816,7 +879,10 @@ function InvoicesPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="s-tin-route-modal" className="text-xs font-medium text-slate-700">
+                    <Label
+                      htmlFor="s-tin-route-modal"
+                      className="text-xs font-medium text-slate-700"
+                    >
                       Seller Tax ID (TIN)
                     </Label>
                     <Input
@@ -869,14 +935,17 @@ function InvoicesPage() {
                             : `Variance Flagged: Differs by ${money(Math.abs(draftVariance), currency)} from PO.`}
                         </p>
                         <p className="text-[11px] opacity-80 mt-0.5 tabular-nums">
-                          Linked PO: <span className="font-medium">{linkedPo.po_number}</span> ({money(poTotal, currency)})
+                          Linked PO: <span className="font-medium">{linkedPo.po_number}</span> (
+                          {money(poTotal, currency)})
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="rounded-lg p-3 border border-slate-200 bg-white text-xs text-slate-500 flex items-center gap-2.5 shadow-2xs">
                       <Info className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span>Select an authorized PO to verify price variance and GRN receipts.</span>
+                      <span>
+                        Select an authorized PO to verify price variance and GRN receipts.
+                      </span>
                     </div>
                   )}
 
@@ -897,7 +966,9 @@ function InvoicesPage() {
                     <div className="flex items-center justify-between text-slate-500">
                       <span className="flex items-center gap-1.5">
                         <span>Standard VAT</span>
-                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/60 px-1 py-0.2 rounded">7.5%</span>
+                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/60 px-1 py-0.2 rounded">
+                          7.5%
+                        </span>
                       </span>
                       <span className="tabular-nums font-medium text-slate-800">
                         +{money(draftVat, currency)}
@@ -906,7 +977,9 @@ function InvoicesPage() {
                     <div className="flex items-center justify-between text-slate-500">
                       <span className="flex items-center gap-1.5">
                         <span>Statutory WHT</span>
-                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/60 px-1 py-0.2 rounded">2%</span>
+                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-100/60 px-1 py-0.2 rounded">
+                          2%
+                        </span>
                       </span>
                       <span className="tabular-nums font-medium text-rose-600">
                         -{money(draftWht, currency)}
@@ -937,7 +1010,8 @@ function InvoicesPage() {
                 <div className="flex items-start gap-2 pt-2.5 border-t border-slate-200/80 text-[11px] text-slate-500 leading-relaxed">
                   <ShieldCheck className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <p>
-                    Automated 2% WHT credit certificates are generated on payment confirmation for FIRS remittance.
+                    Automated 2% WHT credit certificates are generated on payment confirmation for
+                    FIRS remittance.
                   </p>
                 </div>
               </div>
@@ -995,8 +1069,12 @@ function InvoicesPage() {
                   const po = normalizePo(inspectingInvoice.purchase_orders);
                   return (
                     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1">
-                      <p className="text-[10px] font-semibold uppercase text-slate-500">Purchase Order</p>
-                      <p className="font-semibold text-slate-900 truncate">{po?.po_number || "Unlinked"}</p>
+                      <p className="text-[10px] font-semibold uppercase text-slate-500">
+                        Purchase Order
+                      </p>
+                      <p className="font-semibold text-slate-900 truncate">
+                        {po?.po_number || "Unlinked"}
+                      </p>
                       <p className="font-mono font-bold text-xs text-[#0B1457] tabular-nums">
                         {po ? money(po.total_amount, po.settlement_currency as "NGN" | "USD") : "—"}
                       </p>
@@ -1010,15 +1088,23 @@ function InvoicesPage() {
                   const receipts = normalizeReceipts(po);
                   const latestReceipt = receipts[0];
                   const isAccepted =
-                    latestReceipt?.status === "accepted" || latestReceipt?.status === "partially_accepted";
+                    latestReceipt?.status === "accepted" ||
+                    latestReceipt?.status === "partially_accepted";
 
                   return (
                     <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1">
-                      <p className="text-[10px] font-semibold uppercase text-slate-500">Delivery Receipt</p>
+                      <p className="text-[10px] font-semibold uppercase text-slate-500">
+                        Delivery Receipt
+                      </p>
                       <p className="font-semibold text-slate-900 truncate">
                         {latestReceipt?.delivery_note_ref || "GRN Receipt"}
                       </p>
-                      <p className={cn("font-medium text-xs", isAccepted ? "text-emerald-700" : "text-amber-700")}>
+                      <p
+                        className={cn(
+                          "font-medium text-xs",
+                          isAccepted ? "text-emerald-700" : "text-amber-700",
+                        )}
+                      >
                         {isAccepted ? "Accepted" : "Pending Inspection"}
                       </p>
                     </div>
@@ -1027,8 +1113,12 @@ function InvoicesPage() {
 
                 {/* 3. Invoice */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1">
-                  <p className="text-[10px] font-semibold uppercase text-slate-500">Invoice Billed</p>
-                  <p className="font-semibold text-slate-900 truncate">{inspectingInvoice.invoice_number}</p>
+                  <p className="text-[10px] font-semibold uppercase text-slate-500">
+                    Invoice Billed
+                  </p>
+                  <p className="font-semibold text-slate-900 truncate">
+                    {inspectingInvoice.invoice_number}
+                  </p>
                   <p className="font-mono font-bold text-xs text-[#0B1457] tabular-nums">
                     {money(inspectingInvoice.total_amount, inspectingInvoice.currency)}
                   </p>
@@ -1038,11 +1128,15 @@ function InvoicesPage() {
               <div className="rounded-xl border border-slate-200 p-3 space-y-2 text-xs bg-white">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Seller:</span>
-                  <span className="font-semibold text-slate-900">{inspectingInvoice.seller_legal_name}</span>
+                  <span className="font-semibold text-slate-900">
+                    {inspectingInvoice.seller_legal_name}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">TIN:</span>
-                  <span className="font-mono font-semibold text-slate-900 tabular-nums">{inspectingInvoice.seller_tin || "N/A"}</span>
+                  <span className="font-mono font-semibold text-slate-900 tabular-nums">
+                    {inspectingInvoice.seller_tin || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">VAT (7.5%):</span>
@@ -1061,11 +1155,13 @@ function InvoicesPage() {
                 });
 
                 return (
-                  <div className={`rounded-xl border p-3.5 space-y-2 text-xs ${
-                    assessment.isEligibleForVatInputCredit
-                      ? "border-emerald-200 bg-emerald-50/50"
-                      : "border-amber-200 bg-amber-50/50"
-                  }`}>
+                  <div
+                    className={`rounded-xl border p-3.5 space-y-2 text-xs ${
+                      assessment.isEligibleForVatInputCredit
+                        ? "border-emerald-200 bg-emerald-50/50"
+                        : "border-amber-200 bg-amber-50/50"
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 font-bold">
                         {assessment.isEligibleForVatInputCredit ? (
@@ -1076,7 +1172,9 @@ function InvoicesPage() {
                         ) : (
                           <>
                             <AlertCircle className="h-4 w-4 text-amber-600" />
-                            <span className="text-amber-900">NRS MBS Clearance: PENDING / UNVALIDATED</span>
+                            <span className="text-amber-900">
+                              NRS MBS Clearance: PENDING / UNVALIDATED
+                            </span>
                           </>
                         )}
                       </div>
@@ -1085,15 +1183,21 @@ function InvoicesPage() {
                       </span>
                     </div>
 
-                    <p className={`text-[11px] leading-relaxed ${
-                      assessment.isEligibleForVatInputCredit ? "text-emerald-800" : "text-amber-800"
-                    }`}>
+                    <p
+                      className={`text-[11px] leading-relaxed ${
+                        assessment.isEligibleForVatInputCredit
+                          ? "text-emerald-800"
+                          : "text-amber-800"
+                      }`}
+                    >
                       {assessment.warningMessage ||
                         "Invoice verified through PEPPOL BIS 3.0 UBL clearance. Statutory VAT input-tax credit is eligible for reclaim on corporate filings."}
                     </p>
 
                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-[10px] text-slate-600">
-                      <span>PEPPOL BIS 3.0 Customization ID: urn:peppol:pint:billing-1@nrs-mbs-1</span>
+                      <span>
+                        PEPPOL BIS 3.0 Customization ID: urn:peppol:pint:billing-1@nrs-mbs-1
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
@@ -1102,12 +1206,19 @@ function InvoicesPage() {
                         onClick={() => {
                           const json = generateUblPeppolJson({
                             invoiceNumber: inspectingInvoice.invoice_number,
-                            issueDate: inspectingInvoice.issue_date || new Date().toISOString().split("T")[0]!,
+                            issueDate:
+                              inspectingInvoice.issue_date ||
+                              new Date().toISOString().split("T")[0]!,
                             dueDate: inspectingInvoice.due_date,
                             sellerLegalName: inspectingInvoice.seller_legal_name,
-                            ...(inspectingInvoice.seller_tin ? { sellerTin: inspectingInvoice.seller_tin } : {}),
-                            buyerLegalName: inspectingInvoice.buyer_legal_name || "Buyer Organisation",
-                            ...(inspectingInvoice.buyer_tin ? { buyerTin: inspectingInvoice.buyer_tin } : {}),
+                            ...(inspectingInvoice.seller_tin
+                              ? { sellerTin: inspectingInvoice.seller_tin }
+                              : {}),
+                            buyerLegalName:
+                              inspectingInvoice.buyer_legal_name || "Buyer Organisation",
+                            ...(inspectingInvoice.buyer_tin
+                              ? { buyerTin: inspectingInvoice.buyer_tin }
+                              : {}),
                             currency: inspectingInvoice.currency,
                             subtotal: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
                             vatAmount: inspectingInvoice.vat_amount,
@@ -1116,9 +1227,11 @@ function InvoicesPage() {
                               {
                                 description: `Materials/Services for ${inspectingInvoice.invoice_number}`,
                                 quantity: 1,
-                                unitPrice: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
+                                unitPrice:
+                                  inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
                                 vatRate: 7.5,
-                                lineTotal: inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
+                                lineTotal:
+                                  inspectingInvoice.total_amount - inspectingInvoice.vat_amount,
                               },
                             ],
                           });

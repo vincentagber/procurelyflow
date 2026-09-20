@@ -65,14 +65,16 @@ export function AttachmentThumbs({
     let cancelled = false;
     list.forEach(async (att) => {
       if (!att.path) return;
-      if (att.path.startsWith("blob:") || att.path.startsWith("data:") || att.path.startsWith("http")) {
+      if (
+        att.path.startsWith("blob:") ||
+        att.path.startsWith("data:") ||
+        att.path.startsWith("http")
+      ) {
         if (!cancelled) setUrls((prev) => ({ ...prev, [att.path]: att.path }));
         return;
       }
       try {
-        const { data } = await supabase.storage
-          .from(bucket)
-          .createSignedUrl(att.path, 3600);
+        const { data } = await supabase.storage.from(bucket).createSignedUrl(att.path, 3600);
         if (!cancelled && data?.signedUrl) {
           setUrls((prev) => ({ ...prev, [att.path]: data.signedUrl }));
         }

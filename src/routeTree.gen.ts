@@ -33,6 +33,8 @@ import { Route as AuthenticatedRequisitionsIdRouteImport } from './routes/_authe
 import { Route as AuthenticatedRequisitionsNewRouteImport } from './routes/_authenticated/requisitions/new'
 import { Route as AuthenticatedRfqsIndexRouteImport } from './routes/_authenticated/rfqs/index'
 import { Route as AuthenticatedRfqsIdRouteImport } from './routes/_authenticated/rfqs/$id'
+import { Route as ApiWebhooksPaymentRouteImport } from './routes/api/webhooks/payment'
+import { Route as ApiWebhooksWhatsappRouteImport } from './routes/api/webhooks/whatsapp'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -158,6 +160,16 @@ const AuthenticatedRfqsIdRoute = AuthenticatedRfqsIdRouteImport.update({
   path: '/rfqs/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiWebhooksPaymentRoute = ApiWebhooksPaymentRouteImport.update({
+  id: '/api/webhooks/payment',
+  path: '/api/webhooks/payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksWhatsappRoute = ApiWebhooksWhatsappRouteImport.update({
+  id: '/api/webhooks/whatsapp',
+  path: '/api/webhooks/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -180,6 +192,8 @@ export interface FileRoutesByFullPath {
   '/requisitions/$id': typeof AuthenticatedRequisitionsIdRoute
   '/requisitions/new': typeof AuthenticatedRequisitionsNewRoute
   '/rfqs/$id': typeof AuthenticatedRfqsIdRoute
+  '/api/webhooks/payment': typeof ApiWebhooksPaymentRoute
+  '/api/webhooks/whatsapp': typeof ApiWebhooksWhatsappRoute
   '/purchase-orders/': typeof AuthenticatedPurchaseOrdersIndexRoute
   '/requisitions/': typeof AuthenticatedRequisitionsIndexRoute
   '/rfqs/': typeof AuthenticatedRfqsIndexRoute
@@ -204,6 +218,8 @@ export interface FileRoutesByTo {
   '/requisitions/$id': typeof AuthenticatedRequisitionsIdRoute
   '/requisitions/new': typeof AuthenticatedRequisitionsNewRoute
   '/rfqs/$id': typeof AuthenticatedRfqsIdRoute
+  '/api/webhooks/payment': typeof ApiWebhooksPaymentRoute
+  '/api/webhooks/whatsapp': typeof ApiWebhooksWhatsappRoute
   '/purchase-orders': typeof AuthenticatedPurchaseOrdersIndexRoute
   '/requisitions': typeof AuthenticatedRequisitionsIndexRoute
   '/rfqs': typeof AuthenticatedRfqsIndexRoute
@@ -231,6 +247,8 @@ export interface FileRoutesById {
   '/_authenticated/requisitions/$id': typeof AuthenticatedRequisitionsIdRoute
   '/_authenticated/requisitions/new': typeof AuthenticatedRequisitionsNewRoute
   '/_authenticated/rfqs/$id': typeof AuthenticatedRfqsIdRoute
+  '/api/webhooks/payment': typeof ApiWebhooksPaymentRoute
+  '/api/webhooks/whatsapp': typeof ApiWebhooksWhatsappRoute
   '/_authenticated/purchase-orders/': typeof AuthenticatedPurchaseOrdersIndexRoute
   '/_authenticated/requisitions/': typeof AuthenticatedRequisitionsIndexRoute
   '/_authenticated/rfqs/': typeof AuthenticatedRfqsIndexRoute
@@ -258,6 +276,8 @@ export interface FileRouteTypes {
     | '/requisitions/$id'
     | '/requisitions/new'
     | '/rfqs/$id'
+    | '/api/webhooks/payment'
+    | '/api/webhooks/whatsapp'
     | '/purchase-orders/'
     | '/requisitions/'
     | '/rfqs/'
@@ -282,6 +302,8 @@ export interface FileRouteTypes {
     | '/requisitions/$id'
     | '/requisitions/new'
     | '/rfqs/$id'
+    | '/api/webhooks/payment'
+    | '/api/webhooks/whatsapp'
     | '/purchase-orders'
     | '/requisitions'
     | '/rfqs'
@@ -308,6 +330,8 @@ export interface FileRouteTypes {
     | '/_authenticated/requisitions/$id'
     | '/_authenticated/requisitions/new'
     | '/_authenticated/rfqs/$id'
+    | '/api/webhooks/payment'
+    | '/api/webhooks/whatsapp'
     | '/_authenticated/purchase-orders/'
     | '/_authenticated/requisitions/'
     | '/_authenticated/rfqs/'
@@ -322,6 +346,8 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApproveTokenRoute: typeof ApproveTokenRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
+  ApiWebhooksPaymentRoute: typeof ApiWebhooksPaymentRoute
+  ApiWebhooksWhatsappRoute: typeof ApiWebhooksWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -494,6 +520,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRfqsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/webhooks/payment': {
+      id: '/api/webhooks/payment'
+      path: '/api/webhooks/payment'
+      fullPath: '/api/webhooks/payment'
+      preLoaderRoute: typeof ApiWebhooksPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/whatsapp': {
+      id: '/api/webhooks/whatsapp'
+      path: '/api/webhooks/whatsapp'
+      fullPath: '/api/webhooks/whatsapp'
+      preLoaderRoute: typeof ApiWebhooksWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -556,6 +596,8 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApproveTokenRoute: ApproveTokenRoute,
   QuoteTokenRoute: QuoteTokenRoute,
+  ApiWebhooksPaymentRoute: ApiWebhooksPaymentRoute,
+  ApiWebhooksWhatsappRoute: ApiWebhooksWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

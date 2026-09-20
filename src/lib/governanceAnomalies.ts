@@ -276,7 +276,9 @@ export function detectBuyerSupplierAffinityAnomalies(
           entitiesSummary: {
             suppliers: [data.name],
             approvers: [buyerName],
-            purchaseAmounts: buyerAwards.filter((a) => a.supplierId === supplierId).map((a) => a.amount),
+            purchaseAmounts: buyerAwards
+              .filter((a) => a.supplierId === supplierId)
+              .map((a) => a.amount),
             totalAmount: data.totalSpend,
           },
           auditTrailLinks: buyerAwards

@@ -50,6 +50,7 @@ import {
   registerAutoSyncListener,
   type QueuedDeliveryRecord,
 } from "@/lib/offlineSyncQueue";
+import { compressImageForUpload } from "@/lib/imageCompression";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/deliveries")({
@@ -101,7 +102,9 @@ function Deliveries() {
 
   // Search & Filter state for history
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "accepted" | "partial" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "accepted" | "partial" | "rejected">(
+    "all",
+  );
 
   // Inspection Detail Modal state
   const [inspectingReceipt, setInspectingReceipt] = useState<DeliveryReceiptRecord | null>(null);
@@ -160,7 +163,9 @@ function Deliveries() {
       try {
         const { data, error } = await supabase
           .from("delivery_receipts")
-          .select("*, purchase_orders(po_number, total_amount, settlement_currency, suppliers(name))")
+          .select(
+            "*, purchase_orders(po_number, total_amount, settlement_currency, suppliers(name))",
+          )
           .order("created_at", { ascending: false });
         if (error) throw error;
         return (data ?? []) as unknown as DeliveryReceiptRecord[];
@@ -180,15 +185,32 @@ function Deliveries() {
         toast.error("Each document or photo must be under 50 MB.");
         return;
       }
+
+      // Optimize image for low-bandwidth 3G networks (Prompt §28, NFR-PERF)
+      let uploadFile: File | Blob = file;
+      if (file.type.startsWith("image/")) {
+        try {
+          const compressed = await compressImageForUpload(file, {
+            maxWidth: 1600,
+            maxHeight: 1600,
+            quality: 0.8,
+            targetMaxKBytes: 300,
+          });
+          uploadFile = compressed.file;
+        } catch (compErr) {
+          console.warn("Client-side image compression fallback to original:", compErr);
+        }
+      }
+
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `deliveries/${Date.now()}_${safeName}`;
       const { data, error } = await supabase.storage
         .from("requisition-attachments")
-        .upload(path, file);
+        .upload(path, uploadFile);
 
       if (error) throw error;
       setPhotos((prev) => [...prev, { path: data.path, name: file.name }]);
-      toast.success("Delivery document attached.");
+      toast.success("Delivery document attached (optimized for upload).");
     } catch {
       toast.error("Failed uploading document.");
     } finally {
@@ -251,9 +273,7 @@ function Deliveries() {
       const poObj = Array.isArray(rawPo) ? rawPo[0] : rawPo;
       const poNum = poObj?.po_number ?? "";
       const rawSupp = poObj?.suppliers;
-      const suppName = Array.isArray(rawSupp)
-        ? rawSupp[0]?.name ?? ""
-        : rawSupp?.name ?? "";
+      const suppName = Array.isArray(rawSupp) ? (rawSupp[0]?.name ?? "") : (rawSupp?.name ?? "");
 
       const matchesSearch =
         !q ||
@@ -287,7 +307,8 @@ function Deliveries() {
             Delivery &amp; Inspection
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Log goods received on construction sites, verify items accepted vs rejected, and capture site delivery notes.
+            Log goods received on construction sites, verify items accepted vs rejected, and capture
+            site delivery notes.
           </p>
         </div>
 
@@ -311,7 +332,8 @@ function Deliveries() {
         <div className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs font-medium text-amber-900">
           <WifiOff className="h-4 w-4 shrink-0 text-amber-600" />
           <span>
-            Offline Mode Active — Site inspections will queue securely on this device and auto-sync to the cloud once network connectivity resumes.
+            Offline Mode Active — Site inspections will queue securely on this device and auto-sync
+            to the cloud once network connectivity resumes.
           </span>
         </div>
       )}
@@ -330,7 +352,8 @@ function Deliveries() {
             {queuedItems.map((q) => (
               <div key={q.id} className="py-1.5 flex items-center justify-between text-slate-700">
                 <span>
-                  Ref: <strong className="font-mono">{q.deliveryNoteRef || "N/A"}</strong> · Status: {q.status}
+                  Ref: <strong className="font-mono">{q.deliveryNoteRef || "N/A"}</strong> · Status:{" "}
+                  {q.status}
                 </span>
                 <span className="text-slate-500 text-[11px]">
                   {new Date(q.timestamp).toLocaleTimeString()}
@@ -359,7 +382,8 @@ function Deliveries() {
                 Log Site Goods Received
               </h2>
               <p className="text-xs text-slate-500">
-                Document warehouse and site receiving receipts for three-way commercial reconciliation.
+                Document warehouse and site receiving receipts for three-way commercial
+                reconciliation.
               </p>
             </div>
           </div>
@@ -385,7 +409,8 @@ function Deliveries() {
                       : (rawSupp as { name?: string } | null)?.name;
                     return (
                       <SelectItem key={po.id} value={po.id} className="text-xs font-medium">
-                        {po.po_number} — {money(po.total_amount, po.settlement_currency as "NGN" | "USD")}{" "}
+                        {po.po_number} —{" "}
+                        {money(po.total_amount, po.settlement_currency as "NGN" | "USD")}{" "}
                         {suppName ? `(${suppName})` : ""}
                       </SelectItem>
                     );
@@ -416,9 +441,7 @@ function Deliveries() {
 
           {/* Inspection Result Status */}
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-            <Label className="text-xs font-semibold text-slate-700">
-              Inspection Result Status
-            </Label>
+            <Label className="text-xs font-semibold text-slate-700">Inspection Result Status</Label>
             <Select
               value={status}
               onValueChange={(v) => setStatus(v as "accepted" | "partial" | "rejected")}
@@ -517,7 +540,8 @@ function Deliveries() {
             </label>
 
             <span className="text-xs text-slate-500">
-              Attach signed waybill, delivery note, inspection report, or photo (PDF, Word, Excel, Images up to 50 MB).
+              Attach signed waybill, delivery note, inspection report, or photo (PDF, Word, Excel,
+              Images up to 50 MB).
             </span>
           </div>
 
@@ -554,7 +578,9 @@ function Deliveries() {
               className="h-9 px-5 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-medium shadow-xs transition-colors gap-1.5"
             >
               <Truck className="h-4 w-4" />
-              <span>{createReceipt.isPending ? "Logging Record…" : "Log Goods Received Record"}</span>
+              <span>
+                {createReceipt.isPending ? "Logging Record…" : "Log Goods Received Record"}
+              </span>
             </Button>
           </div>
         </div>
@@ -613,7 +639,8 @@ function Deliveries() {
                 : "No delivery records logged yet."}
             </p>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              When site teams log materials received against issued POs, physical Goods-Received Notes (GRN) will appear here.
+              When site teams log materials received against issued POs, physical Goods-Received
+              Notes (GRN) will appear here.
             </p>
           </div>
         ) : (
@@ -624,8 +651,8 @@ function Deliveries() {
               const poNum = poObj?.po_number ?? "PO";
               const rawSupp = poObj?.suppliers;
               const suppName = Array.isArray(rawSupp)
-                ? rawSupp[0]?.name ?? "Vendor"
-                : rawSupp?.name ?? "Vendor";
+                ? (rawSupp[0]?.name ?? "Vendor")
+                : (rawSupp?.name ?? "Vendor");
 
               return (
                 <article
@@ -635,7 +662,9 @@ function Deliveries() {
                   <div className="space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-mono font-bold text-[#0B1457] text-sm tabular-nums">{poNum}</span>
+                        <span className="font-mono font-bold text-[#0B1457] text-sm tabular-nums">
+                          {poNum}
+                        </span>
                         <p className="text-slate-600 text-xs font-medium truncate max-w-[170px]">
                           {suppName}
                         </p>
@@ -658,7 +687,11 @@ function Deliveries() {
                         ) : (
                           <XCircle className="h-3 w-3 text-rose-600" />
                         )}
-                        {r.status === "accepted" ? "Accepted" : r.status === "partial" ? "Partial" : "Rejected"}
+                        {r.status === "accepted"
+                          ? "Accepted"
+                          : r.status === "partial"
+                            ? "Partial"
+                            : "Rejected"}
                       </span>
                     </div>
 
@@ -683,7 +716,10 @@ function Deliveries() {
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                     <span className="truncate max-w-[140px]" title={r.receiving_officer_name}>
-                      Recv: <span className="text-slate-700 font-medium">{r.receiving_officer_name || "Site Officer"}</span>
+                      Recv:{" "}
+                      <span className="text-slate-700 font-medium">
+                        {r.receiving_officer_name || "Site Officer"}
+                      </span>
                     </span>
                     <button
                       type="button"
@@ -727,7 +763,8 @@ function Deliveries() {
                     {inspectingReceipt.purchase_orders?.po_number || "Unlinked PO"}
                   </p>
                   <p className="text-xs text-slate-600">
-                    {(inspectingReceipt.purchase_orders?.suppliers as { name?: string })?.name || "Vendor"}
+                    {(inspectingReceipt.purchase_orders?.suppliers as { name?: string })?.name ||
+                      "Vendor"}
                   </p>
                 </div>
 
@@ -774,7 +811,9 @@ function Deliveries() {
               <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-xs text-slate-600 space-y-1">
                 <div className="flex items-center justify-between">
                   <span>Receiving Officer:</span>
-                  <strong className="text-slate-900 font-semibold">{inspectingReceipt.receiving_officer_name}</strong>
+                  <strong className="text-slate-900 font-semibold">
+                    {inspectingReceipt.receiving_officer_name}
+                  </strong>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Site Delivery Date:</span>

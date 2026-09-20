@@ -45,9 +45,9 @@ export async function dispatchApprovalNotification(
   params: ApprovalNotificationParams,
 ): Promise<NotificationDispatchResult> {
   const baseUrl = params.baseUrl || process.env["APP_BASE_URL"] || "http://localhost:3000";
-  const approveUrl = `${baseUrl}/approvals/action?token=${params.actionToken}&decision=approve`;
-  const rejectUrl = `${baseUrl}/approvals/action?token=${params.actionToken}&decision=reject`;
-  const viewUrl = `${baseUrl}/requisitions/${params.requisitionNumber}`;
+  const approveUrl = `${baseUrl}/approve/${params.actionToken}?decision=approved`;
+  const rejectUrl = `${baseUrl}/approve/${params.actionToken}?decision=rejected`;
+  const viewUrl = `${baseUrl}/approve/${params.actionToken}`;
 
   const resendApiKey = process.env["RESEND_API_KEY"];
   const fromEmail = process.env["EMAIL_FROM"] || "Procurely Flow <notifications@procurely.app>";
@@ -90,14 +90,29 @@ export async function dispatchApprovalNotification(
       if (!response.ok) {
         const errText = await response.text();
         console.error("[Notification] Resend API Error:", errText);
-        return { success: false, channel: "EMAIL", recipient: params.recipientEmail, error: errText };
+        return {
+          success: false,
+          channel: "EMAIL",
+          recipient: params.recipientEmail,
+          error: errText,
+        };
       }
 
       const resData = await response.json();
-      return { success: true, channel: "EMAIL", messageId: resData.id, recipient: params.recipientEmail };
+      return {
+        success: true,
+        channel: "EMAIL",
+        messageId: resData.id,
+        recipient: params.recipientEmail,
+      };
     } catch (e) {
       console.error("[Notification] Outbound dispatch failed:", e);
-      return { success: false, channel: "EMAIL", recipient: params.recipientEmail, error: String(e) };
+      return {
+        success: false,
+        channel: "EMAIL",
+        recipient: params.recipientEmail,
+        error: String(e),
+      };
     }
   }
 
@@ -128,7 +143,9 @@ export async function dispatchPoAwardNotification(
 
   console.log(`\n================== [NOTIFICATIONS DISPATCH: PO AWARD] ==================`);
   console.log(`Supplier: ${params.supplierName} <${params.recipientEmail}>`);
-  console.log(`PO Number: ${params.poNumber} (${params.currency} ${params.totalAmount.toLocaleString()})`);
+  console.log(
+    `PO Number: ${params.poNumber} (${params.currency} ${params.totalAmount.toLocaleString()})`,
+  );
   console.log(`Supplier Acknowledgment URL: ${ackUrl}`);
   console.log(`========================================================================\n`);
 

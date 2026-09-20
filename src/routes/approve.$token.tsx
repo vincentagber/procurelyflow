@@ -17,10 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import {
-  getApprovalTokenDetailsFn,
-  decideApprovalByTokenFn,
-} from "@/lib/procurement.functions";
+import { getApprovalTokenDetailsFn, decideApprovalByTokenFn } from "@/lib/procurement.functions";
 import { money, shortDate, dateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,7 +31,10 @@ export const Route = createFileRoute("/approve/$token")({
         content: "Secure, real-time 1-click requisition approval via Email and WhatsApp.",
       },
       { property: "og:title", content: "One-Click Requisition Approval — Procurely Flow" },
-      { property: "og:description", content: "Instant procurement clearance without login hurdles." },
+      {
+        property: "og:description",
+        content: "Instant procurement clearance without login hurdles.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -77,21 +77,21 @@ function TokenApprovalPage() {
       toast.error(e instanceof Error ? e.message : "Failed to record approval decision."),
   });
 
-  // Auto-execute if direct query param ?decision=approved or ?decision=rejected is passed
-  useEffect(() => {
-    if (data && data.status === "VALID" && search.decision && !isDecided && !decide.isPending) {
-      if (search.decision === "approved" || search.decision === "rejected") {
-        decide.mutate(search.decision);
-      }
-    }
-  }, [data, search.decision]);
+  // Security (NFR-SEC): Do NOT auto-execute decisions on simple page load.
+  // Enterprise email gateways (Microsoft SafeLinks, Google Workspace) and WhatsApp link
+  // preview bots crawl incoming links automatically with GET requests.
+  // Auto-approving in useEffect would cause unauthorized corporate spend approvals without human intent.
+  const preselectedDecision =
+    search.decision === "approved" || search.decision === "rejected" ? search.decision : null;
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0B1457] border-t-transparent" />
-          <p className="text-xs font-semibold text-slate-600">Verifying secure authorization link…</p>
+          <p className="text-xs font-semibold text-slate-600">
+            Verifying secure authorization link…
+          </p>
         </div>
       </div>
     );
@@ -105,13 +105,16 @@ function TokenApprovalPage() {
             <Clock className="h-7 w-7" />
           </div>
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-            {data?.status === "ALREADY_USED" ? "Decision Already Recorded" : "Invalid or Expired Link"}
+            {data?.status === "ALREADY_USED"
+              ? "Decision Already Recorded"
+              : "Invalid or Expired Link"}
           </h2>
           <p className="text-xs text-slate-600 leading-relaxed font-normal">
             {data?.error || "This authorization link has already been consumed or has expired."}
           </p>
           <p className="text-[11px] text-slate-400">
-            For audit compliance, single-use action links are deactivated upon decision or expiration.
+            For audit compliance, single-use action links are deactivated upon decision or
+            expiration.
           </p>
         </div>
       </div>
@@ -131,7 +134,9 @@ function TokenApprovalPage() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-slate-900 tracking-tight">Procurely Flow</h1>
-              <p className="text-[10px] text-slate-400 font-medium">Multi-Channel Executive Clearance</p>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Multi-Channel Executive Clearance
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[10px] font-bold text-emerald-800">
@@ -146,10 +151,13 @@ function TokenApprovalPage() {
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <h3 className="text-base font-bold text-slate-900">
-              {decisionOutcome === "rejected" ? "Requisition Decision: Rejected" : "Requisition Cleared Successfully"}
+              {decisionOutcome === "rejected"
+                ? "Requisition Decision: Rejected"
+                : "Requisition Cleared Successfully"}
             </h3>
             <p className="text-xs text-slate-600">
-              Your decision for requisition <strong>{requisition.reference}</strong> has been logged to the permanent forensic audit trail.
+              Your decision for requisition <strong>{requisition.reference}</strong> has been logged
+              to the permanent forensic audit trail.
             </p>
           </div>
         ) : (
@@ -187,28 +195,42 @@ function TokenApprovalPage() {
             {/* Context Grid */}
             <div className="grid sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Project Site</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Project Site
+                </p>
                 <div className="flex items-center gap-1.5 mt-1 font-semibold text-slate-800">
                   <FolderKanban className="h-3.5 w-3.5 text-slate-400" />
                   <span>{requisition.projectName}</span>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Initiating Engineer</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Initiating Engineer
+                </p>
                 <div className="flex items-center gap-1.5 mt-1 font-semibold text-slate-800">
                   <User className="h-3.5 w-3.5 text-slate-400" />
-                  <span>{requisition.requesterName} ({requisition.requesterDepartment})</span>
+                  <span>
+                    {requisition.requesterName} ({requisition.requesterDepartment})
+                  </span>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date Needed On Site</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Date Needed On Site
+                </p>
                 <div className="flex items-center gap-1.5 mt-1 font-semibold text-slate-800">
                   <Clock className="h-3.5 w-3.5 text-slate-400" />
-                  <span>{requisition.neededBy ? shortDate(requisition.neededBy) : "Urgent / Immediately"}</span>
+                  <span>
+                    {requisition.neededBy
+                      ? shortDate(requisition.neededBy)
+                      : "Urgent / Immediately"}
+                  </span>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Clearance Authority</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Clearance Authority
+                </p>
                 <div className="flex items-center gap-1.5 mt-1 font-semibold text-[#0B1457]">
                   <Building2 className="h-3.5 w-3.5 text-slate-400" />
                   <span>{step?.reason || `${step?.requiredRole} Approval`}</span>
@@ -234,7 +256,9 @@ function TokenApprovalPage() {
                   <tbody className="divide-y divide-slate-100">
                     {requisition.items.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50">
-                        <td className="py-2.5 px-3 font-medium text-slate-900">{item.description}</td>
+                        <td className="py-2.5 px-3 font-medium text-slate-900">
+                          {item.description}
+                        </td>
                         <td className="py-2.5 px-3 text-right tabular-nums text-slate-600">
                           {item.quantity} {item.unit}
                         </td>
@@ -265,28 +289,67 @@ function TokenApprovalPage() {
               />
             </div>
 
+            {/* Pre-Selected 1-Click Action Callout */}
+            {preselectedDecision && (
+              <div
+                className={`p-3.5 rounded-xl border flex items-center gap-3 ${
+                  preselectedDecision === "approved"
+                    ? "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+                    : "bg-rose-50/80 border-rose-200 text-rose-900"
+                }`}
+              >
+                {preselectedDecision === "approved" ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-rose-600 shrink-0" />
+                )}
+                <div className="text-xs">
+                  <p className="font-bold">
+                    1-Click Action Link: {preselectedDecision === "approved" ? "Approve" : "Reject"}{" "}
+                    Requisition
+                  </p>
+                  <p className="text-[11px] opacity-90 mt-0.5">
+                    For corporate governance, please verify the itemised bill above and click the
+                    confirmation button below to record your decision.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Primary Action Buttons */}
             <div className="grid sm:grid-cols-2 gap-3 pt-2">
               <Button
                 type="button"
                 size="lg"
-                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
+                className={`w-full h-11 text-white font-bold text-xs cursor-pointer shadow-sm transition-all ${
+                  preselectedDecision === "approved"
+                    ? "bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400 ring-offset-2"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
                 disabled={decide.isPending}
                 onClick={() => decide.mutate("approved")}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                {decide.isPending ? "Recording Decision…" : "Approve Requisition"}
+                {decide.isPending
+                  ? "Recording Decision…"
+                  : preselectedDecision === "approved"
+                    ? "Confirm & Approve Requisition"
+                    : "Approve Requisition"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                className="w-full h-11 border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs cursor-pointer"
+                className={`w-full h-11 border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs cursor-pointer ${
+                  preselectedDecision === "rejected" ? "ring-2 ring-rose-400 ring-offset-2" : ""
+                }`}
                 disabled={decide.isPending}
                 onClick={() => decide.mutate("rejected")}
               >
                 <XCircle className="h-4 w-4 mr-2" />
-                Reject Requisition
+                {preselectedDecision === "rejected"
+                  ? "Confirm & Reject Requisition"
+                  : "Reject Requisition"}
               </Button>
             </div>
 

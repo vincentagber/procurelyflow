@@ -16,7 +16,7 @@ export function PciProtectionEmblemIcon({ className = "h-10 w-10" }: IconProps) 
     <div
       className={cn(
         "flex items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs shrink-0",
-        className
+        className,
       )}
     >
       <MdSecurity className="h-5 w-5 text-emerald-600" />
@@ -39,7 +39,7 @@ export function ForensicGovernanceEmblemIcon({
         hasAnomalies
           ? "bg-rose-50 text-rose-800 border-rose-200"
           : "bg-slate-100 text-[#0B1457] border-slate-200",
-        className
+        className,
       )}
     >
       {hasAnomalies ? (
@@ -60,7 +60,7 @@ export function GovernanceVerifiedBadgeIcon({ className = "h-10 w-10" }: IconPro
     <div
       className={cn(
         "flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs shrink-0",
-        className
+        className,
       )}
     >
       <MdVerifiedUser className="h-6 w-6 text-emerald-600" />

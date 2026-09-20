@@ -2,7 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Printer, FileEdit, History, Plus, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import {
+  Printer,
+  FileEdit,
+  History,
+  Plus,
+  AlertCircle,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
 
 import {
   purchaseOrderDetailFn,
@@ -37,7 +45,8 @@ export const Route = createFileRoute("/_authenticated/purchase-orders/$id")({
       { property: "og:title", content: "Purchase order — Procurely Flow" },
       {
         property: "og:description",
-        content: "Branded purchase order with pricing, change order revisions, terms and approval trail.",
+        content:
+          "Branded purchase order with pricing, change order revisions, terms and approval trail.",
       },
     ],
   }),
@@ -150,7 +159,9 @@ function PurchaseOrderDocument() {
           <Link to="/purchase-orders">All purchase orders</Link>
         </Button>
         <div className="flex items-center gap-2">
-          {canAmend && (po.status as string) !== "cancelled" && (po.status as string) !== "rejected" ? (
+          {canAmend &&
+          (po.status as string) !== "cancelled" &&
+          (po.status as string) !== "rejected" ? (
             <Button
               variant="outline"
               className="h-11 border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-900 font-semibold cursor-pointer"
@@ -178,7 +189,9 @@ function PurchaseOrderDocument() {
                 Purchase Order
               </h1>
               <div className="mt-1 flex items-center gap-2">
-                <span className="font-mono text-sm text-slate-300 tabular-nums">{po.po_number}</span>
+                <span className="font-mono text-sm text-slate-300 tabular-nums">
+                  {po.po_number}
+                </span>
                 {po.revision_count && po.revision_count > 0 ? (
                   <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-400/30">
                     Revision {po.revision_count}
@@ -458,7 +471,11 @@ function PurchaseOrderDocument() {
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               Amend purchase order quantities or unit rates. An immutable revision will be created
-              while preserving baseline <strong className="font-mono text-slate-700">{po.baseline_po_number || po.po_number}</strong>.
+              while preserving baseline{" "}
+              <strong className="font-mono text-slate-700">
+                {po.baseline_po_number || po.po_number}
+              </strong>
+              .
             </DialogDescription>
           </DialogHeader>
 
@@ -467,7 +484,10 @@ function PurchaseOrderDocument() {
               <Label className="text-xs font-semibold text-slate-700">Line Items Adjustment</Label>
               <div className="max-h-60 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
                 {editableLines.map((line, idx) => (
-                  <div key={line.itemId} className="p-3 flex items-center justify-between gap-3 text-xs">
+                  <div
+                    key={line.itemId}
+                    className="p-3 flex items-center justify-between gap-3 text-xs"
+                  >
                     <div className="flex-1">
                       <p className="font-medium text-slate-900">{line.description}</p>
                     </div>
@@ -522,11 +542,7 @@ function PurchaseOrderDocument() {
                 <span>Change Order Delta:</span>
                 <span
                   className={`font-mono font-bold ${
-                    delta > 0
-                      ? "text-rose-600"
-                      : delta < 0
-                        ? "text-emerald-600"
-                        : "text-slate-600"
+                    delta > 0 ? "text-rose-600" : delta < 0 ? "text-emerald-600" : "text-slate-600"
                   }`}
                 >
                   {delta > 0 ? "+" : ""}

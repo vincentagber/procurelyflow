@@ -113,9 +113,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: "General",
-    items: [
-      { to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
-    ],
+    items: [{ to: "/settings", label: "Settings", icon: Settings, roles: ["admin"] }],
   },
 ];
 
@@ -280,7 +278,9 @@ function AppLayout() {
                 <div key={section.title} className="space-y-0.5">
                   {/* Category Header (or subtle divider when collapsed) */}
                   {collapsed ? (
-                    idx > 0 ? <div className="h-px bg-white/10 my-2 mx-1" /> : null
+                    idx > 0 ? (
+                      <div className="h-px bg-white/10 my-2 mx-1" />
+                    ) : null
                   ) : (
                     <div className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/40 select-none">
                       {section.title}
@@ -299,8 +299,7 @@ function AppLayout() {
                           onClick={() => setOpen(false)}
                           title={collapsed ? item.label : undefined}
                           activeProps={{
-                            className:
-                              "bg-[#0001FF] text-white font-medium shadow-xs",
+                            className: "bg-[#0001FF] text-white font-medium shadow-xs",
                           }}
                           inactiveProps={{
                             className:
@@ -442,10 +441,7 @@ function AppLayout() {
         </AnimatedPageWrapper>
       </main>
 
-      <ProfileEditDialog
-        open={editProfileOpen}
-        onOpenChange={setEditProfileOpen}
-      />
+      <ProfileEditDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
     </div>
   );
 }

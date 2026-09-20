@@ -88,12 +88,17 @@ function RequisitionDetail() {
     mutationFn: (vars: { stepId: string; decision: "approved" | "rejected"; comment?: string }) =>
       decideApprovalFn({ data: vars }),
     onSuccess: async (_, vars) => {
-      toast.success(vars.decision === "approved" ? "Requisition cleared successfully." : "Requisition rejected.");
+      toast.success(
+        vars.decision === "approved"
+          ? "Requisition cleared successfully."
+          : "Requisition rejected.",
+      );
       setRejectModalStepId(null);
       setRejectComment("");
       await queryClient.invalidateQueries();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to record approval decision."),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed to record approval decision."),
   });
 
   const handleOpenWhatsAppModal = async (stepId: string) => {
@@ -195,10 +200,18 @@ function RequisitionDetail() {
             >
               <Copy className="mr-1.5 h-4 w-4" /> Duplicate
             </Button>
-            <Button variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => window.print()}>
+            <Button
+              variant="outline"
+              className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              onClick={() => window.print()}
+            >
               <Printer className="mr-1.5 h-3.5 w-3.5" /> Export PDF
             </Button>
-            <Button asChild variant="outline" className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 print:hidden">
+            <Button
+              asChild
+              variant="outline"
+              className="h-9 px-4 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 print:hidden"
+            >
               <Link to="/requisitions">All requisitions</Link>
             </Button>
           </>
@@ -209,12 +222,21 @@ function RequisitionDetail() {
         <StatusPill status={req.status} label={STATUS_LABELS[req.status]} />
         {req.is_unbudgeted ? <StatusPill status="pending" label="Unbudgeted" /> : null}
         <span className="text-xs text-slate-500">
-          Project / cost center: <strong className="font-semibold text-slate-700">{(req.projects as { name: string } | null)?.name ?? "—"}</strong>
+          Project / cost center:{" "}
+          <strong className="font-semibold text-slate-700">
+            {(req.projects as { name: string } | null)?.name ?? "—"}
+          </strong>
         </span>
-        <span className="text-xs text-slate-500">Needed by <strong className="font-semibold text-slate-700">{shortDate(req.needed_by)}</strong></span>
+        <span className="text-xs text-slate-500">
+          Needed by{" "}
+          <strong className="font-semibold text-slate-700">{shortDate(req.needed_by)}</strong>
+        </span>
         {(req as { delivery_location?: string | null }).delivery_location ? (
           <span className="text-xs text-slate-500">
-            Site Location: <strong className="font-semibold text-slate-700">{(req as { delivery_location?: string | null }).delivery_location}</strong>
+            Site Location:{" "}
+            <strong className="font-semibold text-slate-700">
+              {(req as { delivery_location?: string | null }).delivery_location}
+            </strong>
           </span>
         ) : null}
         <span className="ml-auto font-sans text-2xl font-bold tabular-nums text-slate-900">
@@ -265,7 +287,9 @@ function RequisitionDetail() {
         <aside className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-sm font-semibold text-slate-900 tracking-tight">Approval Chain</h2>
+              <h2 className="text-sm font-semibold text-slate-900 tracking-tight">
+                Approval Chain
+              </h2>
               {req.status === "pending_approval" && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
@@ -277,8 +301,7 @@ function RequisitionDetail() {
               <ol className="mt-3.5 space-y-3">
                 {data.steps.map((step) => {
                   const isPending = step.status === "pending";
-                  const canDecide =
-                    isPending && can(me.data?.roles, [step.required_role, "admin"]);
+                  const canDecide = isPending && can(me.data?.roles, [step.required_role, "admin"]);
 
                   return (
                     <li
@@ -288,10 +311,10 @@ function RequisitionDetail() {
                         isPending
                           ? "border-amber-200 bg-amber-50/20"
                           : step.status === "approved"
-                          ? "border-emerald-200 bg-emerald-50/20"
-                          : step.status === "rejected"
-                          ? "border-rose-200 bg-rose-50/20"
-                          : "border-slate-200 bg-slate-50/50"
+                            ? "border-emerald-200 bg-emerald-50/20"
+                            : step.status === "rejected"
+                              ? "border-rose-200 bg-rose-50/20"
+                              : "border-slate-200 bg-slate-50/50",
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -306,7 +329,8 @@ function RequisitionDetail() {
                             <Clock className="h-4 w-4 text-slate-400 shrink-0" />
                           )}
                           <span>
-                            Stage {step.step_order}: {ROLE_LABELS[step.required_role] ?? step.required_role}
+                            Stage {step.step_order}:{" "}
+                            {ROLE_LABELS[step.required_role] ?? step.required_role}
                           </span>
                         </span>
                         <StatusPill status={step.status} />
@@ -328,7 +352,9 @@ function RequisitionDetail() {
                                 size="sm"
                                 className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
                                 disabled={decide.isPending}
-                                onClick={() => decide.mutate({ stepId: step.id, decision: "approved" })}
+                                onClick={() =>
+                                  decide.mutate({ stepId: step.id, decision: "approved" })
+                                }
                               >
                                 <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                                 <span>Approve</span>
@@ -406,9 +432,12 @@ function RequisitionDetail() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-slate-900">Rejection Justification</DialogTitle>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Rejection Justification
+            </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Please enter an explicit reason for declining this spend request. This reason is permanently recorded in the audit trail.
+              Please enter an explicit reason for declining this spend request. This reason is
+              permanently recorded in the audit trail.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -430,7 +459,11 @@ function RequisitionDetail() {
               disabled={!rejectModalStepId || !rejectComment.trim() || decide.isPending}
               onClick={() => {
                 if (rejectModalStepId) {
-                  decide.mutate({ stepId: rejectModalStepId, decision: "rejected", comment: rejectComment });
+                  decide.mutate({
+                    stepId: rejectModalStepId,
+                    decision: "rejected",
+                    comment: rejectComment,
+                  });
                 }
               }}
             >
@@ -457,14 +490,18 @@ function RequisitionDetail() {
               WhatsApp &amp; Mobile Clearance Channel
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized, single-use approval prompt that lets them clear requests with one tap without password friction.
+              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized,
+              single-use approval prompt that lets them clear requests with one tap without password
+              friction.
             </DialogDescription>
           </DialogHeader>
 
           {isGeneratingLinks ? (
             <div className="py-8 flex flex-col items-center justify-center gap-2">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-              <p className="text-xs text-slate-500 font-medium">Generating single-use cryptographic tokens…</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Generating single-use cryptographic tokens…
+              </p>
             </div>
           ) : generatedLinks ? (
             <div className="space-y-4 py-2 text-xs">
@@ -587,7 +624,9 @@ function RfqComposer({ requisitionId, onDone }: { requisitionId: string; onDone:
   if (links.length) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <h2 className="text-base font-semibold text-slate-900 tracking-tight">Private Supplier Links</h2>
+        <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+          Private Supplier Links
+        </h2>
         <p className="mt-1 text-xs text-slate-500">
           Each link is unique and expires with the RFQ. A supplier can only ever see their own
           quote.
@@ -615,7 +654,10 @@ function RfqComposer({ requisitionId, onDone }: { requisitionId: string; onDone:
             </li>
           ))}
         </ul>
-        <Button className="mt-4 h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs" onClick={onDone}>
+        <Button
+          className="mt-4 h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs"
+          onClick={onDone}
+        >
           Done
         </Button>
       </section>

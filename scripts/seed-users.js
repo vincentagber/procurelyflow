@@ -27,7 +27,10 @@ async function main() {
     });
 
     if (error) {
-      if (error.message.includes("already registered") || error.message.includes("User already exists")) {
+      if (
+        error.message.includes("already registered") ||
+        error.message.includes("User already exists")
+      ) {
         console.log(`✓ ${u.email} already exists.`);
       } else {
         console.log(`⚠ ${u.email}: ${error.message}`);

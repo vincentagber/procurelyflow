@@ -82,32 +82,57 @@ describe("FR-2.6: Approval Authority Delegation Engine", () => {
   ];
 
   it("authorizes original assigned approver directly without delegation", () => {
-    const check = isAuthorizedApprover("user-director-wale", "user-director-wale", sampleDelegations, "2026-09-05");
+    const check = isAuthorizedApprover(
+      "user-director-wale",
+      "user-director-wale",
+      sampleDelegations,
+      "2026-09-05",
+    );
     assert.equal(check.authorized, true);
     assert.equal(check.asDelegate, false);
   });
 
   it("authorizes designated substitute approver within valid active delegation window", () => {
-    const check = isAuthorizedApprover("user-manager-chidi", "user-director-wale", sampleDelegations, "2026-09-05");
+    const check = isAuthorizedApprover(
+      "user-manager-chidi",
+      "user-director-wale",
+      sampleDelegations,
+      "2026-09-05",
+    );
     assert.equal(check.authorized, true);
     assert.equal(check.asDelegate, true);
     assert.equal(check.delegatorId, "user-director-wale");
   });
 
   it("rejects substitute approver when delegation window has expired", () => {
-    const check = isAuthorizedApprover("user-lead-aminat", "user-coo-babatunde", sampleDelegations, "2026-09-05");
+    const check = isAuthorizedApprover(
+      "user-lead-aminat",
+      "user-coo-babatunde",
+      sampleDelegations,
+      "2026-09-05",
+    );
     assert.equal(check.authorized, false);
     assert.equal(check.asDelegate, false);
   });
 
   it("rejects substitute approver when delegation was revoked by delegator or admin", () => {
-    const check = isAuthorizedApprover("user-manager-chidi", "user-cfo-ngozi", sampleDelegations, "2026-09-05");
+    const check = isAuthorizedApprover(
+      "user-manager-chidi",
+      "user-cfo-ngozi",
+      sampleDelegations,
+      "2026-09-05",
+    );
     assert.equal(check.authorized, false);
     assert.equal(check.asDelegate, false);
   });
 
   it("rejects arbitrary unauthorized users trying to act as approver", () => {
-    const check = isAuthorizedApprover("user-unauthorized-random", "user-director-wale", sampleDelegations, "2026-09-05");
+    const check = isAuthorizedApprover(
+      "user-unauthorized-random",
+      "user-director-wale",
+      sampleDelegations,
+      "2026-09-05",
+    );
     assert.equal(check.authorized, false);
     assert.equal(check.asDelegate, false);
   });
@@ -125,7 +150,8 @@ describe("FR-5.4: Purchase Orders — Change Order & Baseline Preservation Engin
 
     const changeOrder = createPoChangeOrderRecord({
       po: baselinePo,
-      reason: "Structural engineer requested additional 20mm rebar and fast-setting cement for coastal foundation",
+      reason:
+        "Structural engineer requested additional 20mm rebar and fast-setting cement for coastal foundation",
       requestedBy: "Procurement Officer Aminat",
       newTotalAmount: 52500000,
       modifiedItems: [
@@ -192,7 +218,10 @@ describe("FR-1.1: Requisitions — Site Delivery Location Verification", () => {
     items: { description: string; quantity: number; estimatedUnitPrice: number }[];
   }
 
-  function validateRequisitionSubmission(payload: RequisitionPayload): { valid: boolean; errors: string[] } {
+  function validateRequisitionSubmission(payload: RequisitionPayload): {
+    valid: boolean;
+    errors: string[];
+  } {
     const errors: string[] = [];
     if (!payload.title || payload.title.trim().length === 0) {
       errors.push("Title is required.");
@@ -352,4 +381,3 @@ describe("NFR-LOC.2 & NFR-SEC.4: Localized B2B Subscription Billing & PCI-DSS En
     );
   });
 });
-

@@ -171,11 +171,7 @@ function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center">
-              <img
-                src="/logo-dark.png"
-                alt="Logo"
-                className="h-8 md:h-9 w-auto object-contain"
-              />
+              <img src="/logo-dark.png" alt="Logo" className="h-8 md:h-9 w-auto object-contain" />
             </Link>
             <span className="hidden rounded-full bg-[#0B1457] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white md:inline-block">
               Enterprise
@@ -257,7 +253,9 @@ function LandingPage() {
 
               {/* Subtitle */}
               <p className="mt-7 max-w-xl text-base text-[#0B1457]/80 sm:text-lg leading-relaxed">
-                Procurely Flow replaces disconnected WhatsApp chats, lost invoices, and paper vouchers with an automated, tamper-evident procurement pipeline with real-time budget guardrails, sealed RFQs, and automated 3-way matching.
+                Procurely Flow replaces disconnected WhatsApp chats, lost invoices, and paper
+                vouchers with an automated, tamper-evident procurement pipeline with real-time
+                budget guardrails, sealed RFQs, and automated 3-way matching.
               </p>
 
               {/* CTAs */}
@@ -323,7 +321,12 @@ function LandingPage() {
             <div className="relative lg:col-span-5">
               {/* Sunburst line doodle at top */}
               <div className="absolute -top-10 -right-4 w-24 h-24 pointer-events-none opacity-30">
-                <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" className="text-[#0B1457] w-full h-full">
+                <svg
+                  viewBox="0 0 100 100"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[#0B1457] w-full h-full"
+                >
                   <line x1="50" y1="10" x2="50" y2="25" strokeWidth="2" strokeLinecap="round" />
                   <line x1="50" y1="75" x2="50" y2="90" strokeWidth="2" strokeLinecap="round" />
                   <line x1="10" y1="50" x2="25" y2="50" strokeWidth="2" strokeLinecap="round" />
@@ -384,15 +387,26 @@ function LandingPage() {
                 <div className="mt-4 text-center">
                   <p className="text-[11px] text-[#0B1457]/60">
                     By subscribing, you agree with our{" "}
-                    <span className="text-[#0001FF] font-medium cursor-pointer">Terms of Service</span>
+                    <span className="text-[#0001FF] font-medium cursor-pointer">
+                      Terms of Service
+                    </span>
                   </p>
                 </div>
               </div>
 
               {/* Scribble lines doodle at bottom-right */}
               <div className="absolute -bottom-8 -right-4 w-28 h-12 pointer-events-none opacity-25">
-                <svg viewBox="0 0 100 40" fill="none" stroke="currentColor" className="text-[#0B1457] w-full h-full">
-                  <path d="M5 10 Q 50 35 95 10 M10 20 Q 55 45 90 20 M15 30 Q 60 55 85 30" strokeWidth="2.5" strokeLinecap="round" />
+                <svg
+                  viewBox="0 0 100 40"
+                  fill="none"
+                  stroke="currentColor"
+                  className="text-[#0B1457] w-full h-full"
+                >
+                  <path
+                    d="M5 10 Q 50 35 95 10 M10 20 Q 55 45 90 20 M15 30 Q 60 55 85 30"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </div>
             </div>
@@ -401,15 +415,21 @@ function LandingPage() {
           {/* Key Metric Badges Bar */}
           <div className="mt-16 grid grid-cols-2 gap-4 border-t border-[#E2E8F0] pt-10 sm:grid-cols-4">
             <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center">
-              <p className="font-display text-3xl font-extrabold text-[#0B1457] sm:text-4xl">₦50B+</p>
+              <p className="font-display text-3xl font-extrabold text-[#0B1457] sm:text-4xl">
+                ₦50B+
+              </p>
               <p className="mt-1 text-xs font-medium text-[#0B1457]/70">Total Spend Governed</p>
             </div>
             <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center">
-              <p className="font-display text-3xl font-extrabold text-[#0001FF] sm:text-4xl">99.9%</p>
+              <p className="font-display text-3xl font-extrabold text-[#0001FF] sm:text-4xl">
+                99.9%
+              </p>
               <p className="mt-1 text-xs font-medium text-[#0B1457]/70">3-Way Match Accuracy</p>
             </div>
             <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center">
-              <p className="font-display text-3xl font-extrabold text-[#0B1457] sm:text-4xl">&lt; 15 min</p>
+              <p className="font-display text-3xl font-extrabold text-[#0B1457] sm:text-4xl">
+                &lt; 15 min
+              </p>
               <p className="mt-1 text-xs font-medium text-[#0B1457]/70">Approval Turnaround</p>
             </div>
             <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center">
@@ -431,7 +451,8 @@ function LandingPage() {
               The 5-Stage Procurement Engine
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm text-[#0B1457]/80">
-              Click through the pipeline stages below to explore how Procurely governs spend from the field to finance.
+              Click through the pipeline stages below to explore how Procurely governs spend from
+              the field to finance.
             </p>
           </div>
 
@@ -453,7 +474,9 @@ function LandingPage() {
                     <div className="flex w-full items-center justify-between">
                       <span
                         className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-bold transition-colors ${
-                          isActive ? "bg-[#0B1457] text-white font-extrabold" : "bg-[#EFF3FF] text-[#0B1457]"
+                          isActive
+                            ? "bg-[#0B1457] text-white font-extrabold"
+                            : "bg-[#EFF3FF] text-[#0B1457]"
                         }`}
                       >
                         {stage.number}
@@ -487,7 +510,10 @@ function LandingPage() {
 
                 <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
                   {currentStage.details.map((detail) => (
-                    <div key={detail} className="flex items-start gap-2.5 text-xs font-medium text-[#0B1457]">
+                    <div
+                      key={detail}
+                      className="flex items-start gap-2.5 text-xs font-medium text-[#0B1457]"
+                    >
                       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B1457] text-white">
                         <Check className="h-3 w-3 stroke-[3]" />
                       </div>
@@ -536,7 +562,8 @@ function LandingPage() {
               Engineered for Audit-Proof Control
             </h2>
             <p className="mx-auto mt-3 max-w-2xl text-sm text-[#0B1457]/80">
-              Built specifically for modern African corporations, commercial builders, and institutional operations.
+              Built specifically for modern African corporations, commercial builders, and
+              institutional operations.
             </p>
           </div>
 
@@ -549,19 +576,17 @@ function LandingPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white shadow-sm ring-1 ring-white/20">
-                    <i className={`${cap.faIcon} text-xl text-[#0001FF] group-hover:scale-110 transition-transform`}></i>
+                    <i
+                      className={`${cap.faIcon} text-xl text-[#0001FF] group-hover:scale-110 transition-transform`}
+                    ></i>
                   </div>
                   <span className="rounded-full bg-[#0001FF] px-3 py-1 text-[11px] font-bold text-white">
                     {cap.badge}
                   </span>
                 </div>
 
-                <h3 className="mt-6 text-xl font-bold tracking-tight text-white">
-                  {cap.title}
-                </h3>
-                <p className="mt-3 text-xs leading-relaxed text-white/90 font-normal">
-                  {cap.desc}
-                </p>
+                <h3 className="mt-6 text-xl font-bold tracking-tight text-white">{cap.title}</h3>
+                <p className="mt-3 text-xs leading-relaxed text-white/90 font-normal">{cap.desc}</p>
               </div>
             ))}
           </div>
@@ -575,7 +600,9 @@ function LandingPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EFF3FF] text-[#0B1457] group-hover:bg-[#0B1457] group-hover:text-white transition-all shadow-sm">
-                    <i className={`${cap.faIcon} text-xl group-hover:scale-110 transition-transform`}></i>
+                    <i
+                      className={`${cap.faIcon} text-xl group-hover:scale-110 transition-transform`}
+                    ></i>
                   </div>
                   <span className="rounded-full bg-[#0B1457]/10 px-3 py-1 text-[11px] font-bold text-[#0B1457]">
                     {cap.badge}
@@ -585,9 +612,7 @@ function LandingPage() {
                 <h3 className="mt-6 text-xl font-bold tracking-tight text-[#0B1457]">
                   {cap.title}
                 </h3>
-                <p className="mt-3 text-xs leading-relaxed text-[#0B1457]/80">
-                  {cap.desc}
-                </p>
+                <p className="mt-3 text-xs leading-relaxed text-[#0B1457]/80">{cap.desc}</p>
               </div>
             ))}
           </div>
@@ -634,7 +659,9 @@ function LandingPage() {
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
-                <p className="text-xs font-semibold text-[#0B1457]/70">Estimated Sourcing Savings</p>
+                <p className="text-xs font-semibold text-[#0B1457]/70">
+                  Estimated Sourcing Savings
+                </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-[#0001FF]">
                   ₦{(estimatedSavings / 1000000).toFixed(1)}M
                 </p>
@@ -642,15 +669,21 @@ function LandingPage() {
               </div>
 
               <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
-                <p className="text-xs font-semibold text-[#0B1457]/70">Finance & Admin Hours Saved</p>
+                <p className="text-xs font-semibold text-[#0B1457]/70">
+                  Finance & Admin Hours Saved
+                </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-[#0B1457]">
                   {hoursSavedMonthly} hrs/mo
                 </p>
-                <p className="mt-1 text-[11px] text-[#0B1457]/60">reconciliation & paper elimination</p>
+                <p className="mt-1 text-[11px] text-[#0B1457]/60">
+                  reconciliation & paper elimination
+                </p>
               </div>
 
               <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-6 text-center">
-                <p className="text-xs font-semibold text-[#0B1457]/70">Leakage & Overcharge Prevention</p>
+                <p className="text-xs font-semibold text-[#0B1457]/70">
+                  Leakage & Overcharge Prevention
+                </p>
                 <p className="mt-2 font-display text-3xl font-extrabold text-[#0001FF]">
                   ₦{(fraudPrevented / 1000000).toFixed(1)}M
                 </p>
@@ -674,31 +707,41 @@ function LandingPage() {
                   Built for Nigerian Regulatory Compliance
                 </h2>
                 <p className="mt-3 text-sm text-[#0B1457]/80 leading-relaxed">
-                  Procurely Flow adheres to national compliance mandates including the Nigeria Data Protection Act (NDPA 2023) and NRS electronic invoice clearance frameworks.
+                  Procurely Flow adheres to national compliance mandates including the Nigeria Data
+                  Protection Act (NDPA 2023) and NRS electronic invoice clearance frameworks.
                 </p>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
                     <p className="font-bold text-sm text-[#0B1457]">NDPA 2023 Compliant</p>
-                    <p className="mt-1 text-xs text-[#0B1457]/70">Granular consent logging & data sovereignty</p>
+                    <p className="mt-1 text-xs text-[#0B1457]/70">
+                      Granular consent logging & data sovereignty
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
                     <p className="font-bold text-sm text-[#0B1457]">PEPPOL BIS 3.0</p>
-                    <p className="mt-1 text-xs text-[#0B1457]/70">UBL e-invoicing schema ready for NRS clearing</p>
+                    <p className="mt-1 text-xs text-[#0B1457]/70">
+                      UBL e-invoicing schema ready for NRS clearing
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Cryptographic Audit Verification Output Terminal */}
               <div className="rounded-2xl border border-[#162070] bg-[#0B1457] p-6 font-mono text-xs text-slate-300 shadow-xl space-y-2">
-                <p className="text-[#0001FF] font-bold">// Cryptographic Audit Verification Output</p>
+                <p className="text-[#0001FF] font-bold">
+                  // Cryptographic Audit Verification Output
+                </p>
                 <p className="text-slate-200 leading-relaxed">
                   Event: REQUISITION_APPROVED_EXECUTIVE <br />
                   Tenant_ID: 11111111-1111-1111-1111-111111111111 <br />
                   Amount: ₦45,000,000.00 (NGN) <br />
-                  Payload_Hash: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 <br />
-                  Previous_Hash: sha256:88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589 <br />
-                  Signature_Status: <span className="text-[#0001FF] font-bold">VERIFIED_IMMUTABLE</span>
+                  Payload_Hash:
+                  sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 <br />
+                  Previous_Hash:
+                  sha256:88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589 <br />
+                  Signature_Status:{" "}
+                  <span className="text-[#0001FF] font-bold">VERIFIED_IMMUTABLE</span>
                 </p>
               </div>
             </div>
@@ -716,7 +759,8 @@ function LandingPage() {
             Upgrade Your Procurement Operations Today
           </h2>
           <p className="relative mx-auto mt-4 max-w-xl text-sm text-white/90">
-            Eliminate approval delays, cut rogue spending, and establish an unbroken audit trail in less than 5 minutes.
+            Eliminate approval delays, cut rogue spending, and establish an unbroken audit trail in
+            less than 5 minutes.
           </p>
           <div className="relative mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
@@ -739,11 +783,7 @@ function LandingPage() {
       <footer className="border-t border-[#E2E8F0] bg-[#FFFFFF] py-12 px-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
           <div className="flex items-center">
-            <img
-              src="/logo-dark.png"
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-            />
+            <img src="/logo-dark.png" alt="Logo" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="flex items-center gap-6 text-xs text-[#0B1457]/70 font-medium">

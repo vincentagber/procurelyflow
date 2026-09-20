@@ -2,12 +2,28 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, AlertCircle, FileText, ChevronRight, MessageSquare, Send, Copy, ExternalLink, Smartphone, Sparkles } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  ChevronRight,
+  MessageSquare,
+  Send,
+  Copy,
+  ExternalLink,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa6";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe } from "@/lib/useMe";
-import { decideApprovalFn, generateStepApprovalLinksFn, simulateWhatsAppApprovalFn } from "@/lib/procurement.functions";
+import {
+  decideApprovalFn,
+  generateStepApprovalLinksFn,
+  simulateWhatsAppApprovalFn,
+} from "@/lib/procurement.functions";
 import { money, shortDate, ROLE_LABELS } from "@/lib/format";
 import { PageHeader, EmptyState, StatusPill } from "@/components/procurely/bits";
 import { Button } from "@/components/ui/button";
@@ -21,7 +37,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn } from "@/components/ui/animated";
+import {
+  motion,
+  AnimatePresence,
+  itemFadeIn,
+  staggerContainer,
+  fadeIn,
+} from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/approvals")({
   head: () => ({
@@ -231,11 +253,9 @@ function Approvals() {
                     </Link>
                     <p className="text-xs text-slate-500 font-normal">
                       Needed by{" "}
-                      <span className="font-medium text-slate-700">
-                        {shortDate(req.needed_by)}
-                      </span>{" "}
-                      · Step{" "}
-                      <span className="font-semibold text-slate-900">{step.step_order}</span> as{" "}
+                      <span className="font-medium text-slate-700">{shortDate(req.needed_by)}</span>{" "}
+                      · Step <span className="font-semibold text-slate-900">{step.step_order}</span>{" "}
+                      as{" "}
                       <span className="font-semibold text-slate-900">
                         {ROLE_LABELS[step.required_role] ?? step.required_role}
                       </span>
@@ -340,7 +360,9 @@ function Approvals() {
       {upcoming.length ? (
         <motion.section variants={itemFadeIn} className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900 tracking-tight">Upcoming Pipeline</h2>
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+              Upcoming Pipeline
+            </h2>
             <p className="text-xs text-slate-500 font-normal">
               Routed to your role but currently queued behind earlier sequential clearance stages.
             </p>
@@ -362,14 +384,20 @@ function Approvals() {
                   className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs hover:border-slate-300 transition-all"
                 >
                   <span className="text-xs">
-                    <Link to="/requisitions/$id" params={{ id: req.id }} className="text-[#0B1457] hover:text-[#0001FF] font-semibold tabular-nums">
+                    <Link
+                      to="/requisitions/$id"
+                      params={{ id: req.id }}
+                      className="text-[#0B1457] hover:text-[#0001FF] font-semibold tabular-nums"
+                    >
                       {req.reference}
                     </Link>{" "}
                     <span className="text-slate-600 ml-1.5">{req.title}</span>
                   </span>
                   <span className="text-xs tabular-nums text-slate-500 font-medium">
                     {money(req.total_amount, req.currency)} · Step {step.step_order} as{" "}
-                    <strong className="text-slate-700 font-semibold">{ROLE_LABELS[step.required_role] ?? step.required_role}</strong>
+                    <strong className="text-slate-700 font-semibold">
+                      {ROLE_LABELS[step.required_role] ?? step.required_role}
+                    </strong>
                   </span>
                 </motion.li>
               );
@@ -381,7 +409,9 @@ function Approvals() {
       {decided.length ? (
         <motion.section variants={itemFadeIn} className="space-y-3">
           <div>
-            <h2 className="text-base font-semibold text-slate-900 tracking-tight">Recently Decided</h2>
+            <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+              Recently Decided
+            </h2>
             <p className="text-xs text-slate-500 font-normal">
               Historical record of your role sign-offs and rejections.
             </p>
@@ -406,7 +436,11 @@ function Approvals() {
                     currency: "NGN" | "USD";
                   };
                   return (
-                    <motion.tr key={step.id} variants={itemFadeIn} className="hover:bg-slate-50/50 transition-colors">
+                    <motion.tr
+                      key={step.id}
+                      variants={itemFadeIn}
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
                       <td className="px-4 py-3">
                         <Link
                           to="/requisitions/$id"
@@ -501,14 +535,18 @@ function Approvals() {
               WhatsApp &amp; Mobile Clearance Channel
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized, single-use approval prompt that lets them clear requests with one tap without password friction.
+              Procurely Flow meets site directors and executives on WhatsApp. Send a tokenized,
+              single-use approval prompt that lets them clear requests with one tap without password
+              friction.
             </DialogDescription>
           </DialogHeader>
 
           {isGeneratingLinks ? (
             <div className="py-8 flex flex-col items-center justify-center gap-2">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-              <p className="text-xs text-slate-500 font-medium">Generating single-use cryptographic tokens…</p>
+              <p className="text-xs text-slate-500 font-medium">
+                Generating single-use cryptographic tokens…
+              </p>
             </div>
           ) : generatedLinks ? (
             <div className="space-y-4 py-2 text-xs">

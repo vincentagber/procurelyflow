@@ -2,16 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import {
-  Pencil,
-  Trash2,
-  Search,
-  Building2,
-  AlertTriangle,
-  Plus,
-  X,
-  Check,
-} from "lucide-react";
+import { Pencil, Trash2, Search, Building2, AlertTriangle, Plus, X, Check } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useMe, can } from "@/lib/useMe";
@@ -40,7 +31,10 @@ export const Route = createFileRoute("/_authenticated/suppliers")({
         content: "Approved supplier directory, tax identification, and digital RFQ compliance.",
       },
       { property: "og:title", content: "Suppliers — Procurely Flow" },
-      { property: "og:description", content: "Manage approved vendors and invitation eligibility." },
+      {
+        property: "og:description",
+        content: "Manage approved vendors and invitation eligibility.",
+      },
     ],
   }),
   component: Suppliers,
@@ -140,7 +134,8 @@ function Suppliers() {
       setEditingSupplier(null);
       await queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't update supplier profile."),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Couldn't update supplier profile."),
   });
 
   const remove = useMutation({
@@ -284,9 +279,7 @@ function Suppliers() {
                             {s.contact_name && (
                               <p className="font-medium text-slate-800">{s.contact_name}</p>
                             )}
-                            {s.email && (
-                              <p className="text-[11px] text-slate-500">{s.email}</p>
-                            )}
+                            {s.email && <p className="text-[11px] text-slate-500">{s.email}</p>}
                             {s.phone && (
                               <p className="text-[11px] text-slate-500 tabular-nums">{s.phone}</p>
                             )}
@@ -454,17 +447,15 @@ function Suppliers() {
       </div>
 
       {/* Edit Supplier Modal */}
-      <Dialog
-        open={!!editingSupplier}
-        onOpenChange={(open) => !open && setEditingSupplier(null)}
-      >
+      <Dialog open={!!editingSupplier} onOpenChange={(open) => !open && setEditingSupplier(null)}>
         <DialogContent className="w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xl">
           <DialogHeader className="border-b border-slate-100 pb-3 text-left">
             <DialogTitle className="text-base font-semibold text-slate-900">
               Edit Supplier Profile
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-0.5">
-              Update legal entity details, primary contact, tax identification, and bidding eligibility.
+              Update legal entity details, primary contact, tax identification, and bidding
+              eligibility.
             </DialogDescription>
           </DialogHeader>
 
@@ -578,10 +569,7 @@ function Suppliers() {
       </Dialog>
 
       {/* Delete Supplier Confirmation Dialog */}
-      <Dialog
-        open={!!deletingSupplier}
-        onOpenChange={(open) => !open && setDeletingSupplier(null)}
-      >
+      <Dialog open={!!deletingSupplier} onOpenChange={(open) => !open && setDeletingSupplier(null)}>
         <DialogContent className="w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-xl">
           <DialogHeader className="text-left">
             <div className="flex items-center gap-2.5 text-rose-600 pb-1">
@@ -593,12 +581,15 @@ function Suppliers() {
               </DialogTitle>
             </div>
             <DialogDescription className="text-xs text-slate-500 mt-1">
-              Are you sure you want to delete <strong className="text-slate-900 font-semibold">{deletingSupplier?.name}</strong>? This action will remove this vendor from your organization's directory.
+              Are you sure you want to delete{" "}
+              <strong className="text-slate-900 font-semibold">{deletingSupplier?.name}</strong>?
+              This action will remove this vendor from your organization's directory.
             </DialogDescription>
           </DialogHeader>
 
           <p className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 leading-relaxed">
-            Note: If this supplier is linked to historical purchase orders or legal invoices, deletion may be restricted to preserve fiscal audit integrity.
+            Note: If this supplier is linked to historical purchase orders or legal invoices,
+            deletion may be restricted to preserve fiscal audit integrity.
           </p>
 
           <DialogFooter className="border-t border-slate-100 pt-3 gap-2 sm:gap-0">

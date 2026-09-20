@@ -49,7 +49,11 @@ export const Route = createFileRoute("/auth")({
 const DEMO_PRESETS = [
   { label: "Admin", email: "admin@procurely.com", desc: "Full organization & system control" },
   { label: "Site Lead", email: "requester@procurely.com", desc: "Field material requisitions" },
-  { label: "Approver", email: "approver@procurely.com", desc: "Project Director threshold sign-off" },
+  {
+    label: "Approver",
+    email: "approver@procurely.com",
+    desc: "Project Director threshold sign-off",
+  },
   { label: "Procurement", email: "procurement@procurely.com", desc: "RFQ issuing & PO creation" },
   { label: "Finance", email: "finance@procurely.com", desc: "Budget control & 3-way match" },
   { label: "Executive", email: "executive@procurely.com", desc: "Board-level approvals & audit" },
@@ -118,7 +122,11 @@ function AuthPage() {
         navigate({ to: "/dashboard", replace: true });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Authentication failed. Please verify your credentials.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Authentication failed. Please verify your credentials.",
+      );
     } finally {
       setBusy(false);
     }
@@ -177,10 +185,13 @@ function AuthPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
             <CheckCircle2 className="h-7 w-7" />
           </div>
-          <h1 className="mt-5 text-xl font-bold tracking-tight text-[#0B1457]">Verify your email</h1>
+          <h1 className="mt-5 text-xl font-bold tracking-tight text-[#0B1457]">
+            Verify your email
+          </h1>
           <p className="mt-2 text-xs leading-relaxed text-[#0B1457]/70">
-            We sent an activation link to <span className="font-semibold text-[#0B1457]">{email}</span>. Click
-            the link to confirm your corporate email and access your workspace.
+            We sent an activation link to{" "}
+            <span className="font-semibold text-[#0B1457]">{email}</span>. Click the link to confirm
+            your corporate email and access your workspace.
           </p>
           <Button
             className="mt-6 h-11 w-full rounded-xl bg-[#0001FF] text-xs font-bold text-white hover:bg-[#0B1457] transition-all shadow-sm"
@@ -237,7 +248,8 @@ function AuthPage() {
               One auditable flow from site request to purchase order.
             </h2>
             <p className="text-sm font-normal text-white/80 leading-relaxed max-w-md">
-              Enterprise procurement operating system for construction, energy, and commercial operations.
+              Enterprise procurement operating system for construction, energy, and commercial
+              operations.
             </p>
           </div>
 

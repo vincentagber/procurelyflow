@@ -1,3 +1,10 @@
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response> | Response): void;
+};
+
 /**
  * Supabase Edge Function: payment-webhook
  *
@@ -15,8 +22,8 @@
  *   Paystack: https://<project>.supabase.co/functions/v1/payment-webhook?gateway=paystack
  */
 
-import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createHmac } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { createHmac } from "crypto";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +52,10 @@ function verifySignature(rawBody: string, signature: string, secret: string): bo
  * Extracts the gateway reference (reserved account / DVA reference) from
  * the Monnify or Paystack webhook payload.
  */
-function extractGatewayReference(payload: Record<string, unknown>, gateway: GatewaySlug): string | null {
+function extractGatewayReference(
+  payload: Record<string, unknown>,
+  gateway: GatewaySlug,
+): string | null {
   if (gateway === "monnify") {
     // Monnify SUCCESSFUL_TRANSACTION event
     const body = payload as {
@@ -57,7 +67,12 @@ function extractGatewayReference(payload: Record<string, unknown>, gateway: Gate
   if (gateway === "paystack") {
     // Paystack charge.success event for dedicated virtual accounts
     const body = payload as {
-      data?: { authorization?: { receiver_bank_account_number?: string; dedicated_account?: { id?: number | string } } };
+      data?: {
+        authorization?: {
+          receiver_bank_account_number?: string;
+          dedicated_account?: { id?: number | string };
+        };
+      };
     };
     const dvaId = body.data?.authorization?.dedicated_account?.id;
     return dvaId ? String(dvaId) : null;
@@ -96,7 +111,9 @@ Deno.serve(async (req: Request) => {
 
   if (!gatewayParam || !ALLOWED_GATEWAYS.includes(gatewayParam as GatewaySlug)) {
     return new Response(
-      JSON.stringify({ error: "Missing or unsupported ?gateway= parameter. Use 'monnify' or 'paystack'." }),
+      JSON.stringify({
+        error: "Missing or unsupported ?gateway= parameter. Use 'monnify' or 'paystack'.",
+      }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -111,23 +128,48 @@ Deno.serve(async (req: Request) => {
 
   if (gateway === "monnify") {
     const monnifySecret = Deno.env.get("MONNIFY_SECRET_KEY") ?? "";
-    const signature = req.headers.get("monnify-signature") ?? "";
-    signatureValid = monnifySecret ? verifySignature(rawBody, signature, monnifySecret) : false;
-
     if (!monnifySecret) {
-      // If secret not set, log a warning and proceed (dev/staging only)
-      console.warn("[payment-webhook] MONNIFY_SECRET_KEY not set — skipping signature check (dev mode)");
-      signatureValid = true;
+      console.error(
+        "[payment-webhook] Security Alert: MONNIFY_SECRET_KEY is not configured in server environment — rejecting webhook.",
+      );
+      return new Response(JSON.stringify({ error: "Webhook secret not configured on server" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
+
+    const signature = req.headers.get("monnify-signature") ?? "";
+    if (!signature) {
+      console.error("[payment-webhook] Missing monnify-signature header — rejecting webhook.");
+      return new Response(JSON.stringify({ error: "Missing webhook signature header" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    signatureValid = verifySignature(rawBody, signature, monnifySecret);
   } else if (gateway === "paystack") {
     const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "";
-    const signature = req.headers.get("x-paystack-signature") ?? "";
-    signatureValid = paystackSecret ? verifySignature(rawBody, signature, paystackSecret) : false;
-
     if (!paystackSecret) {
-      console.warn("[payment-webhook] PAYSTACK_SECRET_KEY not set — skipping signature check (dev mode)");
-      signatureValid = true;
+      console.error(
+        "[payment-webhook] Security Alert: PAYSTACK_SECRET_KEY is not configured in server environment — rejecting webhook.",
+      );
+      return new Response(JSON.stringify({ error: "Webhook secret not configured on server" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
     }
+
+    const signature = req.headers.get("x-paystack-signature") ?? "";
+    if (!signature) {
+      console.error("[payment-webhook] Missing x-paystack-signature header — rejecting webhook.");
+      return new Response(JSON.stringify({ error: "Missing webhook signature header" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    signatureValid = verifySignature(rawBody, signature, paystackSecret);
   }
 
   if (!signatureValid) {
@@ -151,7 +193,9 @@ Deno.serve(async (req: Request) => {
 
   // Only process settlement events — ignore refunds, reversals etc.
   if (!isSettlementEvent(payload, gateway)) {
-    console.log(`[payment-webhook] Non-settlement event from ${gateway} — acknowledged but not processed.`);
+    console.log(
+      `[payment-webhook] Non-settlement event from ${gateway} — acknowledged but not processed.`,
+    );
     return new Response(JSON.stringify({ ok: true, action: "ignored" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -161,10 +205,13 @@ Deno.serve(async (req: Request) => {
   const gatewayReference = extractGatewayReference(payload, gateway);
   if (!gatewayReference) {
     console.error(`[payment-webhook] Could not extract gateway reference from ${gateway} payload.`);
-    return new Response(JSON.stringify({ error: "Could not identify gateway reference in payload" }), {
-      status: 422,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Could not identify gateway reference in payload" }),
+      {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   // ─── Update Subscription Status via Postgres RPC ──────────────────────────
@@ -183,7 +230,9 @@ Deno.serve(async (req: Request) => {
   if (error) {
     // If no matching record found, return 200 to prevent gateway retries for unrelated transactions
     if (error.message.includes("No pending subscription found")) {
-      console.warn(`[payment-webhook] No pending subscription for gateway ref: ${gatewayReference}`);
+      console.warn(
+        `[payment-webhook] No pending subscription for gateway ref: ${gatewayReference}`,
+      );
       return new Response(JSON.stringify({ ok: true, action: "no_match" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

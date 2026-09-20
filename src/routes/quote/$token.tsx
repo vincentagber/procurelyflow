@@ -492,7 +492,8 @@ function SupplierQuote() {
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             <p className="text-xs text-muted-foreground">
-              Attach your formal quotation, spec sheet, catalogue, or document (PDF, Excel, Word, or photo up to 25 MB).
+              Attach your formal quotation, spec sheet, catalogue, or document (PDF, Excel, Word, or
+              photo up to 25 MB).
             </p>
           </div>
         </div>

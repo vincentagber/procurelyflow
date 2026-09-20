@@ -7,6 +7,7 @@ export type AppRole =
 export function useMe() {
   return useQuery({
     queryKey: ["me"],
+    staleTime: 5 * 60 * 1000, // 5 minutes cache to prevent redundant auth/profile roundtrips
     queryFn: async () => {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
@@ -90,4 +91,3 @@ export function useUpdateProfile() {
     },
   });
 }
-

@@ -17,13 +17,7 @@ const sizeClasses = {
   xl: "h-16 w-16 text-xl",
 };
 
-export function UserAvatar({
-  name,
-  email,
-  avatarUrl,
-  className,
-  size = "sm",
-}: UserAvatarProps) {
+export function UserAvatar({ name, email, avatarUrl, className, size = "sm" }: UserAvatarProps) {
   const [imageError, setImageError] = React.useState(false);
 
   // Reset error if URL changes

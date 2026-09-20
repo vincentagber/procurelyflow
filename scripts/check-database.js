@@ -38,7 +38,7 @@ const tables = [
   "notifications",
   "security_events",
   "ndpa_consent_logs",
-  "secure_action_tokens"
+  "secure_action_tokens",
 ];
 
 async function check() {

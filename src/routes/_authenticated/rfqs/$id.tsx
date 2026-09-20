@@ -31,10 +31,7 @@ import {
   rfqInvitationLinksFn,
   resendRfqInvitationFn,
 } from "@/lib/procurement.functions";
-import {
-  analyzeSupplierQuotes,
-  SideBySideBidAnalysis,
-} from "@/lib/quotationComparison";
+import { analyzeSupplierQuotes, SideBySideBidAnalysis } from "@/lib/quotationComparison";
 import { money, shortDate, dateTime } from "@/lib/format";
 import { PageHeader, StatusPill, EmptyState } from "@/components/procurely/bits";
 import { Button } from "@/components/ui/button";
@@ -76,7 +73,9 @@ function RfqDetail() {
   const [reason, setReason] = useState("");
   const [address, setAddress] = useState("");
   const [fxNote, setFxNote] = useState("");
-  const [comparisonTab, setComparisonTab] = useState<"OVERVIEW" | "LINE_ITEMS" | "DISTRIBUTION">("OVERVIEW");
+  const [comparisonTab, setComparisonTab] = useState<"OVERVIEW" | "LINE_ITEMS" | "DISTRIBUTION">(
+    "OVERVIEW",
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["rfq", id],
@@ -84,7 +83,9 @@ function RfqDetail() {
       const [rfq, quotes, invites] = await Promise.all([
         supabase
           .from("rfqs")
-          .select("*, requisitions(id, reference, title, needed_by, project_id, projects(name, location))")
+          .select(
+            "*, requisitions(id, reference, title, needed_by, project_id, projects(name, location))",
+          )
           .eq("id", id)
           .maybeSingle(),
         supabase
@@ -212,7 +213,9 @@ function RfqDetail() {
     return (
       <div className="py-12 text-center space-y-3">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0B1457] border-t-transparent mx-auto" />
-        <p className="text-xs font-semibold text-slate-500">Computing automated bid analysis &amp; landed costs…</p>
+        <p className="text-xs font-semibold text-slate-500">
+          Computing automated bid analysis &amp; landed costs…
+        </p>
       </div>
     );
   }
@@ -306,7 +309,9 @@ function RfqDetail() {
                 {analysis.recommendedSupplierName || "Pending Review"}
               </p>
               <p className="text-xs font-semibold text-emerald-700">
-                {analysis.recommendedQuoteAmount ? money(analysis.recommendedQuoteAmount, "NGN") : "—"}
+                {analysis.recommendedQuoteAmount
+                  ? money(analysis.recommendedQuoteAmount, "NGN")
+                  : "—"}
               </p>
             </div>
 
@@ -318,9 +323,7 @@ function RfqDetail() {
               <p className="text-lg font-black text-emerald-950">
                 {money(analysis.totalPotentialCostAvoidance, "NGN")}
               </p>
-              <p className="text-[11px] text-emerald-800">
-                Savings achieved vs higher peer quotes
-              </p>
+              <p className="text-[11px] text-emerald-800">Savings achieved vs higher peer quotes</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-1">
@@ -347,7 +350,9 @@ function RfqDetail() {
                 {Math.min(...analysis.quotes.map((q) => q.leadTimeDays))} Days Fastest
               </p>
               <p className="text-[11px] text-slate-500">
-                {analysis.hasNonCompliantBids ? "⚠️ Non-compliant bid flagged" : "✅ 100% Tax Compliant Bids"}
+                {analysis.hasNonCompliantBids
+                  ? "⚠️ Non-compliant bid flagged"
+                  : "✅ 100% Tax Compliant Bids"}
               </p>
             </div>
           </section>
@@ -383,9 +388,13 @@ function RfqDetail() {
                     onClick={() => {
                       if (analysis.recommendedQuoteId) {
                         setSelectedQuote(analysis.recommendedQuoteId);
-                        const q = quotesList.find((item: any) => item.id === analysis.recommendedQuoteId);
+                        const q = quotesList.find(
+                          (item: any) => item.id === analysis.recommendedQuoteId,
+                        );
                         if (q) setSettlementCurrency(q.currency as "NGN" | "USD");
-                        toast.success(`Selected recommended quote from ${analysis.recommendedSupplierName}.`);
+                        toast.success(
+                          `Selected recommended quote from ${analysis.recommendedSupplierName}.`,
+                        );
                       }
                     }}
                   >
@@ -405,7 +414,8 @@ function RfqDetail() {
                     Side-by-Side Bid Analysis Matrix (§FR-3, §FR-4)
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Multi-criteria evaluation comparing landed costs, delivery timelines, credit terms, and supplier track records.
+                    Multi-criteria evaluation comparing landed costs, delivery timelines, credit
+                    terms, and supplier track records.
                   </p>
                 </div>
               </div>
@@ -421,7 +431,9 @@ function RfqDetail() {
                         <th
                           key={q.id}
                           className={`py-3 px-4 text-left font-bold text-slate-900 min-w-[200px] ${
-                            selectedQuote === q.id ? "bg-blue-50/60 border-x border-[#0B1457]/20" : ""
+                            selectedQuote === q.id
+                              ? "bg-blue-50/60 border-x border-[#0B1457]/20"
+                              : ""
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1">
@@ -464,7 +476,8 @@ function RfqDetail() {
                             )}
                           </div>
                           <p className="text-[10px] text-slate-400 mt-1">
-                            {q.historicalOnTimeRate}% On-Time Delivery · {q.totalFulfilledOrders} past orders
+                            {q.historicalOnTimeRate}% On-Time Delivery · {q.totalFulfilledOrders}{" "}
+                            past orders
                           </p>
                         </td>
                       ))}
@@ -495,7 +508,9 @@ function RfqDetail() {
                             )}
                           </div>
                           <p className="text-[10px] text-slate-400 mt-0.5">
-                            Items {money(q.itemsSubtotal, q.currency)} · VAT {money(q.vatAmount, q.currency)} · Delivery {money(q.deliveryCharge, q.currency)}
+                            Items {money(q.itemsSubtotal, q.currency)} · VAT{" "}
+                            {money(q.vatAmount, q.currency)} · Delivery{" "}
+                            {money(q.deliveryCharge, q.currency)}
                           </p>
                         </td>
                       ))}
@@ -545,7 +560,8 @@ function RfqDetail() {
                         >
                           <p className="font-semibold text-slate-900">{q.paymentTerms}</p>
                           <p className="text-[10px] text-slate-500 mt-0.5">
-                            {q.warrantyNote || "Standard Manufacturer Warranty"} · Valid {q.validityDays} days
+                            {q.warrantyNote || "Standard Manufacturer Warranty"} · Valid{" "}
+                            {q.validityDays} days
                           </p>
                           {q.attachmentPath && (
                             <button
@@ -554,7 +570,9 @@ function RfqDetail() {
                               onClick={() =>
                                 quoteAttachmentUrlFn({ data: { quoteId: q.id } })
                                   .then((r) => window.open(r.url, "_blank", "noopener"))
-                                  .catch(() => toast.error("Couldn't open that quotation document."))
+                                  .catch(() =>
+                                    toast.error("Couldn't open that quotation document."),
+                                  )
                               }
                             >
                               <Paperclip className="h-3 w-3" /> Supporting Quotation PDF
@@ -587,7 +605,10 @@ function RfqDetail() {
                             </div>
                           </div>
                           <p className="text-[9px] text-slate-400 mt-1">
-                            Cost {q.scoreBreakdown.landedCostScore}/50 · Speed {q.scoreBreakdown.deliverySpeedScore}/20 · Quality {q.scoreBreakdown.qualityRatingScore}/20 · Terms {q.scoreBreakdown.creditTermsScore}/10
+                            Cost {q.scoreBreakdown.landedCostScore}/50 · Speed{" "}
+                            {q.scoreBreakdown.deliverySpeedScore}/20 · Quality{" "}
+                            {q.scoreBreakdown.qualityRatingScore}/20 · Terms{" "}
+                            {q.scoreBreakdown.creditTermsScore}/10
                           </p>
                         </td>
                       ))}
@@ -645,7 +666,8 @@ function RfqDetail() {
                   Line-Item Unit Price Comparison
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  The lowest unit price for each requested item across all competing suppliers is visually flagged with the lowest price badge.
+                  The lowest unit price for each requested item across all competing suppliers is
+                  visually flagged with the lowest price badge.
                 </p>
               </div>
 
@@ -694,7 +716,8 @@ function RfqDetail() {
                                 )}
                               </div>
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                Line Total: {money(cell.extendedPrice, cell.currency)} · VAT {cell.vatRate}%
+                                Line Total: {money(cell.extendedPrice, cell.currency)} · VAT{" "}
+                                {cell.vatRate}%
                               </p>
                             </td>
                           );
@@ -707,7 +730,10 @@ function RfqDetail() {
                         Total Landed Cost (Subtotal + VAT + Delivery)
                       </td>
                       {analysis.quotes.map((q) => (
-                        <td key={q.id} className="py-3 px-3.5 text-sm font-black tabular-nums text-[#0B1457]">
+                        <td
+                          key={q.id}
+                          className="py-3 px-3.5 text-sm font-black tabular-nums text-[#0B1457]"
+                        >
                           {money(q.totalLandedCost, q.currency)}
                         </td>
                       ))}
@@ -726,7 +752,8 @@ function RfqDetail() {
                   Buyer Award Selection &amp; Purchase Order Generation
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  The system highlights the best commercial option, but the buyer makes the final selection. The PO records the currency and delivery site address.
+                  The system highlights the best commercial option, but the buyer makes the final
+                  selection. The PO records the currency and delivery site address.
                 </p>
               </div>
 
@@ -740,7 +767,10 @@ function RfqDetail() {
                         Commercial Override: Written Justification Required (§FR-4.5, §FR-8.5)
                       </p>
                       <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
-                        You have selected a quote other than the algorithmically recommended best bid (<strong>{analysis.recommendedSupplierName}</strong>). A permanent written justification is required for the corporate governance and forensic audit log before a PO can be issued.
+                        You have selected a quote other than the algorithmically recommended best
+                        bid (<strong>{analysis.recommendedSupplierName}</strong>). A permanent
+                        written justification is required for the corporate governance and forensic
+                        audit log before a PO can be issued.
                       </p>
                     </div>
                   </div>
@@ -774,7 +804,10 @@ function RfqDetail() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="fx" className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  <Label
+                    htmlFor="fx"
+                    className="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                  >
                     FX Note (Optional)
                   </Label>
                   <Input
@@ -787,7 +820,10 @@ function RfqDetail() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="address" className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  <Label
+                    htmlFor="address"
+                    className="text-[10px] uppercase font-bold text-slate-500 tracking-wider"
+                  >
                     Site Delivery Address
                   </Label>
                   <Input
@@ -802,7 +838,10 @@ function RfqDetail() {
 
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <p className="text-xs text-slate-500">
-                  Selected Supplier: <strong className="text-slate-900">{analysis.quotes.find((q) => q.id === selectedQuote)?.supplierName}</strong>
+                  Selected Supplier:{" "}
+                  <strong className="text-slate-900">
+                    {analysis.quotes.find((q) => q.id === selectedQuote)?.supplierName}
+                  </strong>
                 </p>
                 <Button
                   type="button"
@@ -876,7 +915,8 @@ function InvitedSuppliers({ rfqId }: { rfqId: string }) {
             Digital RFQ Supplier Distribution (§FR-3)
           </h3>
           <p className="mt-0.5 text-xs text-slate-500 font-normal">
-            Suppliers do not need a paid account or password. They receive a secure link to submit unit prices, 7.5% VAT, delivery charges, timelines, payment terms, and warranty files.
+            Suppliers do not need a paid account or password. They receive a secure link to submit
+            unit prices, 7.5% VAT, delivery charges, timelines, payment terms, and warranty files.
           </p>
         </div>
       </div>
@@ -887,12 +927,17 @@ function InvitedSuppliers({ rfqId }: { rfqId: string }) {
             invite.status === "link_sent" && invite.expired ? "no_response" : invite.status;
           const badge = INVITE_STATUS[key] ?? INVITE_STATUS["link_sent"]!;
           return (
-            <li key={invite.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-xs">
+            <li
+              key={invite.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-3 text-xs"
+            >
               <div className="min-w-40 flex-1">
                 <p className="font-bold text-slate-900">{invite.supplierName}</p>
                 <p className="text-slate-500 mt-0.5 text-[11px]">
                   {invite.supplierEmail ?? "no email on file"} · link expires{" "}
-                  <strong className="text-slate-700 font-medium">{shortDate(invite.expiresAt)}</strong>
+                  <strong className="text-slate-700 font-medium">
+                    {shortDate(invite.expiresAt)}
+                  </strong>
                   {invite.openedAt ? ` · opened ${dateTime(invite.openedAt)}` : ""}
                 </p>
               </div>
@@ -929,7 +974,9 @@ function InvitedSuppliers({ rfqId }: { rfqId: string }) {
           );
         })}
         {!data?.invitations.length ? (
-          <li className="py-4 text-xs text-slate-400 text-center">No suppliers invited to this RFQ yet.</li>
+          <li className="py-4 text-xs text-slate-400 text-center">
+            No suppliers invited to this RFQ yet.
+          </li>
         ) : null}
       </ul>
     </section>

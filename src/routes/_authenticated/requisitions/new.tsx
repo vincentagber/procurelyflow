@@ -225,7 +225,9 @@ function NewRequisition() {
         <div className="space-y-5">
           <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <div className="space-y-1.5">
-              <Label htmlFor="title" className="text-xs font-medium text-slate-700">What do you need?</Label>
+              <Label htmlFor="title" className="text-xs font-medium text-slate-700">
+                What do you need?
+              </Label>
               <Input
                 id="title"
                 required
@@ -253,7 +255,9 @@ function NewRequisition() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="needed" className="text-xs font-medium text-slate-700">Needed by</Label>
+                <Label htmlFor="needed" className="text-xs font-medium text-slate-700">
+                  Needed by
+                </Label>
                 <Input
                   id="needed"
                   type="date"
@@ -281,8 +285,12 @@ function NewRequisition() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NGN" className="text-xs">NGN — Naira (₦)</SelectItem>
-                    <SelectItem value="USD" className="text-xs">USD — Dollar ($)</SelectItem>
+                    <SelectItem value="NGN" className="text-xs">
+                      NGN — Naira (₦)
+                    </SelectItem>
+                    <SelectItem value="USD" className="text-xs">
+                      USD — Dollar ($)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -317,7 +325,9 @@ function NewRequisition() {
                   unbudgeted or split it into a separate request.
                 </p>
               ) : (
-                <p className="mt-1 text-slate-500">Estimated total is within the remaining budget.</p>
+                <p className="mt-1 text-slate-500">
+                  Estimated total is within the remaining budget.
+                </p>
               )}
             </div>
           ) : null}
@@ -325,8 +335,12 @@ function NewRequisition() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-900 tracking-tight">Line Items</h2>
-                <p className="text-xs text-slate-500">Add materials, specifications, and estimated unit rates.</p>
+                <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+                  Line Items
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Add materials, specifications, and estimated unit rates.
+                </p>
               </div>
               <Button
                 type="button"
@@ -430,7 +444,9 @@ function NewRequisition() {
             </div>
 
             <div className="space-y-1.5 pt-2">
-              <Label htmlFor="notes" className="text-xs font-medium text-slate-700">Notes / context for approvers (optional)</Label>
+              <Label htmlFor="notes" className="text-xs font-medium text-slate-700">
+                Notes / context for approvers (optional)
+              </Label>
               <Textarea
                 id="notes"
                 rows={3}
@@ -446,7 +462,9 @@ function NewRequisition() {
         <aside className="space-y-3 lg:sticky lg:top-6 lg:self-start">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
             <p className="text-xs font-medium text-slate-500">Estimated Total</p>
-            <p className="mt-1 font-sans text-2xl font-bold tabular-nums text-slate-900">{money(total, currency)}</p>
+            <p className="mt-1 font-sans text-2xl font-bold tabular-nums text-slate-900">
+              {money(total, currency)}
+            </p>
             {selectedProject?.budget_amount ? (
               <div className="mt-2 flex items-center gap-1.5 text-xs">
                 {overBudget ? (
@@ -468,10 +486,12 @@ function NewRequisition() {
               <>
                 <p className="mt-1 text-xs text-slate-500">
                   Policy: <span className="font-semibold text-slate-700">{chain.ruleLabel}</span> ·{" "}
-                  <span className={chain.mode === "parallel" ? "text-amber-600" : "text-[#0B1457] font-semibold"}>
-                    {chain.mode === "parallel"
-                      ? "parallel clearance"
-                      : "sequential clearance"}
+                  <span
+                    className={
+                      chain.mode === "parallel" ? "text-amber-600" : "text-[#0B1457] font-semibold"
+                    }
+                  >
+                    {chain.mode === "parallel" ? "parallel clearance" : "sequential clearance"}
                   </span>
                 </p>
                 <ol className="mt-3 space-y-2">
@@ -482,7 +502,9 @@ function NewRequisition() {
                       </span>
 
                       <div>
-                        <span className="font-semibold text-slate-900">{ROLE_LABELS[step.role] ?? step.role}</span>
+                        <span className="font-semibold text-slate-900">
+                          {ROLE_LABELS[step.role] ?? step.role}
+                        </span>
                         <span className="block text-[11px] text-slate-500">{step.reason}</span>
                       </div>
                     </li>
@@ -519,9 +541,7 @@ function NewRequisition() {
       {/* Sticky Bottom Action Bar for Mobile (390px screens) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-md lg:hidden">
         <div className="min-w-0 pr-2">
-          <p className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">
-            Total
-          </p>
+          <p className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">Total</p>
           <p className="truncate font-sans text-lg font-bold tabular-nums text-slate-900">
             {money(total, currency)}
           </p>

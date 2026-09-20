@@ -212,4 +212,14 @@ export function assertSegregationOfDuties(params: {
       "SoD Violation: The officer who approved the purchase order cannot independently perform 3-way invoice reconciliation for that same order.",
     );
   }
+
+  if (
+    params.action === "RELEASE_PAYMENT" &&
+    ((params.creatorId && params.actorId === params.creatorId) ||
+      (params.approverId && params.actorId === params.approverId))
+  ) {
+    throw new Error(
+      "SoD Violation: Requisition creator and purchase order approver cannot authorize or record payment for the same order.",
+    );
+  }
 }

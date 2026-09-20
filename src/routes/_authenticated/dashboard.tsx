@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Filter,
@@ -70,7 +70,14 @@ import {
   detectBuyerSupplierAffinityAnomalies,
   calculateManagementKpis,
 } from "@/lib/governanceAnomalies";
-import { motion, AnimatePresence, itemFadeIn, staggerContainer, fadeIn, cardHover } from "@/components/ui/animated";
+import {
+  motion,
+  AnimatePresence,
+  itemFadeIn,
+  staggerContainer,
+  fadeIn,
+  cardHover,
+} from "@/components/ui/animated";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -144,29 +151,45 @@ function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
-      const [reqs, steps, pos, projectsRes, suppliers, members, itemsRes, receiptsRes, quotesRes] = await Promise.all([
-        supabase
-          .from("requisitions")
-          .select("id, reference, title, status, total_amount, currency, created_at, needed_by, project_id, projects(id, name, location, budget_amount)")
-          .order("created_at", { ascending: false })
-          .limit(50),
-        supabase
-          .from("approval_steps")
-          .select(
-            "id, required_role, status, requisitions(id, title, reference, total_amount, currency)",
-          )
-          .eq("status", "pending"),
-        supabase
-          .from("purchase_orders")
-          .select("id, po_number, total_amount, settlement_currency, status, issued_at, supplier_id, suppliers(id, name), requisition_id, requisitions(id, reference, title, created_at, project_id, projects(id, name, location, budget_amount)), issued_by, rfq_id, quote_id, recommended_quote_id, override_reason")
-          .order("issued_at", { ascending: false }),
-        supabase.from("projects").select("id, name, location, budget_amount, created_at").order("created_at", { ascending: false }),
-        supabase.from("suppliers").select("id", { count: "exact", head: true }),
-        supabase.from("user_roles").select("id", { count: "exact", head: true }),
-        supabase.from("requisition_items").select("id, description, quantity, estimated_unit_price, unit, requisition_id").limit(100),
-        supabase.from("delivery_receipts").select("id, delivered_at, purchase_order_id, purchase_orders(issued_at), delivery_receipt_items(quantity_delivered, quantity_accepted)").limit(50),
-        supabase.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(50),
-      ]);
+      const [reqs, steps, pos, projectsRes, suppliers, members, itemsRes, receiptsRes, quotesRes] =
+        await Promise.all([
+          supabase
+            .from("requisitions")
+            .select(
+              "id, reference, title, status, total_amount, currency, created_at, needed_by, project_id, projects(id, name, location, budget_amount)",
+            )
+            .order("created_at", { ascending: false })
+            .limit(50),
+          supabase
+            .from("approval_steps")
+            .select(
+              "id, required_role, status, requisitions(id, title, reference, total_amount, currency)",
+            )
+            .eq("status", "pending"),
+          supabase
+            .from("purchase_orders")
+            .select(
+              "id, po_number, total_amount, settlement_currency, status, issued_at, supplier_id, suppliers(id, name), requisition_id, requisitions(id, reference, title, created_at, project_id, projects(id, name, location, budget_amount)), issued_by, rfq_id, quote_id, recommended_quote_id, override_reason",
+            )
+            .order("issued_at", { ascending: false }),
+          supabase
+            .from("projects")
+            .select("id, name, location, budget_amount, created_at")
+            .order("created_at", { ascending: false }),
+          supabase.from("suppliers").select("id", { count: "exact", head: true }),
+          supabase.from("user_roles").select("id", { count: "exact", head: true }),
+          supabase
+            .from("requisition_items")
+            .select("id, description, quantity, estimated_unit_price, unit, requisition_id")
+            .limit(100),
+          supabase
+            .from("delivery_receipts")
+            .select(
+              "id, delivered_at, purchase_order_id, purchase_orders(issued_at), delivery_receipt_items(quantity_delivered, quantity_accepted)",
+            )
+            .limit(50),
+          supabase.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(50),
+        ]);
       return {
         requisitions: reqs.data ?? [],
         steps: steps.data ?? [],
@@ -186,11 +209,38 @@ function Dashboard() {
     (s: any) => s.status === "pending" && me.data?.roles.includes(s.required_role as never),
   );
   const myPending = myPendingSteps.length;
-  const awaiting = (data?.requisitions ?? []).filter((r: any) => r.status === "pending_approval").length;
+  const awaiting = (data?.requisitions ?? []).filter(
+    (r: any) => r.status === "pending_approval",
+  ).length;
+  // Group spend by currency to avoid distorting executive totals across NGN and USD
+  const committedByCurrency = (data?.purchaseOrders ?? []).reduce(
+    (acc: Record<string, number>, p: any) => {
+      const curr = (p.settlement_currency || "NGN").toUpperCase();
+      acc[curr] = (acc[curr] || 0) + Number(p.total_amount || 0);
+      return acc;
+    },
+    {},
+  );
+  const committedNGN = committedByCurrency["NGN"] || 0;
+  const committedUSD = committedByCurrency["USD"] || 0;
+  const hasMultipleCommittedCurrencies = Object.keys(committedByCurrency).length > 1;
+
   const committed = (data?.purchaseOrders ?? []).reduce(
     (sum: number, p: any) => sum + Number(p.total_amount || 0),
     0,
   );
+
+  const inApprovalByCurrency = (data?.requisitions ?? [])
+    .filter((r: any) => r.status === "pending_approval")
+    .reduce((acc: Record<string, number>, r: any) => {
+      const curr = (r.currency || "NGN").toUpperCase();
+      acc[curr] = (acc[curr] || 0) + Number(r.total_amount || 0);
+      return acc;
+    }, {});
+  const inApprovalNGN = inApprovalByCurrency["NGN"] || 0;
+  const inApprovalUSD = inApprovalByCurrency["USD"] || 0;
+  const hasMultipleApprovalCurrencies = Object.keys(inApprovalByCurrency).length > 1;
+
   const inApprovalAmount = (data?.requisitions ?? [])
     .filter((r: any) => r.status === "pending_approval")
     .reduce((sum: number, r: any) => sum + Number(r.total_amount || 0), 0);
@@ -228,18 +278,41 @@ function Dashboard() {
   const categoryEntries = Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1]);
   const totalItemSpend = categoryEntries.reduce((s, [, v]) => s + v, 0) || committed;
 
-  const CATEGORY_BREAKDOWN = categoryEntries.length > 0
-    ? categoryEntries.slice(0, 4).map(([name, amount], idx) => ({
-        name,
-        amount,
-        share: totalItemSpend > 0 ? amount / totalItemSpend : 0,
-        color: idx === 0 ? "bg-[#0B1457]" : idx === 1 ? "bg-[#10B981]" : idx === 2 ? "bg-[#F59E0B]" : "bg-[#6366F1]",
-      }))
-    : [
-        { name: "Structural & Civil Works", share: committed > 0 ? 0.50 : 0, amount: committed * 0.50, color: "bg-[#0B1457]" },
-        { name: "Equipment & Mechanical", share: committed > 0 ? 0.30 : 0, amount: committed * 0.30, color: "bg-[#10B981]" },
-        { name: "Electrical & Utilities", share: committed > 0 ? 0.20 : 0, amount: committed * 0.20, color: "bg-[#F59E0B]" },
-      ];
+  const CATEGORY_BREAKDOWN =
+    categoryEntries.length > 0
+      ? categoryEntries.slice(0, 4).map(([name, amount], idx) => ({
+          name,
+          amount,
+          share: totalItemSpend > 0 ? amount / totalItemSpend : 0,
+          color:
+            idx === 0
+              ? "bg-[#0B1457]"
+              : idx === 1
+                ? "bg-[#10B981]"
+                : idx === 2
+                  ? "bg-[#F59E0B]"
+                  : "bg-[#6366F1]",
+        }))
+      : [
+          {
+            name: "Structural & Civil Works",
+            share: committed > 0 ? 0.5 : 0,
+            amount: committed * 0.5,
+            color: "bg-[#0B1457]",
+          },
+          {
+            name: "Equipment & Mechanical",
+            share: committed > 0 ? 0.3 : 0,
+            amount: committed * 0.3,
+            color: "bg-[#10B981]",
+          },
+          {
+            name: "Electrical & Utilities",
+            share: committed > 0 ? 0.2 : 0,
+            amount: committed * 0.2,
+            color: "bg-[#F59E0B]",
+          },
+        ];
 
   // Real database projects with actual committed spend, approved Capex, and remaining balance
   const projectsData = data?.projectsList ?? [];
@@ -249,7 +322,12 @@ function Dashboard() {
     const pCommitted = pPOs.reduce((sum: number, po: any) => sum + Number(po.total_amount || 0), 0);
     const budget = Number(p.budget_amount || 0);
     const remaining = budget > 0 ? Math.max(0, budget - pCommitted) : 0;
-    const utilization = budget > 0 ? Math.min(100, Math.round((pCommitted / budget) * 100)) : (pCommitted > 0 ? 100 : 0);
+    const utilization =
+      budget > 0
+        ? Math.min(100, Math.round((pCommitted / budget) * 100))
+        : pCommitted > 0
+          ? 100
+          : 0;
     return {
       id: p.id,
       name: p.name,
@@ -273,9 +351,13 @@ function Dashboard() {
       id: r.id,
       reference: r.reference,
       requesterId: (r as { requester_id?: string }).requester_id || "req-01",
-      requesterName: r.requester_id === me.data?.userId ? (me.data?.profile?.full_name || "Procurement Initiator") : "Site Engineer / Buyer",
+      requesterName:
+        r.requester_id === me.data?.userId
+          ? me.data?.profile?.full_name || "Procurement Initiator"
+          : "Site Engineer / Buyer",
       projectId: (r as { project_id?: string }).project_id || "proj-01",
-      projectName: (r as { projects?: { name?: string } }).projects?.name || "Lekki Coastal Highway Tower A",
+      projectName:
+        (r as { projects?: { name?: string } }).projects?.name || "Lekki Coastal Highway Tower A",
       amount: Number(r.total_amount),
       currency: r.currency || "NGN",
       createdAt: r.created_at,
@@ -288,9 +370,7 @@ function Dashboard() {
 
   // Calculate Buyer-Supplier Affinity Anomalies
   const awardsData = allPOs.map((po: any) => {
-    const isLowest = po.recommended_quote_id
-      ? po.quote_id === po.recommended_quote_id
-      : true;
+    const isLowest = po.recommended_quote_id ? po.quote_id === po.recommended_quote_id : true;
     return {
       rfqId: po.rfq_id || po.id,
       poId: po.id,
@@ -327,12 +407,13 @@ function Dashboard() {
       quantityAccepted: Number(item.quantity_accepted || 0),
       deliveredAt: dr.delivered_at || dr.created_at || new Date().toISOString(),
       poIssuedAt: dr.purchase_orders?.issued_at || dr.delivered_at || new Date().toISOString(),
-    }))
+    })),
   );
 
   const quotesData = (data?.quotes ?? []).map((q: any) => ({
     initialQuotedPrice: Number(q.total_amount || 0),
-    finalAwardedPrice: q.status === "awarded" ? Number(q.total_amount || 0) * 0.95 : Number(q.total_amount || 0),
+    finalAwardedPrice:
+      q.status === "awarded" ? Number(q.total_amount || 0) * 0.95 : Number(q.total_amount || 0),
   }));
 
   const managementKpis = calculateManagementKpis({
@@ -361,11 +442,10 @@ function Dashboard() {
         className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Dashboard
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
           <p className="text-xs text-slate-500 font-normal">
-            Welcome back, {me.data?.profile?.full_name || "User"} · Procurement Overview & Spend Velocity
+            Welcome back, {me.data?.profile?.full_name || "User"} · Procurement Overview & Spend
+            Velocity
           </p>
         </div>
 
@@ -465,9 +545,7 @@ function Dashboard() {
               transition={{ delay: 0.4 }}
               className="absolute left-[54%] top-0 -translate-x-1/2 -translate-y-2 rounded-md bg-[#0B1457] px-2 py-0.5 text-[10px] font-semibold text-white shadow-md"
             >
-              <span>
-                {totalReqsCount > 0 ? `${totalReqsCount} Logged` : "0 Requests"}
-              </span>
+              <span>{totalReqsCount > 0 ? `${totalReqsCount} Logged` : "0 Requests"}</span>
             </motion.div>
           </div>
 
@@ -477,7 +555,9 @@ function Dashboard() {
                 {totalReqsCount.toLocaleString()}
               </p>
               <span className="text-xs text-slate-400 font-normal">
-                {totalLineItems > 0 ? `${totalLineItems} Processed line item(s)` : "Total Requisitions"}
+                {totalLineItems > 0
+                  ? `${totalLineItems} Processed line item(s)`
+                  : "Total Requisitions"}
               </span>
             </div>
             <div className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
@@ -524,7 +604,9 @@ function Dashboard() {
                 />
               </svg>
               <div className="absolute flex flex-col items-center">
-                <span className="font-sans text-xl font-bold text-slate-900 tabular-nums">{pipelineRatio}%</span>
+                <span className="font-sans text-xl font-bold text-slate-900 tabular-nums">
+                  {pipelineRatio}%
+                </span>
                 <span className="text-[9px] uppercase tracking-wider text-slate-400">Cleared</span>
               </div>
             </div>
@@ -578,7 +660,11 @@ function Dashboard() {
             </div>
 
             <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {spendViewMode === "category" ? (committed > 0 ? "Committed Spend" : "Q3 Allocation") : `${projectBreakdown.length} Sites`}
+              {spendViewMode === "category"
+                ? committed > 0
+                  ? "Committed Spend"
+                  : "Q3 Allocation"
+                : `${projectBreakdown.length} Sites`}
             </span>
           </div>
 
@@ -587,8 +673,12 @@ function Dashboard() {
             {spendViewMode === "category" ? (
               committed === 0 ? (
                 <div className="py-4 text-center">
-                  <p className="text-xs font-semibold text-slate-900">₦ 0.00 Total Category Spend</p>
-                  <p className="text-xs text-slate-500 mt-1">No committed purchase orders logged yet.</p>
+                  <p className="text-xs font-semibold text-slate-900">
+                    ₦ 0.00 Total Category Spend
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    No committed purchase orders logged yet.
+                  </p>
                 </div>
               ) : (
                 CATEGORY_BREAKDOWN.map((cat, idx) => (
@@ -611,53 +701,54 @@ function Dashboard() {
                   </div>
                 ))
               )
+            ) : projectBreakdown.length === 0 ? (
+              <div className="py-4 text-center">
+                <p className="text-xs font-semibold text-slate-900">No sites configured</p>
+                <Link
+                  to="/projects"
+                  className="text-xs font-semibold text-[#0B1457] hover:text-[#0001FF] hover:underline mt-1 inline-block"
+                >
+                  + Add Project / Cost Center
+                </Link>
+              </div>
             ) : (
-              projectBreakdown.length === 0 ? (
-                <div className="py-4 text-center">
-                  <p className="text-xs font-semibold text-slate-900">No sites configured</p>
-                  <Link to="/projects" className="text-xs font-semibold text-[#0B1457] hover:text-[#0001FF] hover:underline mt-1 inline-block">
-                    + Add Project / Cost Center
-                  </Link>
-                </div>
-              ) : (
-                projectBreakdown.slice(0, 4).map((proj: any, idx: number) => (
-                  <div
-                    key={proj.id}
-                    onClick={() => setSelectedDrilldownProject(proj)}
-                    className="group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-slate-50 transition-all"
-                    title="Click to view detailed project spend breakdown"
-                  >
-                    <div className="flex justify-between items-baseline text-xs">
-                      <div className="flex items-center gap-1 truncate max-w-[140px]">
-                        <span className="font-medium text-slate-900 truncate group-hover:text-[#0001FF] transition-colors">
-                          {proj.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 font-sans text-xs tabular-nums shrink-0">
-                        <span className="font-semibold text-slate-900">{money(proj.committed)}</span>
-                        <span className="text-xs text-slate-500 font-normal">
-                          ({proj.utilization}%)
-                        </span>
-                      </div>
+              projectBreakdown.slice(0, 4).map((proj: any, idx: number) => (
+                <div
+                  key={proj.id}
+                  onClick={() => setSelectedDrilldownProject(proj)}
+                  className="group cursor-pointer rounded-lg p-1.5 -mx-1.5 hover:bg-slate-50 transition-all"
+                  title="Click to view detailed project spend breakdown"
+                >
+                  <div className="flex justify-between items-baseline text-xs">
+                    <div className="flex items-center gap-1 truncate max-w-[140px]">
+                      <span className="font-medium text-slate-900 truncate group-hover:text-[#0001FF] transition-colors">
+                        {proj.name}
+                      </span>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.max(4, proj.utilization)}%` }}
-                        transition={{ duration: 0.8, delay: idx * 0.1, ease: "easeOut" }}
-                        className={cn(
-                          "h-1.5 rounded-full",
-                          proj.utilization > 75
-                            ? "bg-rose-500"
-                            : proj.utilization > 50
-                              ? "bg-amber-500"
-                              : "bg-[#0B1457]",
-                        )}
-                      />
+                    <div className="flex items-center gap-1 font-sans text-xs tabular-nums shrink-0">
+                      <span className="font-semibold text-slate-900">{money(proj.committed)}</span>
+                      <span className="text-xs text-slate-500 font-normal">
+                        ({proj.utilization}%)
+                      </span>
                     </div>
                   </div>
-                ))
-              )
+                  <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.max(4, proj.utilization)}%` }}
+                      transition={{ duration: 0.8, delay: idx * 0.1, ease: "easeOut" }}
+                      className={cn(
+                        "h-1.5 rounded-full",
+                        proj.utilization > 75
+                          ? "bg-rose-500"
+                          : proj.utilization > 50
+                            ? "bg-amber-500"
+                            : "bg-[#0B1457]",
+                      )}
+                    />
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
@@ -694,11 +785,29 @@ function Dashboard() {
               <CreditCard className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
-            {money(committed, "NGN")}
-          </p>
+          <div className="mt-3">
+            {hasMultipleCommittedCurrencies ? (
+              <div>
+                <p className="font-sans text-2xl font-bold tabular-nums text-slate-900">
+                  {money(committedNGN, "NGN")}
+                </p>
+                {committedUSD > 0 && (
+                  <p className="text-xs font-semibold text-emerald-700 mt-0.5">
+                    + {money(committedUSD, "USD")}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="font-sans text-2xl font-bold tabular-nums text-slate-900">
+                {money(committed, (data?.purchaseOrders?.[0]?.settlement_currency || "NGN") as any)}
+              </p>
+            )}
+          </div>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-normal">Across {allPOs.length} issued PO(s)</span>
+            <span className="text-xs text-slate-400 font-normal">
+              Across {allPOs.length} issued PO(s)
+              {hasMultipleCommittedCurrencies ? " (multi-curr)" : ""}
+            </span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
               Live
             </span>
@@ -720,11 +829,28 @@ function Dashboard() {
               <Wallet className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
-            {money(inApprovalAmount, "NGN")}
-          </p>
+          <div className="mt-3">
+            {hasMultipleApprovalCurrencies ? (
+              <div>
+                <p className="font-sans text-2xl font-bold tabular-nums text-slate-900">
+                  {money(inApprovalNGN, "NGN")}
+                </p>
+                {inApprovalUSD > 0 && (
+                  <p className="text-xs font-semibold text-amber-700 mt-0.5">
+                    + {money(inApprovalUSD, "USD")}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="font-sans text-2xl font-bold tabular-nums text-slate-900">
+                {money(inApprovalAmount, (data?.requisitions?.[0]?.currency || "NGN") as any)}
+              </p>
+            )}
+          </div>
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-normal">{awaiting} requisitions pending</span>
+            <span className="text-xs text-slate-400 font-normal">
+              {awaiting} requisitions pending{hasMultipleApprovalCurrencies ? " (multi-curr)" : ""}
+            </span>
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
               {awaiting > 0 ? "Pending" : "Clear"}
             </span>
@@ -746,7 +872,9 @@ function Dashboard() {
               <Clock className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">{myPending}</p>
+          <p className="mt-3 font-sans text-2xl font-bold tabular-nums text-slate-900">
+            {myPending}
+          </p>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-normal">Assigned to your role</span>
             {myPending > 0 ? (
@@ -800,7 +928,8 @@ function Dashboard() {
               </h2>
             </div>
             <p className="mt-0.5 text-[11px] text-slate-500 font-normal">
-              Automated end-to-end turnaround tracking, realized RFQ savings, and site QA/QC inspection metrics.
+              Automated end-to-end turnaround tracking, realized RFQ savings, and site QA/QC
+              inspection metrics.
             </p>
           </div>
           <span className="self-start sm:self-auto rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700">
@@ -820,15 +949,15 @@ function Dashboard() {
                 ? `${managementKpis.averageTurnaroundDaysReqToPo} Days`
                 : "—"}
             </p>
-            <p className="mt-1 text-[10px] text-slate-400">
-              Requisition submission to PO dispatch
-            </p>
+            <p className="mt-1 text-[10px] text-slate-400">Requisition submission to PO dispatch</p>
           </div>
 
           {/* Metric 2: Site Delivery Lead Time */}
           <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-slate-500">PO → Delivery Lead Time</span>
+              <span className="text-[11px] font-medium text-slate-500">
+                PO → Delivery Lead Time
+              </span>
               <TrendingUp className="h-4 w-4 text-emerald-600" />
             </div>
             <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
@@ -864,9 +993,7 @@ function Dashboard() {
             <p className="mt-2 font-sans text-xl font-bold tabular-nums text-slate-900">
               {managementKpis.averageSupplierQualityScore}%
             </p>
-            <p className="mt-1 text-[10px] text-slate-400">
-              Site goods accepted without rejection
-            </p>
+            <p className="mt-1 text-[10px] text-slate-400">Site goods accepted without rejection</p>
           </div>
         </div>
       </motion.section>
@@ -909,7 +1036,8 @@ function Dashboard() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500 font-normal">
-                  Continuous surveillance for anti-structuring split requisition patterns, buyer-supplier concentration risk, and statutory compliance controls.
+                  Continuous surveillance for anti-structuring split requisition patterns,
+                  buyer-supplier concentration risk, and statutory compliance controls.
                 </p>
               </div>
             </div>
@@ -926,11 +1054,15 @@ function Dashboard() {
                   setTimeout(() => {
                     setIsScanning(false);
                     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-                    toast.success("Forensic deep scan completed across all active projects and requisitions.");
+                    toast.success(
+                      "Forensic deep scan completed across all active projects and requisitions.",
+                    );
                   }, 600);
                 }}
               >
-                <MdRadar className={`h-4 w-4 mr-1.5 text-slate-500 shrink-0 ${isScanning ? "animate-spin" : ""}`} />
+                <MdRadar
+                  className={`h-4 w-4 mr-1.5 text-slate-500 shrink-0 ${isScanning ? "animate-spin" : ""}`}
+                />
                 {isScanning ? "Scanning…" : "Deep Scan"}
               </Button>
               <Button
@@ -964,8 +1096,8 @@ function Dashboard() {
                       isCritical
                         ? "border-rose-200 bg-rose-50/30"
                         : isHigh
-                        ? "border-amber-200 bg-amber-50/30"
-                        : "border-blue-200 bg-blue-50/20"
+                          ? "border-amber-200 bg-amber-50/30"
+                          : "border-blue-200 bg-blue-50/20"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -973,21 +1105,25 @@ function Dashboard() {
                         {isSplit
                           ? "Anti-Structuring / Split"
                           : anomaly.category === "BUYER_SUPPLIER_AFFINITY"
-                          ? "Vendor Concentration Risk"
-                          : "Sole Source"}
+                            ? "Vendor Concentration Risk"
+                            : "Sole Source"}
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1 ${
                           isCritical
                             ? "bg-rose-100 text-rose-800 border border-rose-300"
                             : isHigh
-                            ? "bg-amber-100 text-amber-800 border border-amber-300"
-                            : "bg-blue-100 text-blue-800 border border-blue-300"
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : "bg-blue-100 text-blue-800 border border-blue-300"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
-                            isCritical ? "bg-rose-600 animate-ping" : isHigh ? "bg-amber-600" : "bg-blue-600"
+                            isCritical
+                              ? "bg-rose-600 animate-ping"
+                              : isHigh
+                                ? "bg-amber-600"
+                                : "bg-blue-600"
                           }`}
                         />
                         {anomaly.severity} SEVERITY
@@ -1003,26 +1139,38 @@ function Dashboard() {
 
                     {/* Affected Entities Detailed Pills */}
                     <div className="rounded-lg bg-white/80 border border-slate-200/80 p-2.5 space-y-1.5 text-xs">
-                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Affected Entities</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                        Affected Entities
+                      </p>
                       <div className="flex flex-wrap gap-1.5">
                         {anomaly.entitiesSummary?.suppliers?.map((supp, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800"
+                          >
                             <Building2 className="h-3 w-3 text-slate-400" /> Supplier: {supp}
                           </span>
                         ))}
                         {anomaly.entitiesSummary?.approvers?.map((appr, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800"
+                          >
                             <User className="h-3 w-3 text-slate-400" /> Buyer/Approver: {appr}
                           </span>
                         ))}
                         {anomaly.entitiesSummary?.projects?.map((proj, i) => (
-                          <span key={i} className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800">
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1 rounded bg-slate-50 border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-800"
+                          >
                             <FolderKanban className="h-3 w-3 text-slate-400" /> Project: {proj}
                           </span>
                         ))}
                         {anomaly.entitiesSummary?.totalAmount ? (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
-                            <Landmark className="h-3 w-3 text-amber-600" /> Flagged Spend: {money(anomaly.entitiesSummary.totalAmount, "NGN")}
+                            <Landmark className="h-3 w-3 text-amber-600" /> Flagged Spend:{" "}
+                            {money(anomaly.entitiesSummary.totalAmount, "NGN")}
                           </span>
                         ) : null}
                       </div>
@@ -1058,7 +1206,10 @@ function Dashboard() {
                     Corporate Governance Integrity Verified · Zero Anomalies
                   </h4>
                   <p className="text-[11px] text-emerald-800/80 mt-0.5 leading-relaxed">
-                    Surveillance verified: No split requisitions bypassing the {money(forensicThreshold, "NGN")} approval threshold within rolling {forensicWindowDays}-day windows. Vendor concentration is within the {concentrationThreshold}% ceiling across all active construction sites.
+                    Surveillance verified: No split requisitions bypassing the{" "}
+                    {money(forensicThreshold, "NGN")} approval threshold within rolling{" "}
+                    {forensicWindowDays}-day windows. Vendor concentration is within the{" "}
+                    {concentrationThreshold}% ceiling across all active construction sites.
                   </p>
                 </div>
               </div>
@@ -1098,7 +1249,9 @@ function Dashboard() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    Continuous anti-fraud surveillance engine evaluating buyer-supplier affinity, split requisition structuring, and threshold compliance across all active project sites.
+                    Continuous anti-fraud surveillance engine evaluating buyer-supplier affinity,
+                    split requisition structuring, and threshold compliance across all active
+                    project sites.
                   </p>
                 </div>
               </div>
@@ -1123,7 +1276,9 @@ function Dashboard() {
                 <Input
                   type="number"
                   value={forensicThreshold}
-                  onChange={(e) => setForensicThreshold(Math.max(50000, Number(e.target.value) || 500000))}
+                  onChange={(e) =>
+                    setForensicThreshold(Math.max(50000, Number(e.target.value) || 500000))
+                  }
                   className="h-8 mt-1 text-xs bg-white"
                 />
               </div>
@@ -1145,7 +1300,11 @@ function Dashboard() {
                 <Input
                   type="number"
                   value={concentrationThreshold}
-                  onChange={(e) => setConcentrationThreshold(Math.max(10, Math.min(100, Number(e.target.value) || 40)))}
+                  onChange={(e) =>
+                    setConcentrationThreshold(
+                      Math.max(10, Math.min(100, Number(e.target.value) || 40)),
+                    )
+                  }
                   className="h-8 mt-1 text-xs bg-white"
                 />
               </div>
@@ -1170,7 +1329,9 @@ function Dashboard() {
                 type="button"
                 onClick={() => setForensicTab("ALL")}
                 className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
-                  forensicTab === "ALL" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  forensicTab === "ALL"
+                    ? "bg-[#0B1457] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <MdFactCheck className="h-3.5 w-3.5 shrink-0" />
@@ -1180,7 +1341,9 @@ function Dashboard() {
                 type="button"
                 onClick={() => setForensicTab("SPLIT")}
                 className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
-                  forensicTab === "SPLIT" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  forensicTab === "SPLIT"
+                    ? "bg-[#0B1457] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <MdCallSplit className="h-3.5 w-3.5 shrink-0" />
@@ -1190,7 +1353,9 @@ function Dashboard() {
                 type="button"
                 onClick={() => setForensicTab("AFFINITY")}
                 className={`rounded-lg px-3 py-1.5 cursor-pointer transition-all inline-flex items-center gap-1.5 ${
-                  forensicTab === "AFFINITY" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  forensicTab === "AFFINITY"
+                    ? "bg-[#0B1457] text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <MdHub className="h-3.5 w-3.5 shrink-0" />
@@ -1205,16 +1370,20 @@ function Dashboard() {
                   forensicTab === "SPLIT"
                     ? splitAnomalies
                     : forensicTab === "AFFINITY"
-                    ? affinityAnomalies
-                    : allGovernanceAnomalies;
+                      ? affinityAnomalies
+                      : allGovernanceAnomalies;
 
                 if (list.length === 0) {
                   return (
                     <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500 space-y-2">
                       <MdVerifiedUser className="h-8 w-8 text-emerald-600 mx-auto" />
-                      <p className="font-bold text-slate-800">No anomalies detected in this category.</p>
+                      <p className="font-bold text-slate-800">
+                        No anomalies detected in this category.
+                      </p>
                       <p className="text-[11px] text-slate-500">
-                        Current transactions comply with the configured {money(forensicThreshold, "NGN")} threshold and {concentrationThreshold}% vendor limit.
+                        Current transactions comply with the configured{" "}
+                        {money(forensicThreshold, "NGN")} threshold and {concentrationThreshold}%
+                        vendor limit.
                       </p>
                     </div>
                   );
@@ -1232,51 +1401,70 @@ function Dashboard() {
                             anomaly.severity === "CRITICAL"
                               ? "bg-rose-100 text-rose-800 border border-rose-300"
                               : anomaly.severity === "HIGH"
-                              ? "bg-amber-100 text-amber-800 border border-amber-300"
-                              : "bg-blue-100 text-blue-800 border border-blue-300"
+                                ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                : "bg-blue-100 text-blue-800 border border-blue-300"
                           }`}
                         >
                           {anomaly.severity} SEVERITY
                         </span>
-                        <span className="font-mono text-xs font-bold text-slate-800">{anomaly.id}</span>
+                        <span className="font-mono text-xs font-bold text-slate-800">
+                          {anomaly.id}
+                        </span>
                       </div>
-                      <span className="text-[11px] text-slate-400">{shortDate(anomaly.detectedAt)}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {shortDate(anomaly.detectedAt)}
+                      </span>
                     </div>
 
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">{anomaly.title}</h4>
-                      <p className="mt-1 text-xs text-slate-600 leading-relaxed">{anomaly.description}</p>
+                      <p className="mt-1 text-xs text-slate-600 leading-relaxed">
+                        {anomaly.description}
+                      </p>
                     </div>
 
                     {/* Affected Entities Grid */}
                     <div className="grid sm:grid-cols-2 gap-3 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200 text-xs">
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Affected Suppliers &amp; Vendors</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Affected Suppliers &amp; Vendors
+                        </p>
                         <p className="font-semibold text-slate-900 mt-1">
-                          {anomaly.entitiesSummary?.suppliers?.join(", ") || "Multiple / Unaffiliated"}
+                          {anomaly.entitiesSummary?.suppliers?.join(", ") ||
+                            "Multiple / Unaffiliated"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Initiating Buyers &amp; Approvers</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Initiating Buyers &amp; Approvers
+                        </p>
                         <p className="font-semibold text-slate-900 mt-1">
                           {anomaly.entitiesSummary?.approvers?.join(", ") || "Procurement Officer"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Site Projects</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Active Site Projects
+                        </p>
                         <p className="font-semibold text-slate-900 mt-1">
                           {anomaly.entitiesSummary?.projects?.join(", ") || "Site / Capex Project"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Flagged Purchase Amounts</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Flagged Purchase Amounts
+                        </p>
                         <p className="font-sans font-bold text-slate-900 mt-1">
                           {anomaly.entitiesSummary?.totalAmount
                             ? money(anomaly.entitiesSummary.totalAmount, "NGN")
                             : "—"}
                           {anomaly.entitiesSummary?.purchaseAmounts ? (
                             <span className="text-[11px] font-normal text-slate-500 ml-1">
-                              ({anomaly.entitiesSummary.purchaseAmounts.map((a) => money(a, "NGN")).join(", ")})
+                              (
+                              {anomaly.entitiesSummary.purchaseAmounts
+                                .map((a) => money(a, "NGN"))
+                                .join(", ")}
+                              )
                             </span>
                           ) : null}
                         </p>
@@ -1311,7 +1499,10 @@ function Dashboard() {
                                 Step {i + 1}: {chain.stage} ({chain.requiredRole})
                               </span>
                               <span className="font-semibold text-slate-800">
-                                {chain.actorName || "System Rule"} · <span className="uppercase text-amber-700 font-bold">{chain.status}</span>
+                                {chain.actorName || "System Rule"} ·{" "}
+                                <span className="uppercase text-amber-700 font-bold">
+                                  {chain.status}
+                                </span>
                               </span>
                             </div>
                           ))}
@@ -1327,7 +1518,9 @@ function Dashboard() {
                         size="sm"
                         className="h-7 text-[11px] font-semibold text-rose-700 border-rose-200 hover:bg-rose-50 cursor-pointer"
                         onClick={() => {
-                          toast.error(`Transaction freeze flagged for anomaly ${anomaly.id}. Executive notification dispatched.`);
+                          toast.error(
+                            `Transaction freeze flagged for anomaly ${anomaly.id}. Executive notification dispatched.`,
+                          );
                         }}
                       >
                         Freeze Affected Orders
@@ -1378,7 +1571,8 @@ function Dashboard() {
                         a.detectedAt,
                       ]),
                     ];
-                    const csv = "data:text/csv;charset=utf-8," + rows.map((r) => r.join(",")).join("\n");
+                    const csv =
+                      "data:text/csv;charset=utf-8," + rows.map((r) => r.join(",")).join("\n");
                     const link = document.createElement("a");
                     link.setAttribute("href", encodeURI(csv));
                     link.setAttribute("download", `forensic_governance_report_${Date.now()}.csv`);
@@ -1431,7 +1625,10 @@ function Dashboard() {
             </Button>
           </div>
 
-          <motion.div variants={staggerContainer} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <motion.div
+            variants={staggerContainer}
+            className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {myPendingSteps.slice(0, 6).map((s: any) => {
               const req = (s.requisitions as {
                 id: string;
@@ -1495,7 +1692,9 @@ function Dashboard() {
             <h2 className="text-base font-semibold text-slate-900 tracking-tight">
               Recent Procurement Logs & Requests
             </h2>
-            <p className="text-xs text-slate-500 font-normal">Real-time operational activity log across all cost centers</p>
+            <p className="text-xs text-slate-500 font-normal">
+              Real-time operational activity log across all cost centers
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1567,10 +1766,14 @@ function Dashboard() {
                         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0B1457] text-[10px] font-bold text-white uppercase">
                           {r.reference.slice(-2)}
                         </div>
-                        <span className="tabular-nums font-semibold text-[#0B1457]">{r.reference}</span>
+                        <span className="tabular-nums font-semibold text-[#0B1457]">
+                          {r.reference}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 max-w-[220px] truncate text-slate-800 font-medium">{r.title}</td>
+                    <td className="px-3 py-3 max-w-[220px] truncate text-slate-800 font-medium">
+                      {r.title}
+                    </td>
                     <td className="px-3 py-3 font-semibold tabular-nums text-slate-900">
                       {money(r.total_amount, r.currency)}
                     </td>
@@ -1625,7 +1828,10 @@ function Dashboard() {
             </span>
           </div>
 
-          <motion.ul variants={staggerContainer} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <motion.ul
+            variants={staggerContainer}
+            className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          >
             <ChecklistItem
               done={(data?.projectCount ?? 0) > 0}
               label="Add Project / Cost Center"
@@ -1675,7 +1881,8 @@ function Dashboard() {
               {selectedDrilldownProject?.name}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 font-normal leading-relaxed">
-              Real-time commitment breakdown, approved purchase orders, and remaining budgetary allowance.
+              Real-time commitment breakdown, approved purchase orders, and remaining budgetary
+              allowance.
             </DialogDescription>
           </DialogHeader>
 
@@ -1702,17 +1909,23 @@ function Dashboard() {
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1.5">
                   <p className="text-xs font-medium text-slate-500">Allocated Budget</p>
                   <p className="font-sans text-xl font-semibold tabular-nums text-slate-900 tracking-tight">
-                    {selectedDrilldownProject.budget > 0 ? money(selectedDrilldownProject.budget) : "₦ 0.00"}
+                    {selectedDrilldownProject.budget > 0
+                      ? money(selectedDrilldownProject.budget)
+                      : "₦ 0.00"}
                   </p>
                   <p className="text-xs text-slate-500 font-normal">Approved Capex</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1.5">
                   <p className="text-xs font-medium text-slate-500">Remaining Budget</p>
                   <p className="font-sans text-xl font-semibold tabular-nums text-[#0B1457] tracking-tight">
-                    {selectedDrilldownProject.budget > 0 ? money(selectedDrilldownProject.remaining) : "—"}
+                    {selectedDrilldownProject.budget > 0
+                      ? money(selectedDrilldownProject.remaining)
+                      : "—"}
                   </p>
                   <p className="text-xs font-medium text-slate-600">
-                    {selectedDrilldownProject.budget > 0 ? "Available to commit" : "No budget limit"}
+                    {selectedDrilldownProject.budget > 0
+                      ? "Available to commit"
+                      : "No budget limit"}
                   </p>
                 </div>
               </div>
@@ -1748,7 +1961,8 @@ function Dashboard() {
               <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
                 <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                   <p className="text-xs font-semibold text-slate-800">
-                    Active Purchase Orders on this Site ({selectedDrilldownProject.purchaseOrders.length})
+                    Active Purchase Orders on this Site (
+                    {selectedDrilldownProject.purchaseOrders.length})
                   </p>
                   <span className="text-xs text-slate-500 font-normal">
                     Committed Total:{" "}
@@ -1760,9 +1974,12 @@ function Dashboard() {
 
                 {selectedDrilldownProject.purchaseOrders.length === 0 ? (
                   <div className="p-6 text-center bg-white">
-                    <p className="text-xs font-semibold text-slate-800">No purchase orders issued yet for this site</p>
+                    <p className="text-xs font-semibold text-slate-800">
+                      No purchase orders issued yet for this site
+                    </p>
                     <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                      Committed spend will reflect automatically once purchase orders are issued to verified suppliers.
+                      Committed spend will reflect automatically once purchase orders are issued to
+                      verified suppliers.
                     </p>
                   </div>
                 ) : (
@@ -1817,13 +2034,20 @@ function Dashboard() {
                   {selectedDrilldownProject.requisitions.length} requisition(s) linked to this site
                 </span>
                 <div className="flex items-center gap-2">
-                  <Button asChild variant="outline" className="h-9 px-3 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="h-9 px-3 rounded-lg border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
                     <Link to="/requisitions/new">
                       <Plus className="mr-1.5 h-3.5 w-3.5" />
                       New Requisition
                     </Link>
                   </Button>
-                  <Button asChild className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs">
+                  <Button
+                    asChild
+                    className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs"
+                  >
                     <Link to="/projects">
                       <span>Projects Hub</span>
                       <ArrowRight className="ml-1.5 h-3.5 w-3.5" />

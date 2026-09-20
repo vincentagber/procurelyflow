@@ -205,7 +205,8 @@ function Settings() {
               Organization Settings
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal leading-normal">
-              Manage financial spend approval thresholds, team member role assignments, and governance audit records.
+              Manage financial spend approval thresholds, team member role assignments, and
+              governance audit records.
             </p>
           </div>
 
@@ -217,7 +218,7 @@ function Settings() {
                   "h-9 px-4 rounded-lg text-xs font-semibold transition-all shadow-xs gap-1.5 cursor-pointer",
                   showBuilder
                     ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-                    : "bg-[#0B1457] hover:bg-[#0001FF] text-white"
+                    : "bg-[#0B1457] hover:bg-[#0001FF] text-white",
                 )}
               >
                 {showBuilder ? (
@@ -483,7 +484,9 @@ function RulesSection({
       if (error) throw error;
     },
     onSuccess: async () => {
-      toast.success("Nigerian Enterprise Standards deployed: Below ₦500k (Dept Head) · ₦500k–₦5m (Dept + Finance) · >₦5m (Finance + CEO).");
+      toast.success(
+        "Nigerian Enterprise Standards deployed: Below ₦500k (Dept Head) · ₦500k–₦5m (Dept + Finance) · >₦5m (Finance + CEO).",
+      );
       await queryClient.invalidateQueries({ queryKey: ["approval-rules"] });
     },
     onError: (err) => {
@@ -562,7 +565,8 @@ function RulesSection({
                       Configure Threshold Policy Tier
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5 font-normal">
-                      Define the spend band parameters, routing architecture, and sequential clearance stages.
+                      Define the spend band parameters, routing architecture, and sequential
+                      clearance stages.
                     </p>
                   </div>
                 </div>
@@ -649,7 +653,9 @@ function RulesSection({
                       onChange={(e) => setDraft((p) => ({ ...p, label: e.target.value }))}
                       className="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-900 shadow-2xs focus-visible:border-[#0B1457] focus-visible:ring-1 focus-visible:ring-[#0B1457]/20"
                     />
-                    <p className="text-[11px] text-slate-400">Descriptive name for internal governance audit.</p>
+                    <p className="text-[11px] text-slate-400">
+                      Descriptive name for internal governance audit.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">
@@ -706,16 +712,26 @@ function RulesSection({
                         "flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer",
                         draft.mode === "sequential"
                           ? "border-[#0B1457] bg-slate-50/80 text-slate-900 ring-1 ring-[#0B1457]/20 shadow-2xs"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                       )}
                     >
-                      <div className={cn("p-1.5 rounded-lg shrink-0", draft.mode === "sequential" ? "bg-[#0B1457] text-white" : "bg-slate-100 text-slate-500")}>
+                      <div
+                        className={cn(
+                          "p-1.5 rounded-lg shrink-0",
+                          draft.mode === "sequential"
+                            ? "bg-[#0B1457] text-white"
+                            : "bg-slate-100 text-slate-500",
+                        )}
+                      >
                         <GitCommitHorizontal className="h-4 w-4" />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-900">Sequential Flow (Recommended)</p>
+                        <p className="text-xs font-semibold text-slate-900">
+                          Sequential Flow (Recommended)
+                        </p>
                         <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                          Requisitions advance step-by-step in order. Each stage role must sign off before the subsequent stage is triggered.
+                          Requisitions advance step-by-step in order. Each stage role must sign off
+                          before the subsequent stage is triggered.
                         </p>
                       </div>
                     </button>
@@ -727,16 +743,24 @@ function RulesSection({
                         "flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all cursor-pointer",
                         draft.mode === "parallel"
                           ? "border-[#0B1457] bg-slate-50/80 text-slate-900 ring-1 ring-[#0B1457]/20 shadow-2xs"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
                       )}
                     >
-                      <div className={cn("p-1.5 rounded-lg shrink-0", draft.mode === "parallel" ? "bg-[#0B1457] text-white" : "bg-slate-100 text-slate-500")}>
+                      <div
+                        className={cn(
+                          "p-1.5 rounded-lg shrink-0",
+                          draft.mode === "parallel"
+                            ? "bg-[#0B1457] text-white"
+                            : "bg-slate-100 text-slate-500",
+                        )}
+                      >
                         <GitFork className="h-4 w-4" />
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-slate-900">Parallel Sign-off</p>
                         <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                          Broadcasts clearance notifications simultaneously to all configured roles. Requisition clears when all have approved.
+                          Broadcasts clearance notifications simultaneously to all configured roles.
+                          Requisition clears when all have approved.
                         </p>
                       </div>
                     </button>
@@ -751,14 +775,13 @@ function RulesSection({
                         Required Clearance Sequence ({draft.stages.length} Stages)
                       </Label>
                       <p className="text-[11px] text-slate-500">
-                        Order matters for sequential flow. Use directional arrows to reorder clearance sequence.
+                        Order matters for sequential flow. Use directional arrows to reorder
+                        clearance sequence.
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Select
-                        onValueChange={(val) => addStage(val as AppRole)}
-                      >
+                      <Select onValueChange={(val) => addStage(val as AppRole)}>
                         <SelectTrigger className="h-8 rounded-lg border-slate-200 text-xs font-medium text-slate-800 bg-white w-40 cursor-pointer">
                           <Plus className="h-3.5 w-3.5 mr-1 text-slate-500" />
                           <span>Add Stage Role</span>
@@ -856,7 +879,8 @@ function RulesSection({
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-slate-400">
-                    If a requisition is flagged as unbudgeted, it automatically appends this role to the chain.
+                    If a requisition is flagged as unbudgeted, it automatically appends this role to
+                    the chain.
                   </p>
                 </div>
 
@@ -875,7 +899,8 @@ function RulesSection({
                     <strong className="text-slate-900 tabular-nums font-semibold">
                       {draft.max_amount ? money(Number(draft.max_amount)) : "Uncapped"}
                     </strong>{" "}
-                    will route in <strong className="text-slate-900 font-semibold">{draft.mode} mode</strong> via:{" "}
+                    will route in{" "}
+                    <strong className="text-slate-900 font-semibold">{draft.mode} mode</strong> via:{" "}
                     {draft.stages.map((st, i) => (
                       <span key={i} className="font-semibold text-[#0B1457]">
                         {ROLE_CONFIG[st]?.shortLabel || st}
@@ -929,7 +954,8 @@ function RulesSection({
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-500 font-normal">
-              Requisitions automatically route through sequential clearance stages based on committed purchase order thresholds.
+              Requisitions automatically route through sequential clearance stages based on
+              committed purchase order thresholds.
             </p>
           </div>
 
@@ -942,7 +968,7 @@ function RulesSection({
                 onClick={() => {
                   if (
                     window.confirm(
-                      "Deploy standard Nigerian Enterprise approval tiers?\n\n• Below ₦500k: Department Head\n• ₦500k–₦5m: Department Head and Finance\n• Above ₦5m: Finance and CEO\n• Unbudgeted: Executive Management sign-off\n\nThis will configure all 3 tiers sequentially."
+                      "Deploy standard Nigerian Enterprise approval tiers?\n\n• Below ₦500k: Department Head\n• ₦500k–₦5m: Department Head and Finance\n• Above ₦5m: Finance and CEO\n• Unbudgeted: Executive Management sign-off\n\nThis will configure all 3 tiers sequentially.",
                     )
                   ) {
                     deployStandardTiers.mutate();
@@ -1007,7 +1033,9 @@ function RulesSection({
                       <span className="text-xs font-semibold tabular-nums text-slate-700 font-sans">
                         {money(rule.min_amount)}
                         {" → "}
-                        {rule.max_amount === null ? "No Upper Limit (Uncapped)" : money(rule.max_amount)}
+                        {rule.max_amount === null
+                          ? "No Upper Limit (Uncapped)"
+                          : money(rule.max_amount)}
                       </span>
                     </div>
 
@@ -1079,7 +1107,9 @@ function RulesSection({
                         <div className="inline-flex items-center gap-1.5 ml-1 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
                           <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                           <span className="font-medium">
-                            Unbudgeted clause: +{ROLE_CONFIG[rule.extra_role_if_unbudgeted]?.label || ROLE_LABELS[rule.extra_role_if_unbudgeted]}
+                            Unbudgeted clause: +
+                            {ROLE_CONFIG[rule.extra_role_if_unbudgeted]?.label ||
+                              ROLE_LABELS[rule.extra_role_if_unbudgeted]}
                           </span>
                         </div>
                       )}
@@ -1108,7 +1138,10 @@ function TeamSection({ isAdmin }: { isAdmin: boolean }) {
     queryKey: ["team"],
     queryFn: async () => {
       const [profiles, roles] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, email, department, avatar_url").order("full_name"),
+        supabase
+          .from("profiles")
+          .select("id, full_name, email, department, avatar_url")
+          .order("full_name"),
         supabase.from("user_roles").select("user_id, role"),
       ]);
       return {
@@ -1160,7 +1193,8 @@ function TeamSection({ isAdmin }: { isAdmin: boolean }) {
               </span>
             </div>
             <p className="mt-1 text-xs text-slate-500 font-normal">
-              Manage teammate role capabilities. Click any role badge to grant or revoke authorization.
+              Manage teammate role capabilities. Click any role badge to grant or revoke
+              authorization.
             </p>
           </div>
 
@@ -1181,7 +1215,9 @@ function TeamSection({ isAdmin }: { isAdmin: boolean }) {
                 <SelectValue placeholder="All Roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs font-medium">All Roles</SelectItem>
+                <SelectItem value="all" className="text-xs font-medium">
+                  All Roles
+                </SelectItem>
                 {ALL_ROLES.map((r) => (
                   <SelectItem key={r} value={r} className="text-xs font-medium">
                     {ROLE_CONFIG[r].shortLabel}
@@ -1193,7 +1229,9 @@ function TeamSection({ isAdmin }: { isAdmin: boolean }) {
         </div>
 
         {isLoading ? (
-          <div className="py-16 text-center text-xs text-slate-400 animate-pulse">Loading directory…</div>
+          <div className="py-16 text-center text-xs text-slate-400 animate-pulse">
+            Loading directory…
+          </div>
         ) : !filteredMembers.length ? (
           <div className="py-16 text-center text-xs text-slate-500">
             No teammates found matching your search.
@@ -1261,7 +1299,7 @@ function TeamSection({ isAdmin }: { isAdmin: boolean }) {
                               "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-all border cursor-pointer",
                               active
                                 ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
-                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 disabled:opacity-40",
                             )}
                           >
                             {active ? <Check className="h-3 w-3 text-slate-300" /> : null}
@@ -1305,7 +1343,7 @@ function InviteTeammateCard() {
       toast.success(
         result.mode === "roles_updated"
           ? "Teammate already in organization — roles updated."
-          : "Invitation dispatched successfully."
+          : "Invitation dispatched successfully.",
       );
       setEmail("");
       setRoles(["requester"]);
@@ -1331,9 +1369,12 @@ function InviteTeammateCard() {
           <UserPlus className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-slate-900 tracking-tight">Invite Teammate &amp; Assign Roles</h2>
+          <h2 className="text-base font-semibold text-slate-900 tracking-tight">
+            Invite Teammate &amp; Assign Roles
+          </h2>
           <p className="mt-0.5 text-xs text-slate-500 font-normal">
-            Enter an organizational work email. Assigned capabilities take effect the first time they sign in.
+            Enter an organizational work email. Assigned capabilities take effect the first time
+            they sign in.
           </p>
         </div>
       </div>
@@ -1362,7 +1403,9 @@ function InviteTeammateCard() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <p className="text-[11px] text-slate-400">Teammate will receive an organizational invitation.</p>
+            <p className="text-[11px] text-slate-400">
+              Teammate will receive an organizational invitation.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -1381,7 +1424,7 @@ function InviteTeammateCard() {
                       "flex items-center gap-1.5 h-8 rounded-lg px-2.5 text-xs font-medium transition-all border cursor-pointer",
                       active
                         ? "bg-[#0B1457] text-white border-[#0B1457] shadow-2xs"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900",
                     )}
                   >
                     {active && <Check className="h-3 w-3" />}
@@ -1390,7 +1433,9 @@ function InviteTeammateCard() {
                 );
               })}
             </div>
-            <p className="text-[11px] text-slate-400">Multiple roles can be granted simultaneously.</p>
+            <p className="text-[11px] text-slate-400">
+              Multiple roles can be granted simultaneously.
+            </p>
           </div>
         </div>
 
@@ -1482,7 +1527,8 @@ function AuditLogSection() {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500 font-normal">
-            Cryptographic ledger tracking requisition movements, approval clearances, and policy updates.
+            Cryptographic ledger tracking requisition movements, approval clearances, and policy
+            updates.
           </p>
         </div>
 
@@ -1493,7 +1539,9 @@ function AuditLogSection() {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-xs text-slate-400 animate-pulse">Loading audit ledger…</div>
+        <div className="py-16 text-center text-xs text-slate-400 animate-pulse">
+          Loading audit ledger…
+        </div>
       ) : !data?.length ? (
         <EmptyState
           title="Audit Ledger Initialized"
@@ -1575,7 +1623,9 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal leading-relaxed">
-              Procurely Flow enforces strict multi-tenant isolation, cryptographic audit trails, and automatic PII minimization under Nigeria Data Protection Commission (NDPC) regulations.
+              Procurely Flow enforces strict multi-tenant isolation, cryptographic audit trails, and
+              automatic PII minimization under Nigeria Data Protection Commission (NDPC)
+              regulations.
             </p>
           </div>
         </div>
@@ -1593,7 +1643,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <p className="text-xs font-semibold text-slate-900">Row-Level Security</p>
             <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
-              Database queries are enforced via PostgreSQL RLS policies strictly scoped to your tenant organization ID.
+              Database queries are enforced via PostgreSQL RLS policies strictly scoped to your
+              tenant organization ID.
             </p>
           </div>
 
@@ -1608,7 +1659,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <p className="text-xs font-semibold text-slate-900">Immutable Audit Chain</p>
             <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
-              Requisitions, clearances, and payout actions generate sequentially chained cryptographic hash records.
+              Requisitions, clearances, and payout actions generate sequentially chained
+              cryptographic hash records.
             </p>
           </div>
 
@@ -1623,7 +1675,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <p className="text-xs font-semibold text-slate-900">PII &amp; Banking Masking</p>
             <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
-              Vendor bank accounts and tax IDs are masked at rest in public views and outbound transaction exports.
+              Vendor bank accounts and tax IDs are masked at rest in public views and outbound
+              transaction exports.
             </p>
           </div>
         </div>
@@ -1636,7 +1689,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
             Data Retention &amp; Regulatory Consent
           </h3>
           <p className="mt-0.5 text-xs text-slate-500 font-normal">
-            Configure financial record retention horizons and log formal organizational consent under NDPC regulations.
+            Configure financial record retention horizons and log formal organizational consent
+            under NDPC regulations.
           </p>
         </div>
 
@@ -1664,7 +1718,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
               </div>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed font-normal">
-              Mandatory minimum 7 years per Section 375 of the Companies and Allied Matters Act (CAMA 2020) and FIRS financial audit guidelines.
+              Mandatory minimum 7 years per Section 375 of the Companies and Allied Matters Act
+              (CAMA 2020) and FIRS financial audit guidelines.
             </p>
           </div>
 
@@ -1673,7 +1728,8 @@ function NdpaComplianceSection({ isAdmin }: { isAdmin: boolean }) {
             <div>
               <p className="text-xs font-semibold text-slate-900">Regulatory Consent Logging</p>
               <p className="mt-1 text-[11px] text-slate-500 leading-relaxed font-normal">
-                Records timestamped compliance agreement with NDPC data processing terms for your organization.
+                Records timestamped compliance agreement with NDPC data processing terms for your
+                organization.
               </p>
             </div>
 
@@ -1771,7 +1827,9 @@ function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
             Approval Authority Delegation (FR-2.6)
           </h2>
           <p className="mt-1 text-xs text-slate-500 leading-relaxed font-normal">
-            Temporarily delegate your financial signing authority to a named colleague while away on annual leave, site inspection, or travel. The substitute can approve on your behalf, and all actions are cryptographically tagged in the SHA-256 audit ledger.
+            Temporarily delegate your financial signing authority to a named colleague while away on
+            annual leave, site inspection, or travel. The substitute can approve on your behalf, and
+            all actions are cryptographically tagged in the SHA-256 audit ledger.
           </p>
         </div>
 
@@ -1840,10 +1898,14 @@ function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex justify-end">
             <Button
               className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white text-xs font-semibold shadow-xs cursor-pointer"
-              disabled={createDelegationMutation.isPending || !substituteId || !startDate || !endDate}
+              disabled={
+                createDelegationMutation.isPending || !substituteId || !startDate || !endDate
+              }
               onClick={() => createDelegationMutation.mutate()}
             >
-              {createDelegationMutation.isPending ? "Activating Delegation…" : "Activate Delegation Authority"}
+              {createDelegationMutation.isPending
+                ? "Activating Delegation…"
+                : "Activate Delegation Authority"}
             </Button>
           </div>
         </div>
@@ -1868,11 +1930,15 @@ function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
                 const canRevoke = (isDelegator || isAdmin) && d.status === "active";
 
                 return (
-                  <div key={d.id} className="p-4 bg-white hover:bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div
+                    key={d.id}
+                    className="p-4 bg-white hover:bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-900">
-                          {d.delegator?.full_name || "Approver"} → {d.substitute?.full_name || "Substitute"}
+                          {d.delegator?.full_name || "Approver"} →{" "}
+                          {d.substitute?.full_name || "Substitute"}
                         </span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -1890,8 +1956,14 @@ function DelegationsSection({ isAdmin }: { isAdmin: boolean }) {
                         ) : null}
                       </div>
                       <p className="text-slate-500 text-[11px]">
-                        Validity: <strong className="font-mono text-slate-700">{shortDate(d.start_date)}</strong> to{" "}
-                        <strong className="font-mono text-slate-700">{shortDate(d.end_date)}</strong>
+                        Validity:{" "}
+                        <strong className="font-mono text-slate-700">
+                          {shortDate(d.start_date)}
+                        </strong>{" "}
+                        to{" "}
+                        <strong className="font-mono text-slate-700">
+                          {shortDate(d.end_date)}
+                        </strong>
                         {d.reason ? ` · "${d.reason}"` : ""}
                       </p>
                     </div>
@@ -1926,7 +1998,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
   const me = useMe();
   const queryClient = useQueryClient();
   const [cycle, setCycle] = useState<"monthly" | "annual">("monthly");
-  const [selectedTier, setSelectedTier] = useState<"STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE">("GROWTH");
+  const [selectedTier, setSelectedTier] = useState<
+    "STARTER" | "GROWTH" | "BUSINESS" | "ENTERPRISE"
+  >("GROWTH");
   const [generatedBill, setGeneratedBill] = useState<any>(null);
   const [viewingInvoice, setViewingInvoice] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "SETTLED">("ALL");
@@ -1959,7 +2033,11 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
     };
   }, [queryClient]);
 
-  const { data: statements, isLoading, isFetching } = useQuery({
+  const {
+    data: statements,
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["tenant-subscriptions"],
     queryFn: () => getSubscriptionStatementsFn(),
   });
@@ -1979,7 +2057,8 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
       toast.success("B2B invoice & dedicated virtual account generated.");
       await queryClient.invalidateQueries({ queryKey: ["tenant-subscriptions"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed generating billing statement."),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed generating billing statement."),
   });
 
   const settleBillMutation = useMutation({
@@ -2081,7 +2160,8 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
               Subscription &amp; Nigerian B2B Invoicing (§NFR-LOC.2)
             </h2>
             <p className="mt-1 text-xs text-slate-500 font-normal">
-              Predictable, transparent software subscription billing tailored for African enterprise finance teams via bank transfer and dedicated NUBAN virtual accounts.
+              Predictable, transparent software subscription billing tailored for African enterprise
+              finance teams via bank transfer and dedicated NUBAN virtual accounts.
             </p>
           </div>
 
@@ -2127,7 +2207,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             <button
               type="button"
               className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer ${
-                cycle === "monthly" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                cycle === "monthly"
+                  ? "bg-[#0B1457] text-white shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               onClick={() => setCycle("monthly")}
             >
@@ -2136,7 +2218,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             <button
               type="button"
               className={`rounded-lg px-3 py-1.5 transition-all cursor-pointer flex items-center gap-1.5 ${
-                cycle === "annual" ? "bg-[#0B1457] text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                cycle === "annual"
+                  ? "bg-[#0B1457] text-white shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
               onClick={() => setCycle("annual")}
             >
@@ -2179,7 +2263,10 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                     <span className="text-xl font-bold font-sans text-slate-900 tabular-nums">
                       {money(price, "NGN")}
                     </span>
-                    <span className="text-[11px] text-slate-500 font-normal"> / {cycle === "annual" ? "year" : "month"}</span>
+                    <span className="text-[11px] text-slate-500 font-normal">
+                      {" "}
+                      / {cycle === "annual" ? "year" : "month"}
+                    </span>
                   </div>
 
                   <ul className="space-y-1.5 border-t border-slate-100 pt-3 text-[11px] text-slate-600">
@@ -2213,10 +2300,12 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
           <div>
             <p className="text-xs font-semibold text-slate-900">
-              Selected: <strong className="text-[#0B1457] font-bold">{selectedTier}</strong> ({cycle === "annual" ? "Annual" : "Monthly"})
+              Selected: <strong className="text-[#0B1457] font-bold">{selectedTier}</strong> (
+              {cycle === "annual" ? "Annual" : "Monthly"})
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Generates an official VAT-compliant corporate invoice with a dedicated Providus/Wema NUBAN virtual account.
+              Generates an official VAT-compliant corporate invoice with a dedicated Providus/Wema
+              NUBAN virtual account.
             </p>
           </div>
           <Button
@@ -2225,7 +2314,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             disabled={generateBillMutation.isPending || !isAdmin}
             onClick={() => generateBillMutation.mutate()}
           >
-            {generateBillMutation.isPending ? "Generating Invoice…" : "Generate Invoice & Bank Transfer Account"}
+            {generateBillMutation.isPending
+              ? "Generating Invoice…"
+              : "Generate Invoice & Bank Transfer Account"}
           </Button>
         </div>
 
@@ -2234,10 +2325,13 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Dedicated Virtual Account Statement Generated
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Dedicated Virtual Account
+                Statement Generated
               </span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-slate-800">{generatedBill.invoice_reference}</span>
+                <span className="font-mono text-xs font-bold text-slate-800">
+                  {generatedBill.invoice_reference}
+                </span>
                 <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-bold">
                   {generatedBill.status || "PENDING"}
                 </span>
@@ -2247,12 +2341,18 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             <div className="grid gap-3 sm:grid-cols-3 bg-white p-4 rounded-lg border border-emerald-200 text-xs">
               <div>
                 <p className="text-[10px] uppercase text-slate-400 font-semibold">Bank Name</p>
-                <p className="font-bold text-slate-900 mt-0.5">{generatedBill.virtual_account_bank}</p>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {generatedBill.virtual_account_bank}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase text-slate-400 font-semibold">Dedicated NUBAN Account</p>
+                <p className="text-[10px] uppercase text-slate-400 font-semibold">
+                  Dedicated NUBAN Account
+                </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="font-mono font-bold text-sm text-[#0B1457]">{generatedBill.virtual_account_number}</p>
+                  <p className="font-mono font-bold text-sm text-[#0B1457]">
+                    {generatedBill.virtual_account_number}
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
@@ -2267,14 +2367,19 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 </div>
               </div>
               <div>
-                <p className="text-[10px] uppercase text-slate-400 font-semibold">Amount to Transfer</p>
-                <p className="font-sans font-bold text-sm text-slate-900 mt-0.5">{money(generatedBill.amount_ngn, "NGN")}</p>
+                <p className="text-[10px] uppercase text-slate-400 font-semibold">
+                  Amount to Transfer
+                </p>
+                <p className="font-sans font-bold text-sm text-slate-900 mt-0.5">
+                  {money(generatedBill.amount_ngn, "NGN")}
+                </p>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
               <p className="text-[11px] text-emerald-800 leading-relaxed">
-                Make an instant bank transfer from your corporate bank app. Automatic reconciliation clears your account within minutes of receipt.
+                Make an instant bank transfer from your corporate bank app. Automatic reconciliation
+                clears your account within minutes of receipt.
               </p>
               <div className="flex items-center gap-2 shrink-0">
                 <Button
@@ -2315,7 +2420,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 type="button"
                 onClick={() => setStatusFilter("ALL")}
                 className={`rounded-md px-2.5 py-1 cursor-pointer transition-all ${
-                  statusFilter === "ALL" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                  statusFilter === "ALL"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 All
@@ -2324,7 +2431,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 type="button"
                 onClick={() => setStatusFilter("PENDING")}
                 className={`rounded-md px-2.5 py-1 cursor-pointer transition-all ${
-                  statusFilter === "PENDING" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                  statusFilter === "PENDING"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 Pending
@@ -2333,7 +2442,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 type="button"
                 onClick={() => setStatusFilter("SETTLED")}
                 className={`rounded-md px-2.5 py-1 cursor-pointer transition-all ${
-                  statusFilter === "SETTLED" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500 hover:text-slate-800"
+                  statusFilter === "SETTLED"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 Settled
@@ -2378,7 +2489,10 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                           </button>
                         </td>
                         <td className="px-4 py-3 font-semibold text-slate-900">
-                          {s.plan_tier} <span className="text-[11px] font-normal text-slate-500">({s.billing_cycle})</span>
+                          {s.plan_tier}{" "}
+                          <span className="text-[11px] font-normal text-slate-500">
+                            ({s.billing_cycle})
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-[11px] whitespace-nowrap">
                           {shortDate(s.period_start)} – {shortDate(s.period_end)}
@@ -2388,7 +2502,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
-                            <span>{s.virtual_account_bank} · {s.virtual_account_number}</span>
+                            <span>
+                              {s.virtual_account_bank} · {s.virtual_account_number}
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
@@ -2409,9 +2525,17 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                 : "bg-amber-50 text-amber-700 border border-amber-200"
                             }`}
-                            title={isSettled ? `Settled on ${dateTime(s.cleared_at || s.settled_at || s.created_at)}` : "Awaiting Bank Transfer"}
+                            title={
+                              isSettled
+                                ? `Settled on ${dateTime(s.cleared_at || s.settled_at || s.created_at)}`
+                                : "Awaiting Bank Transfer"
+                            }
                           >
-                            {isSettled ? <CheckCircle2 className="h-3 w-3 text-emerald-600" /> : <Clock className="h-3 w-3 text-amber-600" />}
+                            {isSettled ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            ) : (
+                              <Clock className="h-3 w-3 text-amber-600" />
+                            )}
                             {s.status}
                           </span>
                         </td>
@@ -2465,7 +2589,10 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 </span>
               </div>
               <p className="text-[11px] leading-relaxed text-slate-600 font-normal">
-                Procurely Flow enforces a strict zero raw-card storage policy. All billing collections route through licensed Nigerian financial institutions (Providus, Wema, Monnify, Paystack) via dedicated virtual accounts and bank transfers to prevent auto-renew card failures and naira volatility risks.
+                Procurely Flow enforces a strict zero raw-card storage policy. All billing
+                collections route through licensed Nigerian financial institutions (Providus, Wema,
+                Monnify, Paystack) via dedicated virtual accounts and bank transfers to prevent
+                auto-renew card failures and naira volatility risks.
               </p>
             </div>
           </div>
@@ -2516,10 +2643,12 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                   </h3>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  RC Number: <strong>RC-1849204</strong> · Tax Identification Number (TIN): <strong>24981720-0001</strong>
+                  RC Number: <strong>RC-1849204</strong> · Tax Identification Number (TIN):{" "}
+                  <strong>24981720-0001</strong>
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  Level 5, Standard Chartered Tower, Ahmadu Bello Way, Victoria Island, Lagos, Nigeria
+                  Level 5, Standard Chartered Tower, Ahmadu Bello Way, Victoria Island, Lagos,
+                  Nigeria
                 </p>
               </div>
 
@@ -2545,23 +2674,39 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
             {/* Bill To & Invoice Meta Details */}
             <div className="grid sm:grid-cols-2 gap-4 py-5 text-xs border-b border-slate-100">
               <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Billed To (Customer)</p>
-                <p className="font-bold text-slate-900 text-sm">{me.data?.orgName || "Corporate Customer"}</p>
-                <p className="text-slate-600">Org ID: <span className="font-mono text-[11px]">{me.data?.profile?.org_id || "—"}</span></p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Billed To (Customer)
+                </p>
+                <p className="font-bold text-slate-900 text-sm">
+                  {me.data?.orgName || "Corporate Customer"}
+                </p>
+                <p className="text-slate-600">
+                  Org ID:{" "}
+                  <span className="font-mono text-[11px]">{me.data?.profile?.org_id || "—"}</span>
+                </p>
                 <p className="text-slate-600">Jurisdiction: Federal Republic of Nigeria</p>
               </div>
 
               <div className="space-y-1 sm:text-right">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tax Invoice Metadata</p>
-                <p className="font-mono font-bold text-slate-900">{viewingInvoice.invoice_reference}</p>
-                <p className="text-slate-600">Period: {shortDate(viewingInvoice.period_start)} to {shortDate(viewingInvoice.period_end)}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Tax Invoice Metadata
+                </p>
+                <p className="font-mono font-bold text-slate-900">
+                  {viewingInvoice.invoice_reference}
+                </p>
+                <p className="text-slate-600">
+                  Period: {shortDate(viewingInvoice.period_start)} to{" "}
+                  {shortDate(viewingInvoice.period_end)}
+                </p>
                 <p className="text-slate-600">Terms: Immediate Bank Transfer (NIBSS)</p>
               </div>
             </div>
 
             {/* Financial Breakdown Table */}
             <div className="py-5 space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Statutory Billing Breakdown</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Statutory Billing Breakdown
+              </p>
               <div className="rounded-xl border border-slate-200 overflow-hidden text-xs">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
@@ -2578,7 +2723,8 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                           Procurely Flow Enterprise SaaS — {viewingInvoice.plan_tier} Tier
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Multi-Site Requisition Routing, WhatsApp Token Approvals, 3-Way Invoice Matching &amp; NRS e-Invoicing
+                          Multi-Site Requisition Routing, WhatsApp Token Approvals, 3-Way Invoice
+                          Matching &amp; NRS e-Invoicing
                         </p>
                       </td>
                       <td className="px-4 py-3 text-center capitalize text-slate-600 font-medium">
@@ -2624,18 +2770,26 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 <span className="font-bold text-[#0B1457] uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                   <Landmark className="h-3.5 w-3.5" /> Dedicated Nigerian Virtual NUBAN Account
                 </span>
-                <span className="text-[10px] text-blue-700 font-medium">NIBSS Real-time Auto-Reconciliation</span>
+                <span className="text-[10px] text-blue-700 font-medium">
+                  NIBSS Real-time Auto-Reconciliation
+                </span>
               </div>
 
               <div className="grid sm:grid-cols-3 gap-3 bg-white p-3 rounded-lg border border-blue-200">
                 <div>
                   <p className="text-[10px] uppercase text-slate-400 font-semibold">Bank</p>
-                  <p className="font-bold text-slate-900 mt-0.5">{viewingInvoice.virtual_account_bank}</p>
+                  <p className="font-bold text-slate-900 mt-0.5">
+                    {viewingInvoice.virtual_account_bank}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-slate-400 font-semibold">Account Number</p>
+                  <p className="text-[10px] uppercase text-slate-400 font-semibold">
+                    Account Number
+                  </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="font-mono font-bold text-sm text-[#0B1457]">{viewingInvoice.virtual_account_number}</p>
+                    <p className="font-mono font-bold text-sm text-[#0B1457]">
+                      {viewingInvoice.virtual_account_number}
+                    </p>
                     <button
                       type="button"
                       onClick={() => {
@@ -2651,12 +2805,16 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-slate-400 font-semibold">Account Name</p>
-                  <p className="font-semibold text-slate-800 truncate mt-0.5">{viewingInvoice.virtual_account_name}</p>
+                  <p className="font-semibold text-slate-800 truncate mt-0.5">
+                    {viewingInvoice.virtual_account_name}
+                  </p>
                 </div>
               </div>
 
               <p className="text-[11px] text-slate-500">
-                Transfer exact total via corporate mobile banking app or Internet banking. The dedicated virtual account reconciles within minutes and updates subscription state automatically.
+                Transfer exact total via corporate mobile banking app or Internet banking. The
+                dedicated virtual account reconciles within minutes and updates subscription state
+                automatically.
               </p>
             </div>
 
@@ -2683,7 +2841,9 @@ function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                     disabled={settleBillMutation.isPending}
                     onClick={() => settleBillMutation.mutate(viewingInvoice.invoice_reference)}
                   >
-                    {settleBillMutation.isPending ? "Reconciling…" : "Verify & Settle Inbound Transfer"}
+                    {settleBillMutation.isPending
+                      ? "Reconciling…"
+                      : "Verify & Settle Inbound Transfer"}
                   </Button>
                 ) : null}
                 <Button
@@ -2796,7 +2956,8 @@ function ProfileSection() {
             Personal Identity &amp; Profile Details
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 font-normal leading-normal">
-            Upload your professional profile photo and maintain your official name and department as displayed across approvals and requisitions.
+            Upload your professional profile photo and maintain your official name and department as
+            displayed across approvals and requisitions.
           </p>
         </div>
 
@@ -2822,7 +2983,8 @@ function ProfileSection() {
               <div>
                 <p className="text-xs font-semibold text-slate-900">Profile Picture</p>
                 <p className="text-[11px] text-slate-500">
-                  PNG, JPG, or WebP up to 5MB. Rendered in sidebar, team directories, and audit sign-offs.
+                  PNG, JPG, or WebP up to 5MB. Rendered in sidebar, team directories, and audit
+                  sign-offs.
                 </p>
               </div>
 
@@ -2869,7 +3031,10 @@ function ProfileSection() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="settings-full-name" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="settings-full-name"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <User className="h-3.5 w-3.5 text-slate-400" />
                 <span>Official Full Name *</span>
               </Label>
@@ -2885,7 +3050,10 @@ function ProfileSection() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="settings-department" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="settings-department"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <Building2 className="h-3.5 w-3.5 text-slate-400" />
                 <span>Department / Unit</span>
               </Label>
@@ -2900,7 +3068,10 @@ function ProfileSection() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="settings-email" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+              <Label
+                htmlFor="settings-email"
+                className="text-xs font-medium text-slate-700 flex items-center gap-1.5"
+              >
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 <span>Authentication Email Address</span>
               </Label>
@@ -2962,4 +3133,3 @@ function ProfileSection() {
     </div>
   );
 }
-

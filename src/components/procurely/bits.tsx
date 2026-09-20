@@ -23,7 +23,9 @@ export function PageHeader({
             </p>
           ) : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2.5 shrink-0">{actions}</div> : null}
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">{actions}</div>
+        ) : null}
       </div>
     </header>
   );
@@ -93,7 +95,9 @@ export function EmptyState({
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-6 py-14 text-center shadow-xs">
       <h2 className="text-base font-semibold text-slate-900 tracking-tight">{title}</h2>
-      <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 font-normal leading-relaxed">{body}</p>
+      <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 font-normal leading-relaxed">
+        {body}
+      </p>
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
@@ -111,7 +115,9 @@ export function Metric({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 font-sans text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">{value}</p>
+      <p className="mt-1 font-sans text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">
+        {value}
+      </p>
       {hint ? <p className="mt-1 text-[11px] text-slate-400 font-normal">{hint}</p> : null}
     </div>
   );

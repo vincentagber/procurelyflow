@@ -56,7 +56,10 @@ function RfqList() {
             title="No quote requests yet"
             body="Once a requisition is approved, procurement can invite suppliers to quote. Each supplier gets a private, expiring link."
             action={
-              <Button asChild className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs">
+              <Button
+                asChild
+                className="h-9 px-4 rounded-lg bg-[#0B1457] hover:bg-[#0001FF] text-white font-medium text-xs shadow-xs"
+              >
                 <Link to="/requisitions">Find an approved request</Link>
               </Button>
             }
@@ -77,7 +80,11 @@ function RfqList() {
               {data.map((rfq) => (
                 <tr key={rfq.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-4 py-3">
-                    <Link to="/rfqs/$id" params={{ id: rfq.id }} className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-[#0B1457] hover:text-[#0001FF]">
+                    <Link
+                      to="/rfqs/$id"
+                      params={{ id: rfq.id }}
+                      className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-[#0B1457] hover:text-[#0001FF]"
+                    >
                       {rfq.reference}
                     </Link>
                   </td>

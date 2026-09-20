@@ -107,7 +107,8 @@ export interface EvaluatedQuoteAnalysis {
   // Delivery Timelines
   leadTimeDays: number;
   projectedDeliveryDate: string; // ISO date string
-  deliverySpeedLabel: "Fastest (<5 days)" | "Standard (5-10 days)" | "Extended (>10 days)" | "Unspecified";
+  deliverySpeedLabel:
+    "Fastest (<5 days)" | "Standard (5-10 days)" | "Extended (>10 days)" | "Unspecified";
   isDeliveryDelayedVsNeededBy: boolean;
 
   // Commercial & Credit Terms
@@ -223,7 +224,9 @@ export function analyzeSupplierQuotes(params: {
     requisitionItems = [],
   } = params;
 
-  const validQuotes = rawQuotes.filter((q) => q.status === "submitted" || q.status === "pending" || !q.status);
+  const validQuotes = rawQuotes.filter(
+    (q) => q.status === "submitted" || q.status === "pending" || !q.status,
+  );
 
   // 1. Compile all distinct line items from requisition items or quotes
   const lineItemMap = new Map<string, EvaluatedLineItem>();
@@ -267,7 +270,8 @@ export function analyzeSupplierQuotes(params: {
       const quantity = Number(item.quantity) || (row ? row.quantity : 1);
       const extendedPrice = unitPrice * quantity;
       const vatRate = Number(item.vatRate ?? 7.5);
-      const vatAmount = item.vatAmount != null ? Number(item.vatAmount) : (extendedPrice * vatRate) / 100;
+      const vatAmount =
+        item.vatAmount != null ? Number(item.vatAmount) : (extendedPrice * vatRate) / 100;
 
       if (row) {
         row.byQuote[q.id] = {
@@ -286,10 +290,12 @@ export function analyzeSupplierQuotes(params: {
   // 2. Mark lowest and highest unit prices per line item
   const lineItems = Array.from(lineItemMap.values());
   for (const row of lineItems) {
-    const prices = Object.entries(row.byQuote).map(([quoteId, cell]) => ({
-      quoteId,
-      unitPrice: cell.unitPrice,
-    })).filter((p) => p.unitPrice > 0);
+    const prices = Object.entries(row.byQuote)
+      .map(([quoteId, cell]) => ({
+        quoteId,
+        unitPrice: cell.unitPrice,
+      }))
+      .filter((p) => p.unitPrice > 0);
 
     if (prices.length > 0) {
       prices.sort((a, b) => a.unitPrice - b.unitPrice);
@@ -489,7 +495,11 @@ export function analyzeSupplierQuotes(params: {
     }
 
     const rawTotal =
-      landedCostScore + deliverySpeedScore + qualityRatingScore + creditTermsScore - compliancePenalty;
+      landedCostScore +
+      deliverySpeedScore +
+      qualityRatingScore +
+      creditTermsScore -
+      compliancePenalty;
     const finalScore = Math.max(0, Math.min(100, Math.round(rawTotal * 10) / 10));
 
     q.commercialScore = finalScore;
@@ -521,7 +531,10 @@ export function analyzeSupplierQuotes(params: {
 
   // 7. Formulate Executive Recommendation Rationale
   const costSavingsVsAvg = Math.max(0, Math.round(averageLandedCost - recommended.totalLandedCost));
-  const costSavingsVsHighest = Math.max(0, Math.round(highestLandedCost - recommended.totalLandedCost));
+  const costSavingsVsHighest = Math.max(
+    0,
+    Math.round(highestLandedCost - recommended.totalLandedCost),
+  );
   const costAvoidance = costSavingsVsAvg > 0 ? costSavingsVsAvg : costSavingsVsHighest;
 
   const rationaleParts: string[] = [

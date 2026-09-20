@@ -8,9 +8,9 @@ export interface NRSInvoicePayload {
   issueDate: string;
   dueDate: string;
   sellerLegalName: string;
-  sellerTin?: string;
+  sellerTin?: string | undefined;
   buyerLegalName: string;
-  buyerTin?: string;
+  buyerTin?: string | undefined;
   currency: "NGN" | "USD";
   subtotal: number;
   vatAmount: number;

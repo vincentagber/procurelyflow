@@ -8,7 +8,7 @@
  * 4. Reconciliation Status Machine
  */
 
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 export type SubscriptionPaymentMethod =
   "VIRTUAL_ACCOUNT" | "BANK_TRANSFER" | "INVOICE_BILLING" | "CARD_TOKEN";
@@ -88,6 +88,7 @@ export function generateSubscriptionBill(params: {
 
 /**
  * Verifies inbound payment webhook signature from payment gateways (e.g. Paystack / Monnify)
+ * using constant-time comparison to prevent timing attacks.
  */
 export function verifyPaymentGatewayWebhookSignature(
   rawBody: string,
@@ -97,7 +98,10 @@ export function verifyPaymentGatewayWebhookSignature(
 ): boolean {
   if (!rawBody || !signatureHeader || !secretKey) return false;
   const hash = createHmac(algorithm, secretKey).update(rawBody).digest("hex");
-  return hash === signatureHeader;
+  const hashBuf = Buffer.from(hash, "utf8");
+  const sigBuf = Buffer.from(signatureHeader, "utf8");
+  if (hashBuf.length !== sigBuf.length) return false;
+  return timingSafeEqual(hashBuf, sigBuf);
 }
 
 /**

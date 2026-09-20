@@ -2,8 +2,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { money } from "@/lib/format";
 import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
 import { assertSingleCurrencyPo } from "@/lib/money";
-import { generateAccountingCsv } from "@/lib/export";
+import { generateAccountingCsv, type ApprovedPaymentRecord } from "@/lib/export";
 import { generateSubscriptionBill } from "@/lib/paymentBillingChannels";
+import { assertSegregationOfDuties } from "@/lib/permissions";
+import { calculateThreeWayMatch } from "@/lib/nrsEInvoice";
 import { randomBytes, createHash } from "crypto";
 
 type Role = "requester" | "approver" | "procurement_officer" | "finance" | "executive" | "admin";
@@ -145,28 +147,44 @@ export async function verifyAndConsumeActionToken(
   expectedAction: "approve_requisition" | "reject_requisition" | "submit_quote" | "acknowledge_po",
 ) {
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-  const { data: record } = await supabaseAdmin
+  const now = new Date().toISOString();
+
+  // Atomically claim the token: only succeeds if used_at is NULL and not expired
+  const { data: updatedRecord, error: updateError } = await supabaseAdmin
+    .from("secure_action_tokens")
+    .update({ used_at: now })
+    .eq("token_hash", tokenHash)
+    .is("used_at", null)
+    .gt("expires_at", now)
+    .select("*")
+    .maybeSingle();
+
+  if (updateError) throw new Error(`Token verification failure: ${updateError.message}`);
+
+  if (updatedRecord) {
+    if (updatedRecord.action_type !== expectedAction) {
+      throw new Error(`Action mismatch: token was issued for [${updatedRecord.action_type}].`);
+    }
+    return updatedRecord;
+  }
+
+  // If atomic update returned 0 rows, determine exact root cause for detailed feedback
+  const { data: existing } = await supabaseAdmin
     .from("secure_action_tokens")
     .select("*")
     .eq("token_hash", tokenHash)
     .maybeSingle();
 
-  if (!record) throw new Error("Invalid or expired action link.");
-  if (record.used_at) throw new Error("This action link has already been used.");
-  if (new Date(record.expires_at).getTime() < Date.now()) {
+  if (!existing) throw new Error("Invalid or expired action link.");
+  if (existing.used_at) throw new Error("This action link has already been used.");
+  if (new Date(existing.expires_at).getTime() < Date.now()) {
     throw new Error("This action link has expired. Please request a new link.");
   }
-  if (record.action_type !== expectedAction) {
-    throw new Error(`Action mismatch: token was issued for [${record.action_type}].`);
+  if (existing.action_type !== expectedAction) {
+    throw new Error(`Action mismatch: token was issued for [${existing.action_type}].`);
   }
 
-  // Atomically mark token as used
-  await supabaseAdmin
-    .from("secure_action_tokens")
-    .update({ used_at: new Date().toISOString() })
-    .eq("id", record.id);
-
-  return record;
+  throw new Error("This action link is no longer valid.");
 }
 
 /**
@@ -192,7 +210,10 @@ export async function getApprovalTokenDetails(rawToken: string) {
     };
   }
   if (new Date(record.expires_at).getTime() < Date.now()) {
-    return { status: "EXPIRED" as const, error: "This approval link expired. Please request a fresh link." };
+    return {
+      status: "EXPIRED" as const,
+      error: "This approval link expired. Please request a fresh link.",
+    };
   }
 
   // The entity is either an approval_step or requisition
@@ -208,7 +229,10 @@ export async function getApprovalTokenDetails(rawToken: string) {
 
     if (!step) return { status: "INVALID" as const, error: "Approval step not found." };
     if (step.status !== "pending") {
-      return { status: "ALREADY_USED" as const, error: `This step has already been marked as ${step.status}.` };
+      return {
+        status: "ALREADY_USED" as const,
+        error: `This step has already been marked as ${step.status}.`,
+      };
     }
     reqId = step.requisition_id;
   } else if (record.entity_type === "requisition") {
@@ -228,7 +252,9 @@ export async function getApprovalTokenDetails(rawToken: string) {
 
   const { data: req } = await supabaseAdmin
     .from("requisitions")
-    .select("id, reference, title, total_amount, currency, status, is_unbudgeted, needed_by, created_at, project_id, requester_id, projects(id, name, location, budget_amount), profiles:requester_id(id, full_name, email, department)")
+    .select(
+      "id, reference, title, total_amount, currency, status, is_unbudgeted, needed_by, created_at, project_id, requester_id, projects(id, name, location, budget_amount), profiles:requester_id(id, full_name, email, department)",
+    )
     .eq("id", reqId)
     .maybeSingle();
 
@@ -245,8 +271,16 @@ export async function getApprovalTokenDetails(rawToken: string) {
     .eq("id", stepId)
     .maybeSingle();
 
-  const requester = (req as any).profiles as { full_name?: string; email?: string; department?: string } | null;
-  const project = (req as any).projects as { name?: string; location?: string; budget_amount?: number } | null;
+  const requester = (req as any).profiles as {
+    full_name?: string;
+    email?: string;
+    department?: string;
+  } | null;
+  const project = (req as any).projects as {
+    name?: string;
+    location?: string;
+    budget_amount?: number;
+  } | null;
 
   return {
     status: "VALID" as const,
@@ -276,13 +310,15 @@ export async function getApprovalTokenDetails(rawToken: string) {
         totalPrice: Number(i.quantity) * Number(i.estimated_unit_price),
       })),
     },
-    step: step ? {
-      id: step.id,
-      requiredRole: step.required_role,
-      stepOrder: step.step_order,
-      reason: step.reason,
-      status: step.status,
-    } : null,
+    step: step
+      ? {
+          id: step.id,
+          requiredRole: step.required_role,
+          stepOrder: step.step_order,
+          reason: step.reason,
+          status: step.status,
+        }
+      : null,
   };
 }
 
@@ -376,7 +412,9 @@ export async function generateStepApprovalLinks(stepId: string, originUrl?: stri
 
   const { data: req } = await supabaseAdmin
     .from("requisitions")
-    .select("id, reference, title, total_amount, currency, is_unbudgeted, project_id, projects(name), profiles:requester_id(full_name)")
+    .select(
+      "id, reference, title, total_amount, currency, is_unbudgeted, project_id, projects(name), profiles:requester_id(full_name)",
+    )
     .eq("id", step.requisition_id)
     .maybeSingle();
 
@@ -823,6 +861,21 @@ export async function decideApproval(
     throw new Error("This approval is routed to a different role.");
   }
 
+  // Enforce Segregation of Duties (SoD): Requisition creator cannot approve their own requisition
+  const { data: reqData } = await supabaseAdmin
+    .from("requisitions")
+    .select("requester_id")
+    .eq("id", step.requisition_id)
+    .maybeSingle();
+
+  if (reqData?.requester_id) {
+    assertSegregationOfDuties({
+      action: "APPROVE_REQUISITION",
+      actorId: userId,
+      creatorId: reqData.requester_id,
+    });
+  }
+
   const { data: siblings } = await supabaseAdmin
     .from("approval_steps")
     .select("id, step_order, status, required_role")
@@ -869,9 +922,9 @@ export async function decideApproval(
   }
 
   const auditDetail = delegatedFrom
-    ? (input.comment
-        ? `${input.comment} (Approved on behalf of ${delegatedFrom.name} via Delegation Rule)`
-        : `Approved on behalf of ${delegatedFrom.name} via Delegation Rule`)
+    ? input.comment
+      ? `${input.comment} (Approved on behalf of ${delegatedFrom.name} via Delegation Rule)`
+      : `Approved on behalf of ${delegatedFrom.name} via Delegation Rule`
     : (input.comment ?? null);
 
   await logAudit({
@@ -1071,14 +1124,27 @@ export async function awardQuote(
   // Enforce Single Currency Policy: All line items must match the PO settlement currency
   assertSingleCurrencyPo(quoteItems ?? [], input.settlementCurrency);
 
-  // Generate Concurrency-Safe Tenant Sequential PO Number: PO-YYYY-XXXXXX
+  // Generate Concurrency-Safe Tenant Sequential PO Number: PO-YYYY-XXXXXX via atomic database sequence
   const currentYear = new Date().getFullYear();
-  const { count: poCount } = await supabaseAdmin
-    .from("purchase_orders")
-    .select("*", { count: "exact", head: true })
-    .eq("org_id", actor.orgId);
-  const poSeq = String((poCount ?? 0) + 1).padStart(6, "0");
-  const sequentialPoNumber = `PO-${currentYear}-${poSeq}`;
+  let sequentialPoNumber: string;
+  try {
+    const { data: rpcPoNumber, error: rpcErr } = await (supabaseAdmin.rpc as any)(
+      "next_po_number",
+      { p_org_id: actor.orgId },
+    );
+    if (!rpcErr && rpcPoNumber) {
+      sequentialPoNumber = rpcPoNumber;
+    } else {
+      throw rpcErr || new Error("RPC fallback");
+    }
+  } catch {
+    const { count: poCount } = await supabaseAdmin
+      .from("purchase_orders")
+      .select("*", { count: "exact", head: true })
+      .eq("org_id", actor.orgId);
+    const poSeq = String((poCount ?? 0) + 1).padStart(6, "0");
+    sequentialPoNumber = `PO-${currentYear}-${poSeq}`;
+  }
 
   const { data: po, error } = await supabaseAdmin
     .from("purchase_orders")
@@ -2137,6 +2203,83 @@ export async function createInvoice(
   },
 ) {
   const actor = await loadActor(userId);
+  requireRole(actor, ["finance", "procurement_officer", "admin"]);
+
+  // Calculate automated 3-way match & enforce Segregation of Duties if linked to a PO
+  let matchStatus: "pending" | "matched" | "discrepancy_flagged" = "pending";
+  if (input.purchaseOrderId) {
+    const { data: po } = await supabaseAdmin
+      .from("purchase_orders")
+      .select("id, total_amount, settlement_currency, issued_by")
+      .eq("id", input.purchaseOrderId)
+      .maybeSingle();
+
+    if (po) {
+      // SoD: The officer who approved the purchase order cannot reconcile or create the invoice
+      assertSegregationOfDuties({
+        action: "MATCH_INVOICE",
+        actorId: userId,
+        approverId: po.issued_by,
+      });
+
+      const { data: poItems } = await supabaseAdmin
+        .from("po_line_items")
+        .select("description, quantity, unit_price")
+        .eq("purchase_order_id", input.purchaseOrderId);
+
+      const { data: receipts } = await supabaseAdmin
+        .from("delivery_receipts")
+        .select("id, delivery_receipt_items(description, quantity_accepted)")
+        .eq("purchase_order_id", input.purchaseOrderId);
+
+      const deliveryItems = (receipts ?? []).flatMap((r: any) =>
+        (r.delivery_receipt_items ?? []).map((di: any) => ({
+          description: String(di.description || ""),
+          quantityAccepted: Number(di.quantity_accepted || 0),
+        })),
+      );
+
+      const matchResult = calculateThreeWayMatch(
+        {
+          totalAmount: Number(po.total_amount || 0),
+          currency: po.settlement_currency || "NGN",
+          items: (poItems ?? []).map((pi) => ({
+            description: pi.description,
+            quantity: Number(pi.quantity),
+            unitPrice: Number(pi.unit_price),
+          })),
+        },
+        deliveryItems.length > 0 ? { items: deliveryItems } : null,
+        {
+          invoiceNumber: input.invoiceNumber,
+          issueDate: input.issueDate ?? new Date().toISOString().slice(0, 10),
+          dueDate: input.dueDate,
+          currency: input.currency,
+          subtotal: input.subtotal,
+          vatAmount: input.vatAmount,
+          totalAmount: input.totalAmount,
+          sellerTin: input.sellerTin,
+          sellerLegalName: input.sellerLegalName,
+          buyerTin: input.buyerTin,
+          buyerLegalName: input.buyerLegalName,
+          items: input.items.map((it) => ({
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            vatRate: it.vatRate ?? 7.5,
+            lineTotal: it.totalAmount,
+          })),
+        },
+        { maxPriceVariancePercent: 2, maxPriceVarianceAbsolute: 100 },
+      );
+
+      if (matchResult.isMatched) {
+        matchStatus = deliveryItems.length > 0 ? "matched" : "pending";
+      } else {
+        matchStatus = "discrepancy_flagged";
+      }
+    }
+  }
 
   const { data: inv, error } = await supabaseAdmin
     .from("invoices")
@@ -2156,7 +2299,7 @@ export async function createInvoice(
       buyer_legal_name: input.buyerLegalName,
       buyer_tin: input.buyerTin || null,
       irn_clearance_status: "pending",
-      three_way_match_status: "pending",
+      three_way_match_status: matchStatus,
       status: "pending_approval",
       notes: input.notes || null,
     })
@@ -2202,13 +2345,68 @@ export async function recordPayment(
   },
 ) {
   const actor = await loadActor(userId);
+  requireRole(actor, ["finance", "admin"]);
+
+  if (input.amount <= 0) {
+    throw new Error("Payment amount must be greater than zero.");
+  }
+
+  // Validate invoice existence, approval status, and balance limits
+  let targetInvoice: any = null;
+  if (input.invoiceId) {
+    const { data: inv, error: invErr } = await supabaseAdmin
+      .from("invoices")
+      .select(
+        "id, org_id, invoice_number, total_amount, currency, status, three_way_match_status, purchase_order_id, purchase_orders(id, issued_by, requisition_id, requisitions(requester_id))",
+      )
+      .eq("id", input.invoiceId)
+      .maybeSingle();
+
+    if (invErr || !inv || inv.org_id !== actor.orgId) {
+      throw new Error("Target invoice not found in your organization.");
+    }
+    if (inv.status === "rejected") {
+      throw new Error(`Cannot disburse payment against a ${inv.status} invoice.`);
+    }
+
+    targetInvoice = inv;
+
+    // Enforce Segregation of Duties (SoD): PO Approver or Requisition Initiator cannot release payment
+    const po = inv.purchase_orders as any;
+    const approverId = po?.issued_by;
+    const creatorId = po?.requisitions?.requester_id;
+
+    assertSegregationOfDuties({
+      action: "RELEASE_PAYMENT",
+      actorId: userId,
+      creatorId,
+      approverId,
+    });
+
+    // Verify payment does not exceed outstanding balance
+    const { data: priorPayments } = await supabaseAdmin
+      .from("payments")
+      .select("amount")
+      .eq("invoice_id", input.invoiceId)
+      .eq("status", "completed");
+
+    const priorTotal = (priorPayments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    const invoiceTotal = Number(inv.total_amount);
+    const remainingBalance = Math.max(0, invoiceTotal - priorTotal);
+
+    if (input.amount > remainingBalance + 0.05) {
+      throw new Error(
+        `Payment amount (${money(input.amount, input.currency)}) exceeds outstanding invoice balance of ${money(remainingBalance, input.currency)}. Total invoice: ${money(invoiceTotal, input.currency)}, already settled: ${money(priorTotal, input.currency)}.`,
+      );
+    }
+  }
 
   const { data: pay, error } = await supabaseAdmin
     .from("payments")
     .insert({
       org_id: actor.orgId,
       invoice_id: input.invoiceId || null,
-      purchase_order_id: input.purchaseOrderId || null,
+      purchase_order_id: input.purchaseOrderId || targetInvoice?.purchase_order_id || null,
       amount: input.amount,
       currency: input.currency,
       payment_method: input.paymentMethod,
@@ -2221,15 +2419,26 @@ export async function recordPayment(
 
   if (error || !pay) throw new Error(error?.message ?? "Failed recording payment.");
 
-  if (input.invoiceId) {
-    await supabaseAdmin.from("invoices").update({ status: "paid" }).eq("id", input.invoiceId);
+  if (input.invoiceId && targetInvoice) {
+    // Re-check total payments to decide if fully paid or partially paid
+    const { data: allPayments } = await supabaseAdmin
+      .from("payments")
+      .select("amount")
+      .eq("invoice_id", input.invoiceId)
+      .eq("status", "completed");
+    const totalPaid = (allPayments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    const isFullySettled = totalPaid >= Number(targetInvoice.total_amount) - 0.05;
+
+    await (supabaseAdmin.from("invoices") as any)
+      .update({ status: isFullySettled ? "paid" : "approved_for_payment" })
+      .eq("id", input.invoiceId);
   }
 
   await logAudit({
     orgId: actor.orgId,
     actor,
     action: "payment_recorded",
-    detail: `Payment recorded (${money(input.amount, input.currency)} via ${input.paymentMethod})`,
+    detail: `Payment recorded (${money(input.amount, input.currency)} via ${input.paymentMethod}) for ${targetInvoice ? `Invoice ${targetInvoice.invoice_number}` : "Purchase Order"}`,
   });
 
   return { paymentId: pay.id };
@@ -2392,7 +2601,9 @@ export async function createPoChangeOrder(
 
   const { data: po, error: poErr } = await supabaseAdmin
     .from("purchase_orders")
-    .select("id, org_id, po_number, baseline_po_number, total_amount, settlement_currency, status, revision_count")
+    .select(
+      "id, org_id, po_number, baseline_po_number, total_amount, settlement_currency, status, revision_count",
+    )
     .eq("id", input.purchaseOrderId)
     .eq("org_id", actor.orgId)
     .maybeSingle();
@@ -2548,8 +2759,11 @@ export async function generateSubscriptionBillServer(
       amount_ngn: amountNgn,
       payment_method: bill.paymentMethod,
       virtual_account_bank: bill.virtualAccountDetails?.bankName || "Providus Bank / Wema Bank",
-      virtual_account_number: bill.virtualAccountDetails?.accountNumber || `99${Math.floor(10000000 + Math.random() * 90000000)}`,
-      virtual_account_name: bill.virtualAccountDetails?.accountName || `Procurely Flow - ${orgName.slice(0, 20)}`,
+      virtual_account_number:
+        bill.virtualAccountDetails?.accountNumber ||
+        `99${Math.floor(10000000 + Math.random() * 90000000)}`,
+      virtual_account_name:
+        bill.virtualAccountDetails?.accountName || `Procurely Flow - ${orgName.slice(0, 20)}`,
       status: "PENDING",
       period_start: periodStart,
       period_end: periodEnd,
@@ -2642,4 +2856,89 @@ export async function settleSubscriptionBillServer(
   });
 
   return updatedSub;
+}
+
+/**
+ * Generates an auditable accounting ledger CSV with SHA-256 batch checksum for ERP ingestion.
+ */
+export async function exportAccountingLedger(userId: string, currency: "NGN" | "USD" = "NGN") {
+  const actor = await loadActor(userId);
+  requireRole(actor, ["finance", "admin"]);
+
+  // Fetch approved & settled payments with invoice, PO, and supplier details
+  const { data: payments, error } = await supabaseAdmin
+    .from("payments")
+    .select(
+      `
+      id,
+      amount,
+      currency,
+      payment_method,
+      payment_reference,
+      created_at,
+      invoices(
+        id,
+        invoice_number,
+        subtotal,
+        vat_amount,
+        seller_tin,
+        seller_legal_name,
+        created_at,
+        purchase_orders(
+          po_number,
+          projects(name),
+          suppliers(name, tax_id)
+        )
+      )
+    `,
+    )
+    .eq("org_id", actor.orgId)
+    .eq("currency", currency)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  const { data: org } = await supabaseAdmin
+    .from("organizations")
+    .select("name")
+    .eq("id", actor.orgId)
+    .maybeSingle();
+
+  const records: ApprovedPaymentRecord[] = (payments ?? []).map((p: any) => {
+    const inv = p.invoices;
+    const po = inv?.purchase_orders;
+    const subtotal = Number(inv?.subtotal ?? p.amount);
+    const vatAmount = Number(inv?.vat_amount ?? 0);
+    const whtAmount = Math.round(subtotal * 0.05 * 100) / 100;
+    const netPayable = Number(p.amount);
+
+    return {
+      paymentId: p.id,
+      invoiceId: inv?.id ?? "N/A",
+      invoiceNumber: inv?.invoice_number ?? p.payment_reference ?? "N/A",
+      poNumber: po?.po_number ?? "N/A",
+      projectName: po?.projects?.name ?? "General Capex",
+      costCode: "GENERAL",
+      supplierName: inv?.seller_legal_name ?? po?.suppliers?.name ?? "Supplier",
+      supplierTaxId: inv?.seller_tin ?? po?.suppliers?.tax_id ?? null,
+      currency: p.currency as "NGN" | "USD",
+      subtotal,
+      vatAmount,
+      whtAmount,
+      netPayable,
+      approvedAt: p.created_at,
+      approvedBy: actor.fullName,
+    };
+  });
+
+  const exportResult = generateAccountingCsv(org?.name ?? "Procurely Flow", records, currency);
+
+  await logAudit({
+    orgId: actor.orgId,
+    actor,
+    action: "accounting_ledger_exported",
+    detail: `Exported ${exportResult.recordCount} payment records (${currency} ${exportResult.totalNetPayable.toLocaleString()}) with batch checksum ${exportResult.checksum.slice(0, 12)}...`,
+  });
+
+  return exportResult;
 }
