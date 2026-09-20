@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-COPY package*.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install
 
 # Copy source code and build
 COPY . .
@@ -25,7 +25,7 @@ ENV PORT=10000
 
 # Copy built production server
 COPY --from=builder /app/.output ./.output
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./
 
 EXPOSE 10000
 
