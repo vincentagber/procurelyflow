@@ -1,17 +1,115 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadActor } from "@/lib/procurement.server";
 
+export interface DashboardRequisitionRow {
+  id: string;
+  reference: string;
+  title: string;
+  status: string;
+  total_amount: number;
+  currency: string;
+  created_at: string;
+  needed_by: string | null;
+  project_id: string | null;
+  projects: {
+    id: string;
+    name: string;
+    location: string | null;
+    budget_amount: number | null;
+  } | null;
+}
+
+export interface DashboardStepRow {
+  id: string;
+  required_role: string;
+  status: string;
+  step_order: number | null;
+  requisitions: {
+    id: string;
+    title: string;
+    reference: string;
+    total_amount: number;
+    currency: string;
+  } | null;
+}
+
+export interface DashboardPORow {
+  id: string;
+  po_number: string;
+  total_amount: number;
+  settlement_currency: string;
+  status: string;
+  issued_at: string | null;
+  supplier_id: string | null;
+  suppliers: { id: string; name: string } | null;
+  requisition_id: string | null;
+  requisitions: {
+    id: string;
+    reference: string;
+    title: string;
+    created_at: string;
+    project_id: string | null;
+    projects: {
+      id: string;
+      name: string;
+      location: string | null;
+      budget_amount: number | null;
+    } | null;
+  } | null;
+  issued_by: string | null;
+  rfq_id: string | null;
+  quote_id: string | null;
+  recommended_quote_id: string | null;
+  override_reason: string | null;
+}
+
+export interface DashboardProjectRow {
+  id: string;
+  name: string;
+  location: string | null;
+  budget_amount: number | null;
+  created_at: string;
+}
+
+export interface DashboardItemRow {
+  id: string;
+  description: string;
+  quantity: number;
+  estimated_unit_price: number;
+  unit: string | null;
+  requisition_id: string;
+}
+
+export interface DashboardReceiptRow {
+  id: string;
+  delivered_at: string | null;
+  purchase_order_id: string | null;
+  purchase_orders: { issued_at: string | null } | null;
+  delivery_receipt_items: Array<{
+    quantity_delivered: number | null;
+    quantity_accepted: number | null;
+  }> | null;
+}
+
+export interface DashboardQuoteRow {
+  id: string;
+  rfq_id: string;
+  supplier_id: string;
+  total_amount: number;
+  status: string;
+}
+
 export interface DashboardMetricsPayload {
-  requisitions: Record<string, unknown>[];
-  steps: Record<string, unknown>[];
-  purchaseOrders: Record<string, unknown>[];
-  projectsList: Record<string, unknown>[];
+  requisitions: DashboardRequisitionRow[];
+  steps: DashboardStepRow[];
+  purchaseOrders: DashboardPORow[];
+  projectsList: DashboardProjectRow[];
   projectCount: number;
   supplierCount: number;
   memberCount: number;
-  requisitionItems: Record<string, unknown>[];
-  deliveryReceipts: Record<string, unknown>[];
-  quotes: Record<string, unknown>[];
+  requisitionItems: DashboardItemRow[];
+  deliveryReceipts: DashboardReceiptRow[];
+  quotes: DashboardQuoteRow[];
   committedNGN: number;
   committedUSD: number;
   hasMultipleCommittedCurrencies: boolean;
@@ -90,36 +188,37 @@ export async function getOrganizationDashboardMetrics(
     supabaseAdmin.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(100),
   ]);
 
-  const purchaseOrders = posRes.data ?? [];
+  const purchaseOrders = (posRes.data ?? []) as unknown as DashboardPORow[];
 
   // Group spend by currency
-  const committedByCurrency = (
-    purchaseOrders as Array<{ settlement_currency?: string | null; total_amount?: number | null }>
-  ).reduce((acc: Record<string, number>, p) => {
-    const curr = (p.settlement_currency || "NGN").toUpperCase();
-    acc[curr] = (acc[curr] || 0) + Number(p.total_amount || 0);
-    return acc;
-  }, {});
+  const committedByCurrency = purchaseOrders.reduce(
+    (acc: Record<string, number>, p: DashboardPORow) => {
+      const curr = (p.settlement_currency || "NGN").toUpperCase();
+      acc[curr] = (acc[curr] || 0) + Number(p.total_amount || 0);
+      return acc;
+    },
+    {},
+  );
 
   const committedNGN = committedByCurrency["NGN"] || 0;
   const committedUSD = committedByCurrency["USD"] || 0;
   const hasMultipleCommittedCurrencies = Object.keys(committedByCurrency).length > 1;
-  const committed = (purchaseOrders as Array<{ total_amount?: number | null }>).reduce(
-    (sum: number, p) => sum + Number(p.total_amount || 0),
+  const committed = purchaseOrders.reduce(
+    (sum: number, p: DashboardPORow) => sum + Number(p.total_amount || 0),
     0,
   );
 
   return {
-    requisitions: (reqsRes.data ?? []) as unknown as Record<string, unknown>[],
-    steps: (stepsRes.data ?? []) as unknown as Record<string, unknown>[],
-    purchaseOrders: purchaseOrders as unknown as Record<string, unknown>[],
-    projectsList: (projectsRes.data ?? []) as unknown as Record<string, unknown>[],
+    requisitions: (reqsRes.data ?? []) as unknown as DashboardRequisitionRow[],
+    steps: (stepsRes.data ?? []) as unknown as DashboardStepRow[],
+    purchaseOrders,
+    projectsList: (projectsRes.data ?? []) as unknown as DashboardProjectRow[],
     projectCount: projectsRes.data?.length ?? 0,
     supplierCount: suppliersRes.count ?? 0,
     memberCount: membersRes.count ?? 0,
-    requisitionItems: (itemsRes.data ?? []) as unknown as Record<string, unknown>[],
-    deliveryReceipts: (receiptsRes.data ?? []) as unknown as Record<string, unknown>[],
-    quotes: (quotesRes.data ?? []) as unknown as Record<string, unknown>[],
+    requisitionItems: (itemsRes.data ?? []) as unknown as DashboardItemRow[],
+    deliveryReceipts: (receiptsRes.data ?? []) as unknown as DashboardReceiptRow[],
+    quotes: (quotesRes.data ?? []) as unknown as DashboardQuoteRow[],
     committedNGN,
     committedUSD,
     hasMultipleCommittedCurrencies,

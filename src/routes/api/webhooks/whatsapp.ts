@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
         // Standard Meta WhatsApp Webhook Handshake
         const expectedToken =
           process.env["WHATSAPP_VERIFY_TOKEN"] ||
-          (process.env.NODE_ENV !== "production" ? "procurely_whatsapp_token" : "");
+          (process.env["NODE_ENV"] !== "production" ? "procurely_whatsapp_token" : "");
 
         if (mode === "subscribe" && expectedToken && token === expectedToken) {
           return new Response(challenge || "", { status: 200 });
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
       POST: async ({ request }: { request: Request }) => {
         try {
           const rawBody = await request.text();
-          const isProduction = process.env.NODE_ENV === "production";
+          const isProduction = process.env["NODE_ENV"] === "production";
           const appSecret = process.env["WHATSAPP_APP_SECRET"];
           const signatureHeader = request.headers.get("x-hub-signature-256") || "";
 

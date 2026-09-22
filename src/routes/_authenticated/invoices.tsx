@@ -99,6 +99,7 @@ interface InvoiceRecord {
   due_date: string;
   vat_amount: number;
   irn: string | null;
+  status?: string | null;
   three_way_match_status?:
     "matched" | "discrepancy_flagged" | "pending" | "partial_receipt" | string | null;
   created_at?: string;

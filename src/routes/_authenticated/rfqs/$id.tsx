@@ -47,6 +47,55 @@ import {
 } from "@/components/ui/select";
 import { motion, AnimatePresence } from "@/components/ui/animated";
 
+interface QuoteItemRow {
+  id: string;
+  requisition_item_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate?: number | null;
+  vat_amount?: number | null;
+  currency?: string | null;
+}
+
+interface QuoteRow {
+  id: string;
+  rfq_id: string;
+  supplier_id: string;
+  currency: string;
+  subtotal?: number | null;
+  vat_amount?: number | null;
+  delivery_charge?: number | null;
+  total_amount?: number | null;
+  lead_time_days?: number | null;
+  payment_terms?: string | null;
+  warranty_note?: string | null;
+  validity_days?: number | null;
+  attachment_path?: string | null;
+  submitted_at: string;
+  status: string;
+  suppliers?: {
+    id?: string;
+    name?: string;
+    email?: string | null;
+    phone?: string | null;
+    is_compliant?: boolean | null;
+    tax_id?: string | null;
+    rating?: number | null;
+  } | null;
+  quote_items?: QuoteItemRow[] | null;
+}
+
+interface RfqRequisitionData {
+  id?: string;
+  reference?: string | null;
+  needed_by?: string | null;
+  projects?: {
+    name?: string;
+    location?: string;
+  } | null;
+}
+
 export const Route = createFileRoute("/_authenticated/rfqs/$id")({
   head: () => ({
     meta: [
@@ -101,54 +150,6 @@ function RfqDetail() {
           .eq("rfq_id", id),
       ]);
 
-      interface QuoteItemRow {
-        id: string;
-        requisition_item_id: string;
-        description: string;
-        quantity: number;
-        unit_price: number;
-        vat_rate?: number | null;
-        vat_amount?: number | null;
-        currency?: string | null;
-      }
-
-      interface QuoteRow {
-        id: string;
-        rfq_id: string;
-        supplier_id: string;
-        currency: string;
-        subtotal?: number | null;
-        vat_amount?: number | null;
-        delivery_charge?: number | null;
-        total_amount?: number | null;
-        lead_time_days?: number | null;
-        payment_terms?: string | null;
-        warranty_note?: string | null;
-        validity_days?: number | null;
-        attachment_path?: string | null;
-        submitted_at: string;
-        status: string;
-        suppliers?: {
-          id?: string;
-          name?: string;
-          email?: string | null;
-          phone?: string | null;
-          is_compliant?: boolean | null;
-          tax_id?: string | null;
-          rating?: number | null;
-        } | null;
-        quote_items?: QuoteItemRow[] | null;
-      }
-
-      interface RfqRequisitionData {
-        id?: string;
-        needed_by?: string | null;
-        projects?: {
-          name?: string;
-          location?: string;
-        } | null;
-      }
-
       const reqData = rfq.data?.requisitions as RfqRequisitionData | null;
       const reqId = reqData?.id;
       let items: Array<{
@@ -193,26 +194,26 @@ function RfqDetail() {
       id: q.id,
       rfqId: q.rfq_id,
       supplierId: q.supplier_id,
-      currency: q.currency,
+      currency: (q.currency === "USD" ? "USD" : "NGN") as "NGN" | "USD",
       subtotal: Number(q.subtotal || 0),
       vatAmount: Number(q.vat_amount || 0),
       deliveryCharge: Number(q.delivery_charge || 0),
       totalAmount: Number(q.total_amount || 0),
-      leadTimeDays: q.lead_time_days,
-      paymentTerms: q.payment_terms,
-      warrantyNote: q.warranty_note,
-      validityDays: q.validity_days,
-      attachmentPath: q.attachment_path,
+      leadTimeDays: q.lead_time_days ?? null,
+      paymentTerms: q.payment_terms ?? null,
+      warrantyNote: q.warranty_note ?? null,
+      validityDays: q.validity_days ?? null,
+      attachmentPath: q.attachment_path ?? null,
       submittedAt: q.submitted_at,
       status: q.status,
       supplier: {
         id: q.suppliers?.id || q.supplier_id,
         name: q.suppliers?.name || "Supplier",
-        email: q.suppliers?.email,
-        phone: q.suppliers?.phone,
+        email: q.suppliers?.email ?? null,
+        phone: q.suppliers?.phone ?? null,
         isCompliant: q.suppliers?.is_compliant !== false,
-        taxId: q.suppliers?.tax_id,
-        rating: q.suppliers?.rating,
+        taxId: q.suppliers?.tax_id ?? null,
+        rating: q.suppliers?.rating ?? null,
       },
       items: (q.quote_items || []).map((qi: QuoteItemRow) => ({
         id: qi.id,
@@ -221,8 +222,8 @@ function RfqDetail() {
         quantity: Number(qi.quantity),
         unitPrice: Number(qi.unit_price),
         vatRate: Number(qi.vat_rate ?? 7.5),
-        vatAmount: qi.vat_amount != null ? Number(qi.vat_amount) : undefined,
-        currency: qi.currency,
+        vatAmount: qi.vat_amount != null ? Number(qi.vat_amount) : null,
+        currency: qi.currency || q.currency,
       })),
     })),
     requisitionItems: data?.items || [],
@@ -298,7 +299,7 @@ function RfqDetail() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <StatusPill status={rfq.status} />
-          {reqData?.reference ? (
+          {reqData?.reference && reqData?.id ? (
             <Link
               to="/requisitions/$id"
               params={{ id: reqData.id }}
