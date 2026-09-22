@@ -608,3 +608,10 @@ export const exportAccountingLedgerFn = createServerFn({ method: "POST" })
     const { exportAccountingLedger } = await import("@/lib/procurement.server");
     return exportAccountingLedger(context.userId, data?.currency || "NGN");
   });
+
+export const getDashboardMetricsFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getOrganizationDashboardMetrics } = await import("@/lib/dashboard.server");
+    return getOrganizationDashboardMetrics(context.userId);
+  });

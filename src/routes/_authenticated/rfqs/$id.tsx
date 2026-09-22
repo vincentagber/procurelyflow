@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Award,
@@ -101,19 +101,74 @@ function RfqDetail() {
           .eq("rfq_id", id),
       ]);
 
-      const reqId = (rfq.data?.requisitions as any)?.id;
-      let items: any[] = [];
+      interface QuoteItemRow {
+        id: string;
+        requisition_item_id: string;
+        description: string;
+        quantity: number;
+        unit_price: number;
+        vat_rate?: number | null;
+        vat_amount?: number | null;
+        currency?: string | null;
+      }
+
+      interface QuoteRow {
+        id: string;
+        rfq_id: string;
+        supplier_id: string;
+        currency: string;
+        subtotal?: number | null;
+        vat_amount?: number | null;
+        delivery_charge?: number | null;
+        total_amount?: number | null;
+        lead_time_days?: number | null;
+        payment_terms?: string | null;
+        warranty_note?: string | null;
+        validity_days?: number | null;
+        attachment_path?: string | null;
+        submitted_at: string;
+        status: string;
+        suppliers?: {
+          id?: string;
+          name?: string;
+          email?: string | null;
+          phone?: string | null;
+          is_compliant?: boolean | null;
+          tax_id?: string | null;
+          rating?: number | null;
+        } | null;
+        quote_items?: QuoteItemRow[] | null;
+      }
+
+      interface RfqRequisitionData {
+        id?: string;
+        needed_by?: string | null;
+        projects?: {
+          name?: string;
+          location?: string;
+        } | null;
+      }
+
+      const reqData = rfq.data?.requisitions as RfqRequisitionData | null;
+      const reqId = reqData?.id;
+      let items: Array<{
+        id: string;
+        description: string;
+        quantity: number;
+        unit: string;
+        estimated_unit_price: number;
+      }> = [];
       if (reqId) {
         const { data: itemRows } = await supabase
           .from("requisition_items")
           .select("id, description, quantity, unit, estimated_unit_price")
           .eq("requisition_id", reqId);
-        items = itemRows ?? [];
+        items = (itemRows as unknown as typeof items) ?? [];
       }
 
       return {
         rfq: rfq.data,
-        quotes: quotes.data ?? [],
+        quotes: (quotes.data ?? []) as unknown as QuoteRow[],
         invites: invites.data ?? [],
         items,
       };
@@ -121,19 +176,20 @@ function RfqDetail() {
   });
 
   const rfq = data?.rfq;
-  const quotesList = data?.quotes ?? [];
-  const invitesList = data?.invites ?? [];
+  const quotesList = useMemo(() => (data?.quotes ?? []) as QuoteRow[], [data?.quotes]);
+  const invitesList = useMemo(() => data?.invites ?? [], [data?.invites]);
 
   // Automated Quotation Comparison Engine Analysis
+  const rfqReq = rfq?.requisitions as RfqRequisitionData | null;
   const analysis: SideBySideBidAnalysis = analyzeSupplierQuotes({
     rfqId: id,
     rfqReference: rfq?.reference || "RFQ",
     requisitionTitle: rfq?.title || "Requisition",
-    siteProjectName: (rfq?.requisitions as any)?.projects?.name || "General Capex Site",
-    neededByDate: (rfq?.requisitions as any)?.needed_by || null,
+    siteProjectName: rfqReq?.projects?.name || "General Capex Site",
+    neededByDate: rfqReq?.needed_by || null,
     closesAt: rfq?.closes_at || new Date().toISOString(),
     totalInvitedCount: invitesList.length,
-    rawQuotes: quotesList.map((q: any) => ({
+    rawQuotes: quotesList.map((q: QuoteRow) => ({
       id: q.id,
       rfqId: q.rfq_id,
       supplierId: q.supplier_id,
@@ -158,7 +214,7 @@ function RfqDetail() {
         taxId: q.suppliers?.tax_id,
         rating: q.suppliers?.rating,
       },
-      items: (q.quote_items || []).map((qi: any) => ({
+      items: (q.quote_items || []).map((qi: QuoteItemRow) => ({
         id: qi.id,
         requisitionItemId: qi.requisition_item_id,
         description: qi.description,
@@ -176,7 +232,7 @@ function RfqDetail() {
   useEffect(() => {
     if (analysis.recommendedQuoteId && !selectedQuote) {
       setSelectedQuote(analysis.recommendedQuoteId);
-      const q = quotesList.find((item: any) => item.id === analysis.recommendedQuoteId);
+      const q = quotesList.find((item: QuoteRow) => item.id === analysis.recommendedQuoteId);
       if (q) setSettlementCurrency(q.currency as "NGN" | "USD");
     }
   }, [analysis.recommendedQuoteId, selectedQuote, quotesList]);
@@ -222,7 +278,7 @@ function RfqDetail() {
 
   if (!rfq) return <p className="text-sm text-muted-foreground">This RFQ no longer exists.</p>;
 
-  const reqData = rfq.requisitions as any;
+  const reqData = rfq.requisitions as RfqRequisitionData | null;
   const projectName = reqData?.projects?.name || "General Capex Site";
   const projectLocation = reqData?.projects?.location || "Site Location Unassigned";
 
@@ -389,7 +445,7 @@ function RfqDetail() {
                       if (analysis.recommendedQuoteId) {
                         setSelectedQuote(analysis.recommendedQuoteId);
                         const q = quotesList.find(
-                          (item: any) => item.id === analysis.recommendedQuoteId,
+                          (item: QuoteRow) => item.id === analysis.recommendedQuoteId,
                         );
                         if (q) setSettlementCurrency(q.currency as "NGN" | "USD");
                         toast.success(

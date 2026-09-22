@@ -97,9 +97,10 @@ interface InvoiceRecord {
   buyer_tin?: string | null;
   issue_date?: string | null;
   due_date: string;
-  status: string;
   vat_amount: number;
   irn: string | null;
+  three_way_match_status?:
+    "matched" | "discrepancy_flagged" | "pending" | "partial_receipt" | string | null;
   created_at?: string;
   purchase_orders?: PurchaseOrderSummary[] | PurchaseOrderSummary | null;
 }
@@ -365,6 +366,13 @@ function InvoicesPage() {
         (r) => r.status === "accepted" || r.status === "partially_accepted",
       );
 
+      const isMatched =
+        inv.three_way_match_status === "matched" || (po && isPriceMatch && hasAcceptedGrn);
+      const isDiscrepancy =
+        inv.three_way_match_status === "discrepancy_flagged" || (po && !isPriceMatch);
+      const isPendingDelivery =
+        inv.three_way_match_status === "pending" || (po && isPriceMatch && !hasAcceptedGrn);
+
       const matchesSearch =
         !q ||
         inv.invoice_number.toLowerCase().includes(q) ||
@@ -376,9 +384,9 @@ function InvoicesPage() {
 
       if (statusFilter === "all") return true;
       if (statusFilter === "paid") return inv.status === "paid";
-      if (statusFilter === "matched") return isPriceMatch && hasAcceptedGrn;
-      if (statusFilter === "variance") return po && !isPriceMatch;
-      if (statusFilter === "pending_delivery") return po && isPriceMatch && !hasAcceptedGrn;
+      if (statusFilter === "matched") return isMatched;
+      if (statusFilter === "variance") return isDiscrepancy;
+      if (statusFilter === "pending_delivery") return isPendingDelivery;
 
       return true;
     });
@@ -598,13 +606,14 @@ function InvoicesPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        {isFullyMatched ? (
+                        {inv.three_way_match_status === "matched" || isFullyMatched ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                             <Check className="h-3 w-3" /> 3-Way Matched
                           </span>
-                        ) : po && !isPriceMatch ? (
+                        ) : inv.three_way_match_status === "discrepancy_flagged" ||
+                          (po && !isPriceMatch) ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200">
-                            <AlertCircle className="h-3 w-3" /> Price Variance
+                            <AlertCircle className="h-3 w-3" /> Discrepancy Flagged
                           </span>
                         ) : po && !hasAcceptedGrn ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">

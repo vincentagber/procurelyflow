@@ -66,7 +66,7 @@ function Approvals() {
   const queryClient = useQueryClient();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [rejectModalStepId, setRejectModalStepId] = useState<string | null>(null);
-  const [whatsappModalStep, setWhatsappModalStep] = useState<any | null>(null);
+  const [whatsappModalStep, setWhatsappModalStep] = useState<{ id: string } | null>(null);
   const [generatedLinks, setGeneratedLinks] = useState<{
     stepId: string;
     requisitionReference: string;

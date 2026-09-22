@@ -3,13 +3,13 @@
  *
  * Implements multi-channel notification dispatchers with:
  * 1. Resend / Transactional HTTP Email Driver
- * 2. WhatsApp Direct 1-Click Action Deep-Links
+ * 2. Termii / WhatsApp Direct 1-Click Action Messaging
  * 3. Safe Development Console Mode Fallback
  */
 
 export interface NotificationDispatchResult {
   success: boolean;
-  channel: "EMAIL" | "WHATSAPP" | "CONSOLE";
+  channel: "EMAIL" | "WHATSAPP" | "SMS" | "CONSOLE";
   messageId?: string;
   recipient: string;
   error?: string;
@@ -30,12 +30,84 @@ export interface ApprovalNotificationParams {
 
 export interface PoNotificationParams {
   recipientEmail: string;
+  recipientPhone?: string | null;
   supplierName: string;
   poNumber: string;
   totalAmount: number;
   currency: string;
   actionToken: string;
   baseUrl?: string;
+}
+
+/**
+ * Dispatches an outbound SMS or WhatsApp message via Termii API
+ */
+export async function dispatchTermiiMessage(input: {
+  to: string;
+  message: string;
+  channel?: "whatsapp" | "generic" | "dnd";
+}): Promise<NotificationDispatchResult> {
+  const termiiApiKey = process.env["TERMII_API_KEY"];
+  const whatsappDriver = process.env["WHATSAPP_DRIVER"] || "console";
+  const cleanPhone = input.to.replace(/[^0-9+]/g, "");
+
+  if (whatsappDriver !== "console" && termiiApiKey) {
+    try {
+      const response = await fetch("https://api.ng.termii.com/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: cleanPhone,
+          from: "Procurely",
+          sms: input.message,
+          type: "plain",
+          channel: input.channel || "whatsapp",
+          api_key: termiiApiKey,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Notification] Termii API Error:", errorText);
+        return {
+          success: false,
+          channel: "WHATSAPP",
+          recipient: cleanPhone,
+          error: errorText,
+        };
+      }
+
+      const resData = await response.json();
+      return {
+        success: true,
+        channel: "WHATSAPP",
+        messageId: resData.message_id || `termii_${Date.now()}`,
+        recipient: cleanPhone,
+      };
+    } catch (err) {
+      console.error("[Notification] Termii dispatch failed:", err);
+      return {
+        success: false,
+        channel: "WHATSAPP",
+        recipient: cleanPhone,
+        error: String(err),
+      };
+    }
+  }
+
+  // Development Console Fallback
+  console.log(`\n================== [NOTIFICATIONS DISPATCH: WHATSAPP / SMS] ==================`);
+  console.log(`To: ${cleanPhone}`);
+  console.log(`Channel: ${whatsappDriver.toUpperCase()}`);
+  console.log(`Message:\n${input.message}`);
+  console.log(`==============================================================================\n`);
+
+  return {
+    success: true,
+    channel: "CONSOLE",
+    recipient: cleanPhone,
+    messageId: `mock_wa_${Date.now()}`,
+  };
 }
 
 /**
@@ -50,10 +122,30 @@ export async function dispatchApprovalNotification(
   const viewUrl = `${baseUrl}/approve/${params.actionToken}`;
 
   const resendApiKey = process.env["RESEND_API_KEY"];
+  const emailDriver = process.env["EMAIL_DRIVER"] || "console";
   const fromEmail = process.env["EMAIL_FROM"] || "Procurely Flow <notifications@procurely.app>";
 
+  // Dispatch WhatsApp alert if phone number is provided
+  if (params.recipientPhone) {
+    const waText =
+      `Procurely Flow: Spend Requisition ${params.requisitionNumber} needs your approval as ${params.approverRole}.\n\n` +
+      `Title: ${params.requisitionTitle}\n` +
+      `Amount: ₦${params.totalAmountNgn.toLocaleString("en-NG", { minimumFractionDigits: 2 })}\n` +
+      `Requested by: ${params.requesterName}\n\n` +
+      `Tap below to review & approve:\n${viewUrl}\n\n` +
+      `Direct Approve: ${approveUrl}\n` +
+      `Direct Reject: ${rejectUrl}`;
+
+    // Dispatched asynchronously so email dispatch is not blocked
+    dispatchTermiiMessage({
+      to: params.recipientPhone,
+      message: waText,
+      channel: "whatsapp",
+    }).catch((e) => console.error("[Notification] Outbound WhatsApp background error:", e));
+  }
+
   // If Resend API Key is configured in production, send via Resend
-  if (resendApiKey && resendApiKey.startsWith("re_")) {
+  if (emailDriver !== "console" && resendApiKey && resendApiKey.startsWith("re_")) {
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -139,7 +231,73 @@ export async function dispatchPoAwardNotification(
   params: PoNotificationParams,
 ): Promise<NotificationDispatchResult> {
   const baseUrl = params.baseUrl || process.env["APP_BASE_URL"] || "http://localhost:3000";
-  const ackUrl = `${baseUrl}/orders/acknowledge?token=${params.actionToken}`;
+  // The supplier review and electronic acknowledgment portal is /quote/$token
+  const ackUrl = `${baseUrl}/quote/${params.actionToken}`;
+
+  const resendApiKey = process.env["RESEND_API_KEY"];
+  const emailDriver = process.env["EMAIL_DRIVER"] || "console";
+  const fromEmail = process.env["EMAIL_FROM"] || "Procurely Flow <notifications@procurely.app>";
+
+  // Optional WhatsApp alert to supplier contact
+  if (params.recipientPhone) {
+    const waText =
+      `Procurely Flow: Purchase Order Awarded!\n\n` +
+      `Order: ${params.poNumber}\n` +
+      `Total: ${params.currency} ${params.totalAmount.toLocaleString()}\n\n` +
+      `Please review order specifications and submit delivery confirmation here:\n${ackUrl}`;
+
+    dispatchTermiiMessage({
+      to: params.recipientPhone,
+      message: waText,
+      channel: "whatsapp",
+    }).catch((e) => console.error("[Notification] Outbound PO WhatsApp error:", e));
+  }
+
+  if (emailDriver !== "console" && resendApiKey && resendApiKey.startsWith("re_")) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: params.recipientEmail,
+          subject: `Purchase Order Awarded: ${params.poNumber}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 12px;">
+              <h2 style="color: #0B1457; margin-bottom: 8px;">Purchase Order Award Notification</h2>
+              <p style="color: #4B556D; font-size: 14px;">Hello ${params.supplierName}, you have been officially awarded Purchase Order <strong>${params.poNumber}</strong>.</p>
+              
+              <div style="background-color: #F8FAFC; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #E2E8F0;">
+                <p style="margin: 4px 0; font-size: 13px;"><strong>PO Number:</strong> ${params.poNumber}</p>
+                <p style="margin: 4px 0; font-size: 14px; color: #0B1457;"><strong>Total Order Value:</strong> ${params.currency} ${params.totalAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</p>
+              </div>
+
+              <div style="margin: 24px 0;">
+                <a href="${ackUrl}" style="background-color: #0001FF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">Review & Acknowledge Purchase Order</a>
+              </div>
+
+              <p style="font-size: 12px; color: #94A3B8; margin-top: 24px;">Please review the order specifications and confirm delivery timeline. No account registration is required.</p>
+            </div>
+          `,
+        }),
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        return {
+          success: true,
+          channel: "EMAIL",
+          messageId: resData.id,
+          recipient: params.recipientEmail,
+        };
+      }
+    } catch (e) {
+      console.error("[Notification] Resend PO dispatch error:", e);
+    }
+  }
 
   console.log(`\n================== [NOTIFICATIONS DISPATCH: PO AWARD] ==================`);
   console.log(`Supplier: ${params.supplierName} <${params.recipientEmail}>`);

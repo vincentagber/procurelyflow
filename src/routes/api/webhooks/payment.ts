@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Database } from "@/integrations/supabase/types";
 import {
   verifyPaymentGatewayWebhookSignature,
   assertPciDssCardDataAbsence,
@@ -83,7 +84,8 @@ export const Route = createFileRoute("/api/webhooks/payment")({
             payload.transactionReference ||
             `NIP-WH-${Date.now().toString().slice(-8)}`;
 
-          await (supabaseAdmin.from("tenant_subscriptions") as any)
+          await supabaseAdmin
+            .from("tenant_subscriptions")
             .update({
               status: "SETTLED",
               cleared_at: now,
@@ -92,9 +94,18 @@ export const Route = createFileRoute("/api/webhooks/payment")({
             .eq("id", sub.id);
 
           // Update organization active plan
-          await (supabaseAdmin.from("organizations") as any)
+          const planTier = (
+            sub.plan_tier?.toLowerCase() === "enterprise"
+              ? "enterprise"
+              : sub.plan_tier?.toLowerCase() === "scale"
+                ? "scale"
+                : "growth"
+          ) as Database["public"]["Enums"]["subscription_plan"];
+
+          await supabaseAdmin
+            .from("organizations")
             .update({
-              plan: (sub.plan_tier.toLowerCase() || "growth") as any,
+              plan: planTier,
             })
             .eq("id", sub.org_id);
 

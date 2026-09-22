@@ -23,6 +23,7 @@ import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
 import { Route as ApproveTokenRouteImport } from './routes/approve.$token'
+import { Route as OrdersAcknowledgeRouteImport } from './routes/orders.acknowledge'
 import { Route as PlatformAdminIndexRouteImport } from './routes/platform-admin/index'
 import { Route as PlatformAdminOrgIdRouteImport } from './routes/platform-admin/$orgId'
 import { Route as QuoteTokenRouteImport } from './routes/quote/$token'
@@ -105,6 +106,11 @@ const ApproveTokenRoute = ApproveTokenRouteImport.update({
   path: '/approve/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersAcknowledgeRoute = OrdersAcknowledgeRouteImport.update({
+  id: '/orders/acknowledge',
+  path: '/orders/acknowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlatformAdminIndexRoute = PlatformAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
   '/approve/$token': typeof ApproveTokenRoute
+  '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin/': typeof PlatformAdminIndexRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
   '/approve/$token': typeof ApproveTokenRoute
+  '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin': typeof PlatformAdminIndexRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
   '/approve/$token': typeof ApproveTokenRoute
+  '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
   '/quote/$token': typeof QuoteTokenRoute
   '/platform-admin/': typeof PlatformAdminIndexRoute
@@ -269,6 +278,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/suppliers'
     | '/approve/$token'
+    | '/orders/acknowledge'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin/'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/suppliers'
     | '/approve/$token'
+    | '/orders/acknowledge'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/suppliers'
     | '/approve/$token'
+    | '/orders/acknowledge'
     | '/platform-admin/$orgId'
     | '/quote/$token'
     | '/platform-admin/'
@@ -345,6 +357,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApproveTokenRoute: typeof ApproveTokenRoute
+  OrdersAcknowledgeRoute: typeof OrdersAcknowledgeRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
   ApiWebhooksPaymentRoute: typeof ApiWebhooksPaymentRoute
   ApiWebhooksWhatsappRoute: typeof ApiWebhooksWhatsappRoute
@@ -448,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/approve/$token'
       fullPath: '/approve/$token'
       preLoaderRoute: typeof ApproveTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders/acknowledge': {
+      id: '/orders/acknowledge'
+      path: '/orders/acknowledge'
+      fullPath: '/orders/acknowledge'
+      preLoaderRoute: typeof OrdersAcknowledgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/platform-admin/': {
@@ -595,6 +615,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApproveTokenRoute: ApproveTokenRoute,
+  OrdersAcknowledgeRoute: OrdersAcknowledgeRoute,
   QuoteTokenRoute: QuoteTokenRoute,
   ApiWebhooksPaymentRoute: ApiWebhooksPaymentRoute,
   ApiWebhooksWhatsappRoute: ApiWebhooksWhatsappRoute,

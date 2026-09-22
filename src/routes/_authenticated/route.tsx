@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   ClipboardList,
@@ -129,15 +129,17 @@ function AppLayout() {
     }
   });
 
-  function toggleCollapsed() {
-    const next = !collapsed;
-    setCollapsed(next);
-    try {
-      localStorage.setItem("sidebar_collapsed", String(next));
-    } catch {
-      // ignore
-    }
-  }
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -145,9 +147,7 @@ function AppLayout() {
         const target = e.target as HTMLElement | null;
         if (
           target &&
-          (target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable)
+          (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
         ) {
           return;
         }
@@ -157,7 +157,7 @@ function AppLayout() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [collapsed]);
+  }, [toggleCollapsed]);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();

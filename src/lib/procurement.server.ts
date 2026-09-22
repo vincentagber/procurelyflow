@@ -887,15 +887,23 @@ export async function decideApproval(
   );
   if (earlierPending) throw new Error("An earlier approval is still outstanding.");
 
-  await supabaseAdmin
-    .from("approval_steps")
+  const { data: updatedStep, error: updateStepError } = await (
+    supabaseAdmin.from("approval_steps") as any
+  )
     .update({
       status: input.decision,
       decided_by: userId,
       decided_at: new Date().toISOString(),
       comment: input.comment ?? null,
     })
-    .eq("id", input.stepId);
+    .eq("id", input.stepId)
+    .eq("status", "pending")
+    .select("id, status")
+    .maybeSingle();
+
+  if (updateStepError || !updatedStep) {
+    throw new Error("This approval step has already been decided or is no longer pending.");
+  }
 
   const remaining = (siblings ?? []).filter(
     (s) => s.id !== input.stepId && s.status === "pending",
@@ -1138,12 +1146,23 @@ export async function awardQuote(
       throw rpcErr || new Error("RPC fallback");
     }
   } catch {
-    const { count: poCount } = await supabaseAdmin
-      .from("purchase_orders")
-      .select("*", { count: "exact", head: true })
-      .eq("org_id", actor.orgId);
-    const poSeq = String((poCount ?? 0) + 1).padStart(6, "0");
-    sequentialPoNumber = `PO-${currentYear}-${poSeq}`;
+    const { data: latestPo } = await (supabaseAdmin.from("purchase_orders") as any)
+      .select("po_number")
+      .eq("org_id", actor.orgId)
+      .ilike("po_number", `PO-${currentYear}-%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let nextSeq = 1;
+    if (latestPo?.po_number) {
+      const parts = latestPo.po_number.split("-");
+      const parsed = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(parsed) && parsed >= 1) {
+        nextSeq = parsed + 1;
+      }
+    }
+    sequentialPoNumber = `PO-${currentYear}-${String(nextSeq).padStart(6, "0")}`;
   }
 
   const { data: po, error } = await supabaseAdmin
@@ -2075,23 +2094,45 @@ export async function whatsappApprovalWebhook(input: {
 }) {
   const { data: step } = await supabaseAdmin
     .from("approval_steps")
-    .select("id, org_id, requisition_id")
+    .select("id, org_id, requisition_id, required_role")
     .eq("id", input.stepId)
     .maybeSingle();
 
   if (!step) throw new Error("Approval step not found.");
 
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("id, full_name, email")
-    .eq("org_id", step.org_id)
-    .maybeSingle();
+  // Normalize incoming phone number to digits
+  const cleanPhone = (input.fromPhone || "").replace(/[^0-9]/g, "");
 
-  const userId = profile?.id ?? "whatsapp_system";
-  return decideApproval(userId, {
+  // Authenticate sender against organizational profiles
+  let matchingProfile: { id: string; full_name?: string | null; email?: string | null } | null =
+    null;
+
+  if (cleanPhone) {
+    const { data: profiles } = await (supabaseAdmin.from("profiles") as any)
+      .select("id, full_name, email, phone")
+      .eq("org_id", step.org_id);
+
+    matchingProfile =
+      (profiles ?? []).find((p: any) => {
+        const pPhone = String(p.phone || "").replace(/[^0-9]/g, "");
+        return (
+          pPhone &&
+          (pPhone === cleanPhone || cleanPhone.endsWith(pPhone) || pPhone.endsWith(cleanPhone))
+        );
+      }) ?? null;
+  }
+
+  // Reject unauthorized callers with security error
+  if (!matchingProfile) {
+    throw new Error(
+      `Unauthorized WhatsApp caller: phone [${input.fromPhone || "anonymous"}] is not associated with any registered user in this workspace.`,
+    );
+  }
+
+  return decideApproval(matchingProfile.id, {
     stepId: input.stepId,
     decision: input.decision,
-    comment: `${input.comment ? input.comment + " " : ""}(via WhatsApp: ${input.fromPhone})`,
+    comment: `${input.comment ? input.comment + " " : ""}(Verified WhatsApp: ${input.fromPhone})`,
   });
 }
 

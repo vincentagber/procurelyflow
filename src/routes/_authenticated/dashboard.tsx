@@ -41,6 +41,7 @@ import { money, shortDate, dateTime, STATUS_LABELS, ROLE_LABELS } from "@/lib/fo
 import { StatusPill, EmptyState } from "@/components/procurely/bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getDashboardMetricsFn } from "@/lib/procurement.functions";
 import {
   Dialog,
   DialogContent,
@@ -151,57 +152,27 @@ function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => {
-      const [reqs, steps, pos, projectsRes, suppliers, members, itemsRes, receiptsRes, quotesRes] =
-        await Promise.all([
-          supabase
-            .from("requisitions")
-            .select(
-              "id, reference, title, status, total_amount, currency, created_at, needed_by, project_id, projects(id, name, location, budget_amount)",
-            )
-            .order("created_at", { ascending: false })
-            .limit(50),
-          supabase
-            .from("approval_steps")
-            .select(
-              "id, required_role, status, requisitions(id, title, reference, total_amount, currency)",
-            )
-            .eq("status", "pending"),
-          supabase
-            .from("purchase_orders")
-            .select(
-              "id, po_number, total_amount, settlement_currency, status, issued_at, supplier_id, suppliers(id, name), requisition_id, requisitions(id, reference, title, created_at, project_id, projects(id, name, location, budget_amount)), issued_by, rfq_id, quote_id, recommended_quote_id, override_reason",
-            )
-            .order("issued_at", { ascending: false }),
-          supabase
-            .from("projects")
-            .select("id, name, location, budget_amount, created_at")
-            .order("created_at", { ascending: false }),
-          supabase.from("suppliers").select("id", { count: "exact", head: true }),
-          supabase.from("user_roles").select("id", { count: "exact", head: true }),
-          supabase
-            .from("requisition_items")
-            .select("id, description, quantity, estimated_unit_price, unit, requisition_id")
-            .limit(100),
-          supabase
-            .from("delivery_receipts")
-            .select(
-              "id, delivered_at, purchase_order_id, purchase_orders(issued_at), delivery_receipt_items(quantity_delivered, quantity_accepted)",
-            )
-            .limit(50),
-          supabase.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(50),
-        ]);
-      return {
-        requisitions: reqs.data ?? [],
-        steps: steps.data ?? [],
-        purchaseOrders: pos.data ?? [],
-        projectsList: projectsRes.data ?? [],
-        projectCount: projectsRes.data?.length ?? 0,
-        supplierCount: suppliers.count ?? 0,
-        memberCount: members.count ?? 0,
-        requisitionItems: itemsRes.data ?? [],
-        deliveryReceipts: (receiptsRes.data ?? []) as any[],
-        quotes: (quotesRes.data ?? []) as any[],
-      };
+      try {
+        return await getDashboardMetricsFn();
+      } catch (err) {
+        console.warn("Server dashboard query failed, using empty baseline:", err);
+        return {
+          requisitions: [],
+          steps: [],
+          purchaseOrders: [],
+          projectsList: [],
+          projectCount: 0,
+          supplierCount: 0,
+          memberCount: 0,
+          requisitionItems: [],
+          deliveryReceipts: [],
+          quotes: [],
+          committedNGN: 0,
+          committedUSD: 0,
+          hasMultipleCommittedCurrencies: false,
+          committed: 0,
+        };
+      }
     },
   });
 
