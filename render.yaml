@@ -1,55 +1,103 @@
+# ==============================================================================
+# Render.com — Infrastructure as Code Blueprint
+# https://render.com/docs/blueprint-spec
+# ==============================================================================
+#
+# Deploy with one click:
+#   1. Push this file to your repo
+#   2. Go to https://dashboard.render.com/blueprints
+#   3. Click "New Blueprint Instance" → select this repo
+#   4. Fill in the environment variables when prompted
+#
+# Or deploy manually via the Render dashboard using the settings below.
+# ==============================================================================
+
 services:
   - type: web
     name: procurely-flow
     runtime: node
     plan: starter
-    region: frankfurt
-    buildCommand: rm -rf node_modules package-lock.json && npm install --include=dev --include=optional && npm run build
-    startCommand: npm start
-    healthCheckPath: /
+    region: frankfurt  # Closest to West Africa / Nigeria
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node .output/server/index.mjs
+    healthCheckPath: /api/health
     autoDeploy: true
+    numInstances: 1
     envVars:
+      # ── Node Runtime ──
       - key: NODE_VERSION
         value: 20.18.0
-      - key: NITRO_PRESET
-        value: node-server
       - key: NODE_ENV
         value: production
+      - key: NITRO_PRESET
+        value: node-server
+
+      # ── Application ──
+      - key: APP_BASE_URL
+        sync: false  # e.g. https://procurely-flow.onrender.com
+
+      # ── Supabase Client (build-time & SSR) ──
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PROJECT_ID
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
       - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PROJECT_ID
         sync: false
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
-      - key: SUPABASE_URL
-        sync: false
+
+      # ── Supabase Server (service role — never exposed to client) ──
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+
+      # ── Database ──
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
         sync: false
-      - key: APP_BASE_URL
-        sync: false
+
+      # ── Email Notifications ──
       - key: EMAIL_DRIVER
         value: console
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: Procurely Flow <notifications@procurely.app>
+        value: "Procurely Flow <notifications@procurely.app>"
+
+      # ── WhatsApp / SMS ──
       - key: WHATSAPP_DRIVER
         value: console
       - key: TERMII_API_KEY
         sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_CLOUD_API_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+
+      # ── Payment Gateways ──
       - key: PAYMENT_GATEWAY_DRIVER
         value: manual
+      - key: PAYMENT_WEBHOOK_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
       - key: MONNIFY_API_KEY
         sync: false
       - key: MONNIFY_SECRET_KEY
         sync: false
       - key: MONNIFY_CONTRACT_CODE
         sync: false
-      - key: PAYSTACK_SECRET_KEY
-        sync: false
-      - key: PAYSTACK_PUBLIC_KEY
-        sync: false
+
+      # ── Security ──
       - key: ENTERPRISE_WEBHOOK_SECRET
         generateValue: true

@@ -22,6 +22,7 @@ import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSuppliersRouteImport } from './routes/_authenticated/suppliers'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApproveTokenRouteImport } from './routes/approve.$token'
 import { Route as OrdersAcknowledgeRouteImport } from './routes/orders.acknowledge'
 import { Route as PlatformAdminIndexRouteImport } from './routes/platform-admin/index'
@@ -100,6 +101,11 @@ const AuthenticatedSuppliersRoute = AuthenticatedSuppliersRouteImport.update({
   id: '/suppliers',
   path: '/suppliers',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApproveTokenRoute = ApproveTokenRouteImport.update({
   id: '/approve/$token',
@@ -190,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
+  '/api/health': typeof ApiHealthRoute
   '/approve/$token': typeof ApproveTokenRoute
   '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/projects': typeof AuthenticatedProjectsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/suppliers': typeof AuthenticatedSuppliersRoute
+  '/api/health': typeof ApiHealthRoute
   '/approve/$token': typeof ApproveTokenRoute
   '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/_authenticated/projects': typeof AuthenticatedProjectsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/suppliers': typeof AuthenticatedSuppliersRoute
+  '/api/health': typeof ApiHealthRoute
   '/approve/$token': typeof ApproveTokenRoute
   '/orders/acknowledge': typeof OrdersAcknowledgeRoute
   '/platform-admin/$orgId': typeof PlatformAdminOrgIdRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/suppliers'
+    | '/api/health'
     | '/approve/$token'
     | '/orders/acknowledge'
     | '/platform-admin/$orgId'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/suppliers'
+    | '/api/health'
     | '/approve/$token'
     | '/orders/acknowledge'
     | '/platform-admin/$orgId'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects'
     | '/_authenticated/settings'
     | '/_authenticated/suppliers'
+    | '/api/health'
     | '/approve/$token'
     | '/orders/acknowledge'
     | '/platform-admin/$orgId'
@@ -356,6 +368,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApproveTokenRoute: typeof ApproveTokenRoute
   OrdersAcknowledgeRoute: typeof OrdersAcknowledgeRoute
   QuoteTokenRoute: typeof QuoteTokenRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/suppliers'
       preLoaderRoute: typeof AuthenticatedSuppliersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/approve/$token': {
       id: '/approve/$token'
@@ -614,6 +634,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApproveTokenRoute: ApproveTokenRoute,
   OrdersAcknowledgeRoute: OrdersAcknowledgeRoute,
   QuoteTokenRoute: QuoteTokenRoute,
