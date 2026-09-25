@@ -9,10 +9,7 @@ export interface ErrorReportContext extends Record<string, unknown> {
   route?: string;
 }
 
-export function reportApplicationError(
-  error: unknown,
-  context: ErrorReportContext = {},
-): void {
+export function reportApplicationError(error: unknown, context: ErrorReportContext = {}): void {
   if (typeof window === "undefined") {
     console.error("[SSR Error]", error, context);
     return;
@@ -35,7 +32,7 @@ export function reportApplicationError(
   };
 
   // Structured client logging
-  if (process.env.NODE_ENV === "production") {
+  if (process.env["NODE_ENV"] === "development") {
     console.warn("[App Error Report]", payload);
   } else {
     console.error("[App Error Report]", payload);
