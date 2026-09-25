@@ -18,7 +18,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt  # Closest to West Africa / Nigeria
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install --include=dev --production=false && npm run build
     startCommand: node .output/server/index.mjs
     healthCheckPath: /api/health
     autoDeploy: true
@@ -26,7 +26,7 @@ services:
     envVars:
       # ── Node Runtime ──
       - key: NODE_VERSION
-        value: 20.18.0
+        value: 22.14.0
       - key: NODE_ENV
         value: production
       - key: NITRO_PRESET
