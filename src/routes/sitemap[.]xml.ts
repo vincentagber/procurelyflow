@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-const BASE_URL = "https://site-deal-pro.lovable.app";
+const BASE_URL = process.env.APP_BASE_URL || "https://procurelyflow.onrender.com";
 
 interface SitemapEntry {
   path: string;

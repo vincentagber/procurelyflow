@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://site-deal-pro.lovable.app/sitemap.xml
+Sitemap: /sitemap.xml

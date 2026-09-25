@@ -1,27 +1,37 @@
-# Welcome to your Lovable project
+# Procurely Flow
 
-## Build with Lovable
+An enterprise-grade procurement management and approval orchestration platform built for high-throughput procurement operations.
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+## Features
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Multi-Tenant Procurement Workflows**: Requisition submission, multi-tier budget approvals, purchase order generation, and delivery verification.
+- **Cryptographic Audit Ledger**: Tamper-evident hash-chained audit logging for regulatory compliance and audit trails.
+- **Automated Communication**: Notification dispatchers for email, SMS, and WhatsApp alerts.
+- **Multi-Gateway Payment Integration**: Direct settlement tracking with Monnify, Paystack, and manual bank transfer verification workflows.
+- **Role-Based Access Control (RBAC)**: Fine-grained permissions across Requestors, Approvers, Procurement Officers, and Finance Managers.
+
+## Tech Stack
+
+- **Framework**: TanStack Start + React 19 + TypeScript
+- **Styling**: Tailwind CSS v4 + Radix UI + Lucide Icons
+- **Backend & Auth**: Supabase (PostgreSQL, Realtime, Row Level Security)
+- **Deployment**: Render / Node.js Server
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+```bash
+# Install dependencies
+npm install
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+# Run dev server
 npm run dev
+
+# Run test suite
+npm test
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
