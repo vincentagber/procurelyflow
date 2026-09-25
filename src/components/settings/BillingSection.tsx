@@ -18,7 +18,7 @@ import {
 import {
   generateSubscriptionBillFn,
   getSubscriptionStatementsFn,
-  settleSubscriptionBillFn,
+  reportSubscriptionTransferFn,
 } from "@/lib/procurement.functions";
 import { PciProtectionEmblemIcon } from "@/components/procurely/ProductDesignerIcons";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,13 +35,17 @@ export interface SubscriptionStatement {
   virtual_account_bank: string;
   virtual_account_number: string;
   virtual_account_name?: string;
-  status: "PENDING" | "SETTLED" | string;
+  status: "PENDING" | "AWAITING_VERIFICATION" | "SETTLED" | string;
   period_start: string;
   period_end: string;
   created_at: string;
   cleared_at?: string;
   settled_at?: string;
   payment_gateway_reference?: string;
+  transfer_reference?: string;
+  transfer_bank_name?: string;
+  transfer_notes?: string;
+  transfer_submitted_at?: string;
 }
 
 export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
@@ -55,17 +59,25 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
   const [viewingInvoice, setViewingInvoice] = useState<SubscriptionStatement | null>(null);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "SETTLED">("ALL");
   const [, setIsRealtimeConnected] = useState(true);
+  const [reportingStatement, setReportingStatement] = useState<SubscriptionStatement | null>(null);
+  const [transferRefInput, setTransferRefInput] = useState("");
+  const [transferBankInput, setTransferBankInput] = useState("");
+  const [transferNotesInput, setTransferNotesInput] = useState("");
+
+  const orgId = me.data?.profile?.org_id;
 
   // Realtime Supabase Subscription for instantaneous status updates across enterprise finance teams
   useEffect(() => {
+    if (!orgId) return;
     const channel = supabase
-      .channel("tenant_subscriptions_realtime_routes")
+      .channel(`tenant_subscriptions_${orgId}`)
       .on(
-        "postgres_changes",
+        "postgres_changes" as any,
         {
           event: "*",
           schema: "public",
           table: "tenant_subscriptions",
+          filter: `org_id=eq.${orgId}`,
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ["tenant-subscriptions"] });
@@ -81,7 +93,7 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [orgId, queryClient]);
 
   const {
     data: statements,
@@ -111,26 +123,36 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
       toast.error(e instanceof Error ? e.message : "Failed generating billing statement."),
   });
 
-  const settleBillMutation = useMutation({
-    mutationFn: async (invoiceReference: string) => {
-      return settleSubscriptionBillFn({
+  const reportTransferMutation = useMutation({
+    mutationFn: async () => {
+      if (!reportingStatement) return;
+      return reportSubscriptionTransferFn({
         data: {
-          invoiceReference,
+          invoiceReference: reportingStatement.invoice_reference,
+          paymentReference: transferRefInput.trim(),
+          bankName: transferBankInput.trim() || undefined,
+          notes: transferNotesInput.trim() || undefined,
         },
       });
     },
     onSuccess: async (updated) => {
-      toast.success(`Payment verified & settled for invoice ${updated.invoice_reference}!`);
+      toast.success(
+        `Transfer reference recorded for invoice ${updated?.invoice_reference}! Our operations team will verify the payment and activate your subscription.`,
+      );
       await queryClient.invalidateQueries({ queryKey: ["tenant-subscriptions"] });
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
-      if (viewingInvoice && viewingInvoice.invoice_reference === updated.invoice_reference) {
+      setReportingStatement(null);
+      setTransferRefInput("");
+      setTransferBankInput("");
+      setTransferNotesInput("");
+      if (viewingInvoice && viewingInvoice.invoice_reference === updated?.invoice_reference) {
         setViewingInvoice(updated as unknown as SubscriptionStatement);
       }
-      if (generatedBill && generatedBill.invoice_reference === updated.invoice_reference) {
+      if (generatedBill && generatedBill.invoice_reference === updated?.invoice_reference) {
         setGeneratedBill(updated as unknown as SubscriptionStatement);
       }
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to verify settlement."),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed reporting transfer reference."),
   });
 
   const tiers = [
@@ -442,15 +464,21 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                 >
                   <Receipt className="h-3.5 w-3.5 mr-1" /> View Official Tax Invoice
                 </Button>
-                {isAdmin && generatedBill.status === "PENDING" ? (
+                {generatedBill.status === "AWAITING_VERIFICATION" ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
+                    <Clock className="h-3.5 w-3.5" /> Transfer Pending Verification
+                  </span>
+                ) : isAdmin && generatedBill.status === "PENDING" ? (
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer"
-                    disabled={settleBillMutation.isPending}
-                    onClick={() => settleBillMutation.mutate(generatedBill.invoice_reference)}
+                    className="h-8 text-xs font-semibold bg-[#0B1457] hover:bg-[#0B1457]/90 text-white cursor-pointer"
+                    onClick={() => {
+                      setReportingStatement(generatedBill);
+                      setTransferRefInput("");
+                    }}
                   >
-                    {settleBillMutation.isPending ? "Reconciling…" : "Verify & Settle Transfer"}
+                    <Landmark className="h-3.5 w-3.5 mr-1" /> Confirm Transfer Sent
                   </Button>
                 ) : null}
               </div>
@@ -601,16 +629,22 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                             >
                               <Receipt className="h-3 w-3 mr-1" /> View Invoice
                             </Button>
-                            {!isSettled && isAdmin ? (
+                            {s.status === "AWAITING_VERIFICATION" ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                <Clock className="h-3 w-3" /> Verifying
+                              </span>
+                            ) : !isSettled && isAdmin ? (
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-2 text-[11px] font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 cursor-pointer"
-                                disabled={settleBillMutation.isPending}
-                                onClick={() => settleBillMutation.mutate(s.invoice_reference)}
+                                className="h-7 px-2 text-[11px] font-semibold border-slate-300 text-slate-800 hover:bg-slate-50 cursor-pointer"
+                                onClick={() => {
+                                  setReportingStatement(s);
+                                  setTransferRefInput("");
+                                }}
                               >
-                                {settleBillMutation.isPending ? "Settling…" : "Settle"}
+                                Report Transfer
                               </Button>
                             ) : null}
                           </div>
@@ -883,17 +917,21 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
               </div>
 
               <div className="flex items-center gap-2">
-                {viewingInvoice.status === "PENDING" && isAdmin ? (
+                {viewingInvoice.status === "AWAITING_VERIFICATION" ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold">
+                    <Clock className="h-3.5 w-3.5" /> Transfer Pending Verification
+                  </span>
+                ) : viewingInvoice.status === "PENDING" && isAdmin ? (
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer shadow-xs"
-                    disabled={settleBillMutation.isPending}
-                    onClick={() => settleBillMutation.mutate(viewingInvoice.invoice_reference)}
+                    className="h-8 text-xs font-semibold bg-[#0B1457] hover:bg-[#0B1457]/90 text-white cursor-pointer shadow-xs"
+                    onClick={() => {
+                      setReportingStatement(viewingInvoice);
+                      setTransferRefInput("");
+                    }}
                   >
-                    {settleBillMutation.isPending
-                      ? "Reconciling…"
-                      : "Verify & Settle Inbound Transfer"}
+                    <Landmark className="h-3.5 w-3.5 mr-1" /> Confirm Transfer Sent
                   </Button>
                 ) : null}
                 <Button
@@ -906,6 +944,100 @@ export function BillingSection({ isAdmin }: { isAdmin: boolean }) {
                   Close
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Report Bank Transfer Reference Dialog */}
+      {reportingStatement ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Landmark className="h-5 w-5 text-[#0B1457]" />
+                <h3 className="font-semibold text-slate-900 text-sm">
+                  Record Inbound Bank Transfer
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                onClick={() => setReportingStatement(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-lg bg-blue-50/70 border border-blue-200/80 p-3 space-y-1 text-xs text-blue-900">
+              <p className="font-semibold">Invoice: {reportingStatement.invoice_reference}</p>
+              <p>Amount: {money(reportingStatement.amount_ngn, "NGN")}</p>
+              <p className="text-[11px] text-blue-800">
+                Please provide your NIBSS session ID or bank transaction reference. Our finance
+                operations team will verify the inflow and activate your plan tier.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Payment Reference / Session ID <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 00001324092516450000 or NIP-..."
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-hidden focus:border-[#0B1457]"
+                  value={transferRefInput}
+                  onChange={(e) => setTransferRefInput(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Originating Bank (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. GTBank, Zenith, Access Bank"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-hidden focus:border-[#0B1457]"
+                  value={transferBankInput}
+                  onChange={(e) => setTransferBankInput(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Additional Notes (optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Paid from corporate account Acme Ltd"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-hidden focus:border-[#0B1457]"
+                  value={transferNotesInput}
+                  onChange={(e) => setTransferNotesInput(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs cursor-pointer"
+                onClick={() => setReportingStatement(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!transferRefInput.trim() || reportTransferMutation.isPending}
+                className="bg-[#0B1457] hover:bg-[#0B1457]/90 text-white text-xs font-semibold cursor-pointer"
+                onClick={() => reportTransferMutation.mutate()}
+              >
+                {reportTransferMutation.isPending ? "Submitting…" : "Submit For Verification"}
+              </Button>
             </div>
           </div>
         </div>

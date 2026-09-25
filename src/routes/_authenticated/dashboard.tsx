@@ -126,28 +126,58 @@ function Dashboard() {
   const [forensicTab, setForensicTab] = useState<"ALL" | "SPLIT" | "AFFINITY">("ALL");
   const [isScanning, setIsScanning] = useState(false);
 
-  // Real-time listener: automatically invalidate and refetch on any DB insert/update/delete
+  const orgId = me.data?.profile?.org_id;
+
+  // Real-time listener: automatically invalidate and refetch on any DB insert/update/delete (tenant-scoped)
   useEffect(() => {
+    if (!orgId) return;
+
     const channel = supabase
-      .channel("dashboard_realtime_updates")
-      .on("postgres_changes", { event: "*", schema: "public", table: "requisitions" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "approval_steps" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "purchase_orders" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      })
+      .channel(`dashboard_realtime_${orgId}`)
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "requisitions", filter: `org_id=eq.${orgId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+      )
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "*",
+          schema: "public",
+          table: "approval_steps",
+          filter: `org_id=eq.${orgId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+      )
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "*",
+          schema: "public",
+          table: "purchase_orders",
+          filter: `org_id=eq.${orgId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+      )
+      .on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "projects", filter: `org_id=eq.${orgId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [orgId, queryClient]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
@@ -264,26 +294,7 @@ function Dashboard() {
                   ? "bg-[#F59E0B]"
                   : "bg-[#6366F1]",
         }))
-      : [
-          {
-            name: "Structural & Civil Works",
-            share: committed > 0 ? 0.5 : 0,
-            amount: committed * 0.5,
-            color: "bg-[#0B1457]",
-          },
-          {
-            name: "Equipment & Mechanical",
-            share: committed > 0 ? 0.3 : 0,
-            amount: committed * 0.3,
-            color: "bg-[#10B981]",
-          },
-          {
-            name: "Electrical & Utilities",
-            share: committed > 0 ? 0.2 : 0,
-            amount: committed * 0.2,
-            color: "bg-[#F59E0B]",
-          },
-        ];
+      : [];
 
   // Real database projects with actual committed spend, approved Capex, and remaining balance
   const projectsData = data?.projectsList ?? [];
@@ -642,13 +653,17 @@ function Dashboard() {
           {/* Breakdown Items */}
           <div className="my-2.5 space-y-2.5">
             {spendViewMode === "category" ? (
-              committed === 0 ? (
+              committed === 0 || CATEGORY_BREAKDOWN.length === 0 ? (
                 <div className="py-4 text-center">
                   <p className="text-xs font-semibold text-slate-900">
-                    ₦ 0.00 Total Category Spend
+                    {committed === 0
+                      ? "₦ 0.00 Total Category Spend"
+                      : "No Category Breakdown Available"}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    No committed purchase orders logged yet.
+                    {committed === 0
+                      ? "No committed purchase orders logged yet."
+                      : "Item categories will populate dynamically as line items are procured."}
                   </p>
                 </div>
               ) : (

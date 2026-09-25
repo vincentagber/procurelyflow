@@ -6,6 +6,7 @@ import { CheckCircle2, FileCheck2 } from "lucide-react";
 
 import {
   getSupplierRfq,
+  getQuoteUploadUrlFn,
   submitQuoteFn,
   supplierPoFn,
   acknowledgePoFn,
@@ -49,15 +50,6 @@ type Line = {
 };
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-
-async function fileToBase64(file: File) {
-  const buffer = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < buffer.length; i += 8192) {
-    binary += String.fromCharCode(...buffer.subarray(i, i + 8192));
-  }
-  return btoa(binary);
-}
 
 function SupplierQuote() {
   const { token } = Route.useParams();
@@ -111,17 +103,41 @@ function SupplierQuote() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      let attachment: { name: string; contentType: string; dataBase64: string } | undefined;
+      let attachmentPath: string | undefined;
+      let attachmentName: string | undefined;
+
       if (file) {
         if (file.size > MAX_ATTACHMENT_BYTES) {
           throw new Error("That file is larger than 25MB. Please attach a smaller file.");
         }
-        attachment = {
-          name: file.name,
-          contentType: file.type || "application/octet-stream",
-          dataBase64: await fileToBase64(file),
-        };
+
+        // 1. Obtain signed upload URL authorized specifically for this RFQ, token, and supplier
+        const uploadAuth = await getQuoteUploadUrlFn({
+          data: {
+            token,
+            filename: file.name,
+            contentType: file.type || "application/octet-stream",
+            sizeBytes: file.size,
+          },
+        });
+
+        // 2. Direct upload to Supabase Object Storage (no base64 payload over RPC)
+        const uploadRes = await fetch(uploadAuth.signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed uploading file attachment directly to storage.");
+        }
+
+        attachmentPath = uploadAuth.storagePath;
+        attachmentName = file.name;
       }
+
       return submitQuoteFn({
         data: {
           token,
@@ -131,7 +147,8 @@ function SupplierQuote() {
           warrantyNote: warranty || undefined,
           deliveryCharge: delivery ? Number(delivery) : undefined,
           validityDays: validity ? Number(validity) : undefined,
-          attachment,
+          attachmentPath,
+          attachmentName,
           lines: lines.map((line) => ({
             requisitionItemId: line.requisitionItemId,
             description: line.description,

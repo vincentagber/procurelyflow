@@ -361,18 +361,10 @@ function InvoicesPage() {
     return list.filter((inv) => {
       const po = normalizePo(inv.purchase_orders);
       const receipts = normalizeReceipts(po);
-      const pAmt = po ? Number(po.total_amount) || 0 : 0;
-      const isPriceMatch = po ? Math.abs(inv.total_amount - pAmt) < 0.05 : false;
-      const hasAcceptedGrn = receipts.some(
-        (r) => r.status === "accepted" || r.status === "partially_accepted",
-      );
-
-      const isMatched =
-        inv.three_way_match_status === "matched" || (po && isPriceMatch && hasAcceptedGrn);
-      const isDiscrepancy =
-        inv.three_way_match_status === "discrepancy_flagged" || (po && !isPriceMatch);
+      const isMatched = inv.three_way_match_status === "matched";
+      const isDiscrepancy = inv.three_way_match_status === "discrepancy_flagged";
       const isPendingDelivery =
-        inv.three_way_match_status === "pending" || (po && isPriceMatch && !hasAcceptedGrn);
+        inv.three_way_match_status === "pending" || (!inv.three_way_match_status && !!po);
 
       const matchesSearch =
         !q ||
@@ -559,13 +551,6 @@ function InvoicesPage() {
               <tbody className="divide-y divide-slate-100">
                 {filteredInvoices.map((inv) => {
                   const po = normalizePo(inv.purchase_orders);
-                  const receipts = normalizeReceipts(po);
-                  const poAmt = po ? Number(po.total_amount) || 0 : 0;
-                  const isPriceMatch = po ? Math.abs(inv.total_amount - poAmt) < 0.05 : false;
-                  const hasAcceptedGrn = receipts.some(
-                    (r) => r.status === "accepted" || r.status === "partially_accepted",
-                  );
-                  const isFullyMatched = po && isPriceMatch && hasAcceptedGrn;
 
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
@@ -607,18 +592,17 @@ function InvoicesPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        {inv.three_way_match_status === "matched" || isFullyMatched ? (
+                        {inv.three_way_match_status === "matched" ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                             <Check className="h-3 w-3" /> 3-Way Matched
                           </span>
-                        ) : inv.three_way_match_status === "discrepancy_flagged" ||
-                          (po && !isPriceMatch) ? (
+                        ) : inv.three_way_match_status === "discrepancy_flagged" ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200">
                             <AlertCircle className="h-3 w-3" /> Discrepancy Flagged
                           </span>
-                        ) : po && !hasAcceptedGrn ? (
+                        ) : po ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                            <Clock className="h-3 w-3" /> Pending Delivery
+                            <Clock className="h-3 w-3" /> Pending Delivery / Match
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">

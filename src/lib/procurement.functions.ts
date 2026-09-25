@@ -128,6 +128,26 @@ export const getSupplierRfq = createServerFn({ method: "POST" })
     return supplierRfqByToken(data.token);
   });
 
+export const getQuoteUploadUrlFn = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        token: z.string().min(10),
+        filename: z.string().min(1).max(120),
+        contentType: z.string().min(3).max(120),
+        sizeBytes: z
+          .number()
+          .int()
+          .positive()
+          .max(25 * 1024 * 1024),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data }) => {
+    const { createQuoteUploadUrl } = await import("@/lib/procurement.server");
+    return createQuoteUploadUrl(data);
+  });
+
 export const submitQuoteFn = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) =>
     z
@@ -140,6 +160,8 @@ export const submitQuoteFn = createServerFn({ method: "POST" })
 
         deliveryCharge: z.number().nonnegative().optional(),
         validityDays: z.number().int().positive().max(365).optional(),
+        attachmentPath: z.string().min(1).max(300).optional(),
+        attachmentName: z.string().min(1).max(120).optional(),
         attachment: z
           .object({
             name: z.string().min(1).max(120),
@@ -517,6 +539,23 @@ export const getSubscriptionStatementsFn = createServerFn({ method: "GET" })
     return getSubscriptionStatements(context.userId);
   });
 
+export const reportSubscriptionTransferFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        invoiceReference: z.string().min(1),
+        paymentReference: z.string().min(4),
+        bankName: z.string().max(120).optional(),
+        notes: z.string().max(500).optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { reportSubscriptionBankTransfer } = await import("@/lib/procurement.server");
+    return reportSubscriptionBankTransfer(context.userId, data);
+  });
+
 export const settleSubscriptionBillFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) =>
@@ -530,6 +569,13 @@ export const settleSubscriptionBillFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { settleSubscriptionBillServer } = await import("@/lib/procurement.server");
     return settleSubscriptionBillServer(context.userId, data.invoiceReference, data.transactionRef);
+  });
+
+export const verifyAuditLedgerFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { verifyAuditLedgerServer } = await import("@/lib/procurement.server");
+    return verifyAuditLedgerServer(context.userId);
   });
 
 /* ---------- Multi-Channel Approval (Web, Email, WhatsApp) Functions ---------- */

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { money } from "@/lib/format";
-import { computeAuditHash, GENESIS_HASH } from "@/lib/audit";
+import { computeAuditHash, verifyAuditChain, GENESIS_HASH } from "@/lib/audit";
 import { assertSingleCurrencyPo } from "@/lib/money";
 import { generateAccountingCsv, type ApprovedPaymentRecord } from "@/lib/export";
 import { generateSubscriptionBill } from "@/lib/paymentBillingChannels";
@@ -65,6 +65,7 @@ async function logAudit(entry: {
   action: string;
   detail?: string | null;
   amount?: number | null;
+  currency?: string | null;
   entityType?: string | null;
   entityId?: string | null;
 }) {
@@ -87,12 +88,14 @@ async function logAudit(entry: {
       actorRole: entry.actorRole ?? null,
       eventType: entry.action.toUpperCase(),
       entityType: entry.entityType ?? "requisition",
-      entityId: entry.entityId ?? entry.requisitionId ?? "N/A",
+      entityId: entry.entityId ?? entry.requisitionId ?? "",
       timestamp,
       detail: entry.detail ?? null,
       amount: entry.amount ?? null,
+      currency: entry.currency ?? "NGN",
     },
     previousHash,
+    2,
   );
 
   await (supabaseAdmin.from("approval_audit_log") as any).insert({
@@ -104,11 +107,13 @@ async function logAudit(entry: {
     action: entry.action,
     detail: entry.detail ?? null,
     amount: entry.amount ?? null,
+    currency: entry.currency ?? "NGN",
     event_type: entry.action.toUpperCase(),
     entity_type: entry.entityType ?? "requisition",
     entity_id: entry.entityId ?? entry.requisitionId ?? null,
     payload_hash: currentHash,
     previous_hash: previousHash,
+    hash_version: 2,
   });
 }
 
@@ -450,7 +455,10 @@ export async function generateStepApprovalLinks(stepId: string, originUrl?: stri
     ttlMinutes: 60 * 72,
   });
 
-  const base = originUrl ? originUrl.replace(/\/$/, "") : "http://localhost:3002";
+  const base = (originUrl || process.env["APP_BASE_URL"] || "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
   const webReviewUrl = `${base}/approve/${approveToken}`;
   const webApproveUrl = `${base}/approve/${approveToken}?decision=approved`;
   const webRejectUrl = `${base}/approve/${approveToken}?decision=rejected`;
@@ -762,6 +770,24 @@ export async function submitRequisition(userId: string, requisitionId: string) {
 
   const chain = await computeApprovalChain(actor.orgId, total, req.is_unbudgeted);
 
+  // Atomic state transition: ensures only one concurrent submitter transitions the draft
+  const { data: updatedReq, error: updateErr } = await supabaseAdmin
+    .from("requisitions")
+    .update({
+      status: "pending_approval",
+      total_amount: total,
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", requisitionId)
+    .eq("status", "draft")
+    .select("id")
+    .maybeSingle();
+
+  if (updateErr || !updatedReq) {
+    throw new Error("This request has already been submitted or is no longer in draft.");
+  }
+
   await supabaseAdmin.from("approval_steps").insert(
     chain.steps.map((step) => ({
       org_id: actor.orgId,
@@ -771,16 +797,6 @@ export async function submitRequisition(userId: string, requisitionId: string) {
       reason: step.reason,
     })),
   );
-
-  await supabaseAdmin
-    .from("requisitions")
-    .update({
-      status: "pending_approval",
-      total_amount: total,
-      submitted_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", requisitionId);
 
   await logAudit({
     orgId: actor.orgId,
@@ -905,9 +921,13 @@ export async function decideApproval(
     throw new Error("This approval step has already been decided or is no longer pending.");
   }
 
-  const remaining = (siblings ?? []).filter(
-    (s) => s.id !== input.stepId && s.status === "pending",
-  ).length;
+  const { count: pendingRemaining } = await supabaseAdmin
+    .from("approval_steps")
+    .select("id", { count: "exact", head: true })
+    .eq("requisition_id", step.requisition_id)
+    .eq("status", "pending");
+
+  const remaining = pendingRemaining ?? 0;
 
   let newStatus: string | null = null;
   if (input.decision === "rejected") {
@@ -1098,7 +1118,7 @@ export async function awardQuote(
     .eq("id", input.rfqId)
     .maybeSingle();
   if (!rfq || rfq.org_id !== actor.orgId) throw new Error("RFQ not found.");
-  if (rfq.status === "awarded") throw new Error("This RFQ has already been awarded.");
+  if (rfq.status !== "open") throw new Error("This RFQ is closed or has already been awarded.");
 
   const { data: quote } = await supabaseAdmin
     .from("quotes")
@@ -1165,6 +1185,19 @@ export async function awardQuote(
     sequentialPoNumber = `PO-${currentYear}-${String(nextSeq).padStart(6, "0")}`;
   }
 
+  // Atomic state transition: guarantees exactly one concurrent award succeeds
+  const { data: awardedRfq, error: awardErr } = await supabaseAdmin
+    .from("rfqs")
+    .update({ status: "awarded" })
+    .eq("id", input.rfqId)
+    .eq("status", "open")
+    .select("id")
+    .maybeSingle();
+
+  if (awardErr || !awardedRfq) {
+    throw new Error("This RFQ has already been awarded or is no longer open for award.");
+  }
+
   const { data: po, error } = await supabaseAdmin
     .from("purchase_orders")
     .insert({
@@ -1198,7 +1231,6 @@ export async function awardQuote(
     .update({ status: "rejected" })
     .eq("rfq_id", input.rfqId)
     .neq("id", input.quoteId);
-  await supabaseAdmin.from("rfqs").update({ status: "awarded" }).eq("id", input.rfqId);
   await supabaseAdmin
     .from("requisitions")
     .update({ status: "po_issued", updated_at: new Date().toISOString() })
@@ -1343,6 +1375,93 @@ async function notifyApprovers(
   await notify(orgId, ids, { ...payload, requisitionId });
 }
 
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/msword",
+  "application/vnd.ms-excel",
+  "text/csv",
+]);
+
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  ".pdf",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".docx",
+  ".xlsx",
+  ".doc",
+  ".xls",
+  ".csv",
+]);
+
+export async function createQuoteUploadUrl(input: {
+  token: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}) {
+  const MAX_BYTES = 25 * 1024 * 1024;
+  if (!input.sizeBytes || input.sizeBytes <= 0 || input.sizeBytes > MAX_BYTES) {
+    throw new Error(`File size must be between 1 byte and 25MB (got ${input.sizeBytes} bytes).`);
+  }
+
+  const { data: invite } = await supabaseAdmin
+    .from("rfq_invitations")
+    .select("id, rfq_id, supplier_id, org_id, expires_at")
+    .eq("token", input.token)
+    .maybeSingle();
+
+  if (!invite) throw new Error("This quote link is not valid.");
+  if (new Date(invite.expires_at) < new Date()) throw new Error("This quote link has expired.");
+
+  const { data: rfq } = await supabaseAdmin
+    .from("rfqs")
+    .select("id, status")
+    .eq("id", invite.rfq_id)
+    .single();
+
+  if (!rfq || rfq.status !== "open") throw new Error("This RFQ is closed for new quotes.");
+
+  // Validate MIME type
+  const normalizedMime = (input.contentType || "").toLowerCase().trim();
+  if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(normalizedMime)) {
+    throw new Error(
+      `Unsupported file type: ${input.contentType}. Allowed types: PDF, PNG, JPG, Word, Excel, CSV.`,
+    );
+  }
+
+  // Validate extension
+  const ext = ("." + (input.filename.split(".").pop() || "")).toLowerCase();
+  if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) {
+    throw new Error(
+      `Unsupported file extension: ${ext}. Allowed extensions: .pdf, .png, .jpg, .jpeg, .docx, .xlsx, .doc, .xls, .csv`,
+    );
+  }
+
+  const safeName = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-60);
+  const uniqueId = randomBytes(16).toString("hex");
+  const storagePath = `${invite.org_id}/${invite.rfq_id}/${invite.supplier_id}/${uniqueId}-${safeName}`;
+
+  const { data: signedData, error: signedErr } = await supabaseAdmin.storage
+    .from("quote-attachments")
+    .createSignedUploadUrl(storagePath);
+
+  if (signedErr || !signedData) {
+    throw new Error(signedErr?.message || "Failed to generate signed upload URL.");
+  }
+
+  return {
+    signedUrl: signedData.signedUrl,
+    token: signedData.token,
+    storagePath,
+  };
+}
+
 export async function submitSupplierQuote(input: {
   token: string;
   currency: "NGN" | "USD";
@@ -1351,6 +1470,7 @@ export async function submitSupplierQuote(input: {
   warrantyNote?: string | undefined;
   deliveryCharge?: number | undefined;
   validityDays?: number | undefined;
+  attachmentPath?: string | undefined;
   attachment?: { name: string; contentType: string; dataBase64: string } | undefined;
   lines: {
     requisitionItemId: string;
@@ -1396,7 +1516,13 @@ export async function submitSupplierQuote(input: {
   const total = round2(subtotal + vat + delivery);
 
   let attachmentPath: string | null = null;
-  if (input.attachment) {
+  if (input.attachmentPath) {
+    const expectedPrefix = `${invite.org_id}/${invite.rfq_id}/${invite.supplier_id}/`;
+    if (!input.attachmentPath.startsWith(expectedPrefix)) {
+      throw new Error("Invalid attachment storage path: cross-tenant or cross-RFQ path rejected.");
+    }
+    attachmentPath = input.attachmentPath;
+  } else if (input.attachment) {
     const safeName = input.attachment.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-80);
     const path = `${invite.org_id}/${invite.rfq_id}/${invite.supplier_id}-${Date.now()}-${safeName}`;
     const bytes = Uint8Array.from(atob(input.attachment.dataBase64), (c) => c.charCodeAt(0));
@@ -2094,38 +2220,40 @@ export async function whatsappApprovalWebhook(input: {
 }) {
   const { data: step } = await supabaseAdmin
     .from("approval_steps")
-    .select("id, org_id, requisition_id, required_role")
+    .select("id, org_id, requisition_id, required_role, status")
     .eq("id", input.stepId)
     .maybeSingle();
 
   if (!step) throw new Error("Approval step not found.");
-
-  // Normalize incoming phone number to digits
-  const cleanPhone = (input.fromPhone || "").replace(/[^0-9]/g, "");
-
-  // Authenticate sender against organizational profiles
-  let matchingProfile: { id: string; full_name?: string | null; email?: string | null } | null =
-    null;
-
-  if (cleanPhone) {
-    const { data: profiles } = await (supabaseAdmin.from("profiles") as any)
-      .select("id, full_name, email, phone")
-      .eq("org_id", step.org_id);
-
-    matchingProfile =
-      (profiles ?? []).find((p: any) => {
-        const pPhone = String(p.phone || "").replace(/[^0-9]/g, "");
-        return (
-          pPhone &&
-          (pPhone === cleanPhone || cleanPhone.endsWith(pPhone) || pPhone.endsWith(cleanPhone))
-        );
-      }) ?? null;
+  if (step.status !== "pending") {
+    return {
+      status: step.status,
+      message: `Approval step ${step.id} has already been decided (${step.status}).`,
+    };
   }
 
-  // Reject unauthorized callers with security error
+  // Normalize incoming phone number to digits (require >= 10 digits to prevent short substring matches)
+  const cleanPhone = (input.fromPhone || "").replace(/[^0-9]/g, "");
+  if (cleanPhone.length < 10) {
+    throw new Error("Unauthorized WhatsApp caller: invalid phone format or insufficient digits.");
+  }
+
+  const phoneSuffix = cleanPhone.slice(-10);
+
+  // Authenticate sender against organizational profiles belonging exclusively to THIS organization
+  const { data: profiles } = await (supabaseAdmin.from("profiles") as any)
+    .select("id, full_name, email, phone")
+    .eq("org_id", step.org_id);
+
+  const matchingProfile =
+    (profiles ?? []).find((p: any) => {
+      const pPhone = String(p.phone || "").replace(/[^0-9]/g, "");
+      return pPhone.length >= 10 && pPhone.slice(-10) === phoneSuffix;
+    }) ?? null;
+
   if (!matchingProfile) {
     throw new Error(
-      `Unauthorized WhatsApp caller: phone [${input.fromPhone || "anonymous"}] is not associated with any registered user in this workspace.`,
+      `Unauthorized WhatsApp caller: phone [${input.fromPhone || "anonymous"}] is not associated with any registered user in workspace ${step.org_id}.`,
     );
   }
 
@@ -2839,18 +2967,40 @@ export async function getSubscriptionStatements(userId: string) {
 }
 
 export async function settleSubscriptionBillServer(
+  _userId: string,
+  _invoiceReference: string,
+  _transactionRef?: string,
+) {
+  // P0 Security Fix: Prevent unauthorized tenant self-settlement
+  throw new Error(
+    "Direct tenant self-settlement of subscriptions is prohibited. Subscription upgrades require verified payment gateway webhook clearance or platform staff verification upon bank transfer receipt.",
+  );
+}
+
+export async function reportSubscriptionBankTransfer(
   userId: string,
-  invoiceReference: string,
-  transactionRef?: string,
+  input: {
+    invoiceReference: string;
+    paymentReference: string;
+    bankName?: string | undefined;
+    notes?: string | undefined;
+  },
 ) {
   const actor = await loadActor(userId);
   requireRole(actor, ["admin", "finance"]);
+
+  const cleanRef = input.paymentReference?.trim();
+  if (!cleanRef || cleanRef.length < 4) {
+    throw new Error(
+      "A valid transfer reference or NIP session ID (minimum 4 characters) is required.",
+    );
+  }
 
   const { data: sub, error: findErr } = await supabaseAdmin
     .from("tenant_subscriptions")
     .select("*")
     .eq("org_id", actor.orgId)
-    .eq("invoice_reference", invoiceReference)
+    .eq("invoice_reference", input.invoiceReference)
     .single();
 
   if (findErr || !sub) {
@@ -2862,41 +3012,76 @@ export async function settleSubscriptionBillServer(
   }
 
   const now = new Date().toISOString();
-  const settlementRef =
-    transactionRef ||
-    `NIP-SETTLED-${Date.now().toString().slice(-8)}-${Math.floor(1000 + Math.random() * 9000)}`;
-
   const { data: updatedSub, error: updateErr } = await supabaseAdmin
     .from("tenant_subscriptions")
     .update({
-      status: "SETTLED",
-      cleared_at: now,
-      payment_method: "BANK_TRANSFER_NIP",
+      status: "AWAITING_VERIFICATION",
+      payment_method: "BANK_TRANSFER",
+      transfer_reference: cleanRef,
+      transfer_bank_name: input.bankName?.trim() || null,
+      transfer_notes: input.notes?.trim() || null,
+      transfer_submitted_at: now,
     })
     .eq("id", sub.id)
     .select("*")
     .single();
 
   if (updateErr || !updatedSub) {
-    throw new Error(updateErr?.message || "Failed updating subscription settlement.");
+    throw new Error(updateErr?.message || "Failed recording bank transfer reference.");
   }
-
-  // Update organization active plan tier in DB
-  await supabaseAdmin
-    .from("organizations")
-    .update({
-      plan: (sub.plan_tier.toLowerCase() || "growth") as any,
-    })
-    .eq("id", actor.orgId);
 
   await logAudit({
     orgId: actor.orgId,
     actor,
-    action: "subscription_payment_settled" as never,
-    detail: `Subscription payment settled via NIBSS bank transfer for invoice ${sub.invoice_reference} (${sub.plan_tier} ${sub.billing_cycle}, ${money(sub.amount_ngn, "NGN")}). Ref: ${settlementRef}`,
+    action: "subscription_transfer_reported" as never,
+    detail: `Bank transfer reference ${cleanRef} (${input.bankName || "Bank Transfer"}) reported for invoice ${sub.invoice_reference}. Pending administrative verification.`,
   });
 
   return updatedSub;
+}
+
+export async function verifyAuditLedgerServer(userId: string) {
+  const actor = await loadActor(userId);
+  requireRole(actor, ["admin", "finance"]);
+
+  const { data: entries, error } = await supabaseAdmin
+    .from("approval_audit_log")
+    .select(
+      "id, org_id, actor_id, actor_name, actor_role, action, event_type, entity_type, entity_id, amount, currency, detail, payload_hash, previous_hash, hash_version, created_at",
+    )
+    .eq("org_id", actor.orgId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  const formatted = (entries ?? []).map((e: any) => ({
+    id: e.id,
+    hash: e.payload_hash,
+    previousHash: e.previous_hash,
+    hashVersion: e.hash_version ?? 1,
+    payload: {
+      orgId: e.org_id,
+      actorId: e.actor_id,
+      actorName: e.actor_name,
+      actorRole: e.actor_role,
+      eventType: e.event_type || e.action?.toUpperCase() || "",
+      entityType: e.entity_type || "requisition",
+      entityId: e.entity_id || "",
+      timestamp: e.created_at,
+      detail: e.detail,
+      amount: e.amount ? Number(e.amount) : null,
+      currency: e.currency || "NGN",
+    },
+  }));
+
+  const verification = verifyAuditChain(formatted, actor.orgId);
+  return {
+    ...verification,
+    totalEntries: entries?.length ?? 0,
+    orgId: actor.orgId,
+    verifiedAt: new Date().toISOString(),
+  };
 }
 
 /**

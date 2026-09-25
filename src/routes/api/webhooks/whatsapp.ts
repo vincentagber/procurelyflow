@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { whatsappApprovalWebhook } from "@/lib/procurement.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
  * Inbound WhatsApp Business API Webhook Handler (§FR-2.4)
- * Supports Meta WhatsApp Cloud API, Termii, Infobip, and local dev simulation.
- * Enforces cryptographic HMAC-SHA256 verification and caller identity authentication.
+ * Supports Meta WhatsApp Cloud API and authenticated internal simulation.
+ * Enforces fail-closed cryptographic HMAC-SHA256 verification, phone authorization,
+ * and webhook event deduplication.
  */
 export const Route = createFileRoute("/api/webhooks/whatsapp")({
   server: {
@@ -34,19 +36,49 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
           const appSecret = process.env["WHATSAPP_APP_SECRET"];
           const signatureHeader = request.headers.get("x-hub-signature-256") || "";
 
-          // Verify HMAC-SHA256 signature when secret is configured or in production
-          if (appSecret || (isProduction && signatureHeader)) {
-            if (!signatureHeader.startsWith("sha256=")) {
+          // FAIL-CLOSED: Production requests MUST have WHATSAPP_APP_SECRET and valid signature
+          if (isProduction) {
+            if (!appSecret) {
+              console.error("Critical: WHATSAPP_APP_SECRET is not configured in production");
+              return Response.json(
+                { error: "WhatsApp webhook verification unconfigured" },
+                { status: 500 },
+              );
+            }
+
+            if (!signatureHeader || !signatureHeader.startsWith("sha256=")) {
               return Response.json(
                 { error: "Missing or malformed x-hub-signature-256 header" },
                 { status: 401 },
               );
             }
-            const expectedSignature = createHmac("sha256", appSecret || "")
-              .update(rawBody)
-              .digest("hex");
+
+            const expectedSignature = createHmac("sha256", appSecret).update(rawBody).digest("hex");
             const providedSignature = signatureHeader.slice(7);
 
+            const expectedBuf = Buffer.from(expectedSignature, "hex");
+            const providedBuf = Buffer.from(providedSignature, "hex");
+
+            if (
+              expectedBuf.length !== providedBuf.length ||
+              !timingSafeEqual(expectedBuf, providedBuf)
+            ) {
+              return Response.json(
+                { error: "Invalid webhook cryptographic signature" },
+                { status: 401 },
+              );
+            }
+          } else if (appSecret || signatureHeader) {
+            // In dev/test: if secret or signature is supplied, enforce valid signature
+            if (!appSecret || !signatureHeader.startsWith("sha256=")) {
+              return Response.json(
+                { error: "Missing or malformed x-hub-signature-256 header" },
+                { status: 401 },
+              );
+            }
+
+            const expectedSignature = createHmac("sha256", appSecret).update(rawBody).digest("hex");
+            const providedSignature = signatureHeader.slice(7);
             const expectedBuf = Buffer.from(expectedSignature, "hex");
             const providedBuf = Buffer.from(providedSignature, "hex");
 
@@ -63,11 +95,14 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
 
           const body = JSON.parse(rawBody || "{}");
 
-          // 1. Direct Procurely simulation payload (allowed in development or with explicit internal token)
+          // 1. Direct Procurely simulation payload (disallowed in production without internal secret key)
           if (body.stepId && (body.decision === "approved" || body.decision === "rejected")) {
-            if (isProduction && !appSecret && !request.headers.get("x-procurely-internal-key")) {
+            const internalKey = request.headers.get("x-procurely-internal-key");
+            const expectedInternalKey = process.env["INTERNAL_API_KEY"];
+
+            if (isProduction && (!expectedInternalKey || internalKey !== expectedInternalKey)) {
               return Response.json(
-                { error: "Direct simulation payload is disabled in production" },
+                { error: "Direct simulation payload is prohibited in production" },
                 { status: 403 },
               );
             }
@@ -84,6 +119,7 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
           // 2. Meta WhatsApp Cloud API Webhook payload
           if (body.entry && body.entry[0]?.changes && body.entry[0].changes[0]?.value?.messages) {
             const message = body.entry[0].changes[0].value.messages[0];
+            const messageId = String(message.id || "");
             const fromPhone = String(message.from || "");
             const text = (
               message.text?.body ||
@@ -91,6 +127,30 @@ export const Route = createFileRoute("/api/webhooks/whatsapp")({
               message.interactive?.button_reply?.id ||
               ""
             ).trim();
+
+            // Webhook Idempotency: prevent replay attacks and duplicate approvals
+            if (messageId) {
+              const { data: existingEvent } = await supabaseAdmin
+                .from("processed_webhook_events")
+                .select("id")
+                .eq("id", messageId)
+                .maybeSingle();
+
+              if (existingEvent) {
+                return Response.json({
+                  ok: true,
+                  status: "ALREADY_PROCESSED",
+                  messageId,
+                });
+              }
+
+              // Record message event
+              await supabaseAdmin.from("processed_webhook_events").insert({
+                event_id: messageId,
+                provider: "whatsapp",
+                event_type: "meta_message",
+              });
+            }
 
             const upper = text.toUpperCase();
             const isApprove = upper.includes("APPROVE") || upper.includes("YES");

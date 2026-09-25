@@ -658,3 +658,93 @@ export async function markBillingInvoicePaid(
 
   return { ok: true };
 }
+
+export async function adminSettleSubscription(
+  userId: string,
+  input: {
+    invoiceReference: string;
+    paymentReference: string;
+    verificationSource?: string | undefined;
+    reason?: string | undefined;
+  },
+  email = "",
+) {
+  const actor = await requirePlatformAdmin(userId, email);
+
+  const cleanRef = input.paymentReference?.trim();
+  if (!cleanRef || cleanRef.length < 4) {
+    throw new Error(
+      "A valid payment reference (minimum 4 characters) is required for audit verification.",
+    );
+  }
+
+  const { data: sub, error: findErr } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .select("*")
+    .eq("invoice_reference", input.invoiceReference)
+    .maybeSingle();
+
+  if (findErr || !sub) {
+    throw new Error("Subscription statement not found.");
+  }
+
+  if (sub.status === "SETTLED") {
+    throw new Error("This subscription statement has already been settled.");
+  }
+
+  // Prevent payment reference reuse / duplicate consumption
+  const { data: existingRef } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .select("id, invoice_reference")
+    .eq("payment_gateway_reference", cleanRef)
+    .neq("id", sub.id)
+    .maybeSingle();
+
+  if (existingRef) {
+    throw new Error(
+      `Payment reference ${cleanRef} was already consumed by subscription ${existingRef.invoice_reference}.`,
+    );
+  }
+
+  const now = new Date().toISOString();
+  const source = input.verificationSource || "PLATFORM_ADMIN_VERIFIED";
+
+  // Atomically update subscription settlement and organization plan tier
+  const { data: updatedSub, error: updateErr } = await supabaseAdmin
+    .from("tenant_subscriptions")
+    .update({
+      status: "SETTLED",
+      cleared_at: now,
+      settled_at: now,
+      payment_gateway: "SIMULATED",
+      payment_gateway_reference: cleanRef,
+      settled_by_user_id: actor.userId,
+      settlement_source: source,
+    })
+    .eq("id", sub.id)
+    .select("*")
+    .single();
+
+  if (updateErr || !updatedSub) {
+    throw new Error(updateErr?.message || "Failed updating subscription settlement.");
+  }
+
+  const targetPlan = (sub.plan_tier?.toLowerCase() ||
+    "growth") as Database["public"]["Enums"]["subscription_plan"];
+
+  await supabaseAdmin
+    .from("organizations")
+    .update({
+      plan: targetPlan,
+    })
+    .eq("id", sub.org_id);
+
+  await logPlatformAction({
+    orgId: sub.org_id,
+    actor,
+    action: "subscription_settled",
+    detail: `Subscription ${sub.invoice_reference} (${sub.plan_tier}) verified & settled by platform staff. Ref: ${cleanRef}. Reason: ${input.reason || "Manual bank transfer verified"}`,
+  });
+
+  return updatedSub;
+}

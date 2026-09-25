@@ -146,3 +146,24 @@ export const markBillingInvoicePaidFn = createServerFn({ method: "POST" })
       (context.claims.email as string | undefined) ?? "",
     );
   });
+
+export const adminSettleSubscriptionFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        invoiceReference: z.string().min(1),
+        paymentReference: z.string().min(4),
+        verificationSource: z.string().optional(),
+        reason: z.string().optional(),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ data, context }) => {
+    const { adminSettleSubscription } = await import("@/lib/platform.server");
+    return adminSettleSubscription(
+      context.userId,
+      data,
+      (context.claims.email as string | undefined) ?? "",
+    );
+  });

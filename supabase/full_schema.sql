@@ -339,11 +339,13 @@ CREATE TABLE IF NOT EXISTS public.approval_audit_log (
     action TEXT NOT NULL,
     detail TEXT,
     amount NUMERIC(16,2),
+    currency TEXT DEFAULT 'NGN',
     event_type TEXT NOT NULL DEFAULT 'LEGACY_EVENT',
     entity_type TEXT NOT NULL DEFAULT 'requisition',
     entity_id TEXT,
     payload_hash TEXT,
     previous_hash TEXT,
+    hash_version INT DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -641,6 +643,42 @@ CREATE TABLE IF NOT EXISTS public.secure_action_tokens (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Tenant Subscriptions & Dedicated Virtual Account Statements
+CREATE TABLE IF NOT EXISTS public.tenant_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    invoice_reference TEXT NOT NULL UNIQUE,
+    plan_tier TEXT NOT NULL DEFAULT 'GROWTH' CHECK (plan_tier IN ('STARTER', 'GROWTH', 'BUSINESS', 'ENTERPRISE')),
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly' CHECK (billing_cycle IN ('monthly', 'annual')),
+    amount_ngn NUMERIC(16,2) NOT NULL,
+    payment_method TEXT NOT NULL DEFAULT 'VIRTUAL_ACCOUNT' CHECK (payment_method IN ('VIRTUAL_ACCOUNT', 'BANK_TRANSFER', 'INVOICE_BILLING')),
+    virtual_account_bank TEXT,
+    virtual_account_number TEXT,
+    virtual_account_name TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'AWAITING_VERIFICATION', 'SETTLED', 'FAILED', 'OVERDUE', 'CANCELLED')),
+    payment_gateway TEXT DEFAULT 'SIMULATED' CHECK (payment_gateway IN ('MONNIFY', 'PAYSTACK', 'SIMULATED')),
+    payment_gateway_reference TEXT,
+    transfer_reference TEXT,
+    transfer_bank_name TEXT,
+    transfer_notes TEXT,
+    transfer_submitted_at TIMESTAMPTZ,
+    settled_by_user_id UUID,
+    settlement_source TEXT DEFAULT 'UNSPECIFIED',
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    cleared_at TIMESTAMPTZ,
+    settled_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Webhook Idempotency Event Ledger
+CREATE TABLE IF NOT EXISTS public.processed_webhook_events (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    event_type TEXT,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ------------------------------------------------------------------------------
 -- 9. FUNCTIONS & STORED PROCEDURES
 -- ------------------------------------------------------------------------------
@@ -767,9 +805,66 @@ BEGIN
 END;
 $$;
 
+-- Atomic Canonical V2 Audit Hash Chaining Trigger
+CREATE OR REPLACE FUNCTION public.fn_audit_log_hash_chain()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_prev_hash TEXT;
+    v_chain_payload TEXT;
+    v_amount_text TEXT;
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext('audit_log_' || NEW.org_id::text));
+
+    SELECT payload_hash INTO v_prev_hash
+    FROM public.approval_audit_log
+    WHERE org_id = NEW.org_id
+    ORDER BY created_at DESC, id DESC
+    LIMIT 1;
+
+    IF v_prev_hash IS NULL THEN
+        v_prev_hash := '0000000000000000000000000000000000000000000000000000000000000000';
+    END IF;
+
+    NEW.previous_hash := v_prev_hash;
+    NEW.hash_version := 2;
+
+    IF NEW.amount IS NOT NULL THEN
+        v_amount_text := to_char(round(NEW.amount, 2), 'FM999999999999990.00');
+    ELSE
+        v_amount_text := '';
+    END IF;
+
+    v_chain_payload := 'v2|' ||
+                       v_prev_hash || '|' ||
+                       coalesce(NEW.org_id::text, '') || '|' ||
+                       coalesce(NEW.actor_id::text, '') || '|' ||
+                       coalesce(NEW.actor_name, '') || '|' ||
+                       coalesce(NEW.event_type, upper(coalesce(NEW.action, ''))) || '|' ||
+                       coalesce(NEW.entity_type, 'requisition') || '|' ||
+                       coalesce(NEW.entity_id::text, coalesce(NEW.requisition_id::text, '')) || '|' ||
+                       v_amount_text || '|' ||
+                       coalesce(NEW.currency, 'NGN') || '|' ||
+                       coalesce(NEW.detail, '');
+
+    NEW.payload_hash := encode(sha256(v_chain_payload::bytea), 'hex');
+
+    RETURN NEW;
+END;
+$$;
+
 -- ------------------------------------------------------------------------------
 -- 10. TRIGGERS
 -- ------------------------------------------------------------------------------
+
+-- Audit log hash chain trigger
+DROP TRIGGER IF EXISTS trg_audit_log_hash_chain ON public.approval_audit_log;
+CREATE TRIGGER trg_audit_log_hash_chain
+  BEFORE INSERT ON public.approval_audit_log
+  FOR EACH ROW EXECUTE FUNCTION public.fn_audit_log_hash_chain();
 
 -- Updated_at triggers
 DROP TRIGGER IF EXISTS org_invitations_set_updated_at ON public.org_invitations;
@@ -810,8 +905,10 @@ CREATE TRIGGER invoices_wht_credit_note_reference_check
   FOR EACH ROW EXECUTE FUNCTION public.validate_wht_credit_note_reference();
 
 -- ------------------------------------------------------------------------------
--- 11. INDEXES FOR PERFORMANCE
+-- 11. INDEXES FOR PERFORMANCE & INVARIANTS
 -- ------------------------------------------------------------------------------
+CREATE UNIQUE INDEX IF NOT EXISTS idx_purchase_orders_rfq_unique ON public.purchase_orders(rfq_id) WHERE rfq_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_approval_steps_req_step_order ON public.approval_steps(requisition_id, step_order);
 CREATE INDEX IF NOT EXISTS idx_requisitions_org_status ON public.requisitions(org_id, status);
 CREATE INDEX IF NOT EXISTS idx_requisitions_project ON public.requisitions(project_id);
 CREATE INDEX IF NOT EXISTS idx_approval_steps_req_status ON public.approval_steps(requisition_id, status);

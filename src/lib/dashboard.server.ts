@@ -174,8 +174,11 @@ export async function getOrganizationDashboardMetrics(
       .eq("org_id", actor.orgId),
     supabaseAdmin
       .from("requisition_items")
-      .select("id, description, quantity, estimated_unit_price, unit, requisition_id")
-      .order("created_at", { ascending: false })
+      .select(
+        "id, description, quantity, estimated_unit_price, unit, requisition_id, sort_order, requisitions!inner(org_id)",
+      )
+      .eq("requisitions.org_id", actor.orgId)
+      .order("sort_order", { ascending: true })
       .limit(200),
     supabaseAdmin
       .from("delivery_receipts")
@@ -185,7 +188,11 @@ export async function getOrganizationDashboardMetrics(
       .eq("org_id", actor.orgId)
       .order("created_at", { ascending: false })
       .limit(100),
-    supabaseAdmin.from("quotes").select("id, rfq_id, supplier_id, total_amount, status").limit(100),
+    supabaseAdmin
+      .from("quotes")
+      .select("id, rfq_id, supplier_id, total_amount, status")
+      .eq("org_id", actor.orgId)
+      .limit(100),
   ]);
 
   const purchaseOrders = (posRes.data ?? []) as unknown as DashboardPORow[];
@@ -216,7 +223,14 @@ export async function getOrganizationDashboardMetrics(
     projectCount: projectsRes.data?.length ?? 0,
     supplierCount: suppliersRes.count ?? 0,
     memberCount: membersRes.count ?? 0,
-    requisitionItems: (itemsRes.data ?? []) as unknown as DashboardItemRow[],
+    requisitionItems: ((itemsRes.data ?? []) as any[]).map((it) => ({
+      id: it.id,
+      description: it.description,
+      quantity: Number(it.quantity || 0),
+      estimated_unit_price: Number(it.estimated_unit_price || 0),
+      unit: it.unit ?? null,
+      requisition_id: it.requisition_id,
+    })),
     deliveryReceipts: (receiptsRes.data ?? []) as unknown as DashboardReceiptRow[],
     quotes: (quotesRes.data ?? []) as unknown as DashboardQuoteRow[],
     committedNGN,

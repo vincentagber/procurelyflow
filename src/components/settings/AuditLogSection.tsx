@@ -1,10 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
-import { Lock } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Lock, ShieldCheck, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { money, dateTime } from "@/lib/format";
 import { EmptyState } from "@/components/procurely/bits";
+import { Button } from "@/components/ui/button";
+import { verifyAuditLedgerFn } from "@/lib/procurement.functions";
 
 export function AuditLogSection() {
+  const [verifyResult, setVerifyResult] = useState<{
+    isValid: boolean;
+    verifiedCount: number;
+    brokenAtIndex?: number;
+    error?: string;
+    totalEntries: number;
+    verifiedAt: string;
+  } | null>(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ["audit-log"],
     queryFn: async () => {
@@ -16,6 +29,22 @@ export function AuditLogSection() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async () => {
+      return verifyAuditLedgerFn();
+    },
+    onSuccess: (res) => {
+      setVerifyResult(res as any);
+      if (res.isValid) {
+        toast.success(`Ledger verified: ${res.verifiedCount} sequential audit blocks unbroken.`);
+      } else {
+        toast.error(`Cryptographic breach detected: ${res.error}`);
+      }
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed verifying audit ledger integrity."),
   });
 
   return (
@@ -31,16 +60,63 @@ export function AuditLogSection() {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500 font-normal">
-            Cryptographic ledger tracking requisition movements, approval clearances, and policy
-            updates.
+            Cryptographic ledger tracking requisition movements, approval clearances, and financial
+            milestones.
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-          <Lock className="h-3.5 w-3.5 text-slate-500" />
-          <span>SHA-256 Chained</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={verifyMutation.isPending}
+            className="h-8 text-xs font-semibold border-slate-200 text-slate-800 hover:bg-slate-50 cursor-pointer shadow-2xs"
+            onClick={() => verifyMutation.mutate()}
+          >
+            <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-emerald-600" />
+            {verifyMutation.isPending ? "Verifying Hashes…" : "Verify Ledger Integrity"}
+          </Button>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+            <Lock className="h-3.5 w-3.5 text-slate-500" />
+            <span>SHA-256 Chained</span>
+          </div>
         </div>
       </div>
+
+      {verifyResult ? (
+        <div
+          className={`rounded-xl p-3.5 border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            verifyResult.isValid
+              ? "bg-emerald-50/90 border-emerald-200 text-emerald-950"
+              : "bg-rose-50 border-rose-200 text-rose-950"
+          }`}
+        >
+          <div className="flex items-start sm:items-center gap-2.5">
+            {verifyResult.isValid ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+            ) : (
+              <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
+            )}
+            <div>
+              <p className="font-semibold text-xs">
+                {verifyResult.isValid
+                  ? "Cryptographic Ledger Verified (Canonical SHA-256)"
+                  : "Ledger Tampering / Fork Detected"}
+              </p>
+              <p className="text-[11px] opacity-85 mt-0.5">
+                {verifyResult.isValid
+                  ? `Verified ${verifyResult.verifiedCount} sequential audit entries against the immutable genesis block. Hash chain unbroken.`
+                  : `Integrity compromised at record ${verifyResult.brokenAtIndex}: ${verifyResult.error}`}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] tabular-nums font-mono opacity-70 shrink-0">
+            {dateTime(verifyResult.verifiedAt)}
+          </span>
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="py-16 text-center text-xs text-slate-400 animate-pulse">

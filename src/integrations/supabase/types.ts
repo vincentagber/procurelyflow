@@ -16,9 +16,16 @@ export type Database = {
           actor_role: Database["public"]["Enums"]["app_role"] | null;
           amount: number | null;
           created_at: string;
+          currency: string | null;
           detail: string | null;
+          entity_id: string | null;
+          entity_type: string | null;
+          event_type: string | null;
+          hash: string | null;
+          hash_version: string | null;
           id: string;
           org_id: string;
+          previous_hash: string | null;
           requisition_id: string | null;
         };
         Insert: {
@@ -28,9 +35,16 @@ export type Database = {
           actor_role?: Database["public"]["Enums"]["app_role"] | null;
           amount?: number | null;
           created_at?: string;
+          currency?: string | null;
           detail?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          event_type?: string | null;
+          hash?: string | null;
+          hash_version?: string | null;
           id?: string;
           org_id: string;
+          previous_hash?: string | null;
           requisition_id?: string | null;
         };
         Update: {
@@ -40,9 +54,16 @@ export type Database = {
           actor_role?: Database["public"]["Enums"]["app_role"] | null;
           amount?: number | null;
           created_at?: string;
+          currency?: string | null;
           detail?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          event_type?: string | null;
+          hash?: string | null;
+          hash_version?: string | null;
           id?: string;
           org_id?: string;
+          previous_hash?: string | null;
           requisition_id?: string | null;
         };
         Relationships: [
@@ -1720,11 +1741,20 @@ export type Database = {
           id: string;
           invoice_reference: string;
           org_id: string;
+          payment_gateway: string | null;
+          payment_gateway_reference: string | null;
           payment_method: string;
           period_end: string;
           period_start: string;
           plan_tier: string;
+          settled_at: string | null;
+          settled_by_user_id: string | null;
+          settlement_source: string | null;
           status: string;
+          transfer_bank_name: string | null;
+          transfer_notes: string | null;
+          transfer_reference: string | null;
+          transfer_submitted_at: string | null;
           virtual_account_bank: string | null;
           virtual_account_name: string | null;
           virtual_account_number: string | null;
@@ -1737,11 +1767,20 @@ export type Database = {
           id?: string;
           invoice_reference: string;
           org_id: string;
+          payment_gateway?: string | null;
+          payment_gateway_reference?: string | null;
           payment_method?: string;
           period_end: string;
           period_start: string;
           plan_tier?: string;
+          settled_at?: string | null;
+          settled_by_user_id?: string | null;
+          settlement_source?: string | null;
           status?: string;
+          transfer_bank_name?: string | null;
+          transfer_notes?: string | null;
+          transfer_reference?: string | null;
+          transfer_submitted_at?: string | null;
           virtual_account_bank?: string | null;
           virtual_account_name?: string | null;
           virtual_account_number?: string | null;
@@ -1754,11 +1793,20 @@ export type Database = {
           id?: string;
           invoice_reference?: string;
           org_id?: string;
+          payment_gateway?: string | null;
+          payment_gateway_reference?: string | null;
           payment_method?: string;
           period_end?: string;
           period_start?: string;
           plan_tier?: string;
+          settled_at?: string | null;
+          settled_by_user_id?: string | null;
+          settlement_source?: string | null;
           status?: string;
+          transfer_bank_name?: string | null;
+          transfer_notes?: string | null;
+          transfer_reference?: string | null;
+          transfer_submitted_at?: string | null;
           virtual_account_bank?: string | null;
           virtual_account_name?: string | null;
           virtual_account_number?: string | null;
@@ -1772,6 +1820,30 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      processed_webhook_events: {
+        Row: {
+          event_id: string;
+          event_type: string;
+          id: string;
+          processed_at: string;
+          provider: string;
+        };
+        Insert: {
+          event_id: string;
+          event_type: string;
+          id?: string;
+          processed_at?: string;
+          provider: string;
+        };
+        Update: {
+          event_id?: string;
+          event_type?: string;
+          id?: string;
+          processed_at?: string;
+          provider?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {
